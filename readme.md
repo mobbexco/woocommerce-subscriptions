@@ -30,7 +30,7 @@ Version 2.0 or greater
 
 If you are using WP Cerber for security you must go under WP Cerber settings on "Antispam" option, introduce the next sentence in the Query whitelist input box:
 
-```wc-api=mobbex_webhook```
+```wc-api=mobbex_subs_webhook```
 
 If you don't do it you won't be able to receive the information about the payment and will be marked in a wrong way.
 ## Preguntas Frecuentes
