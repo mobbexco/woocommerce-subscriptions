@@ -1,17 +1,14 @@
 <?php
 require_once 'utils.php';
 
-class MobbexHelper 
+class MobbexSubsHelper extends WC_Settings_API
 {
-    protected $api_key;
-    protected $access_token;
 
-    public function __construct($api_key = null, $access_token = null)
+    public function __construct()
     {
-        if (!empty($api_key) && !empty($access_token)) {
-            $this->api_key = $api_key;
-            $this->access_token = $access_token;
-        }
+        $this->id = MOBBEX_SUBS_WC_GATEWAY_ID;
+        $this->api_key = $this->get_option('api-key');
+        $this->access_token = $this->get_option('access-token');
     }
 
     public static function notice($type, $msg)

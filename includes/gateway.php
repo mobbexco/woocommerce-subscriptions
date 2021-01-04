@@ -37,12 +37,12 @@ class WC_Gateway_Mobbex_Subs extends WC_Payment_Gateway
         $this->api_key = $this->get_option('api-key');
         $this->access_token = $this->get_option('access-token');
 
-        $this->helper = new MobbexHelper($this->api_key, $this->access_token);
+        $this->helper = new MobbexSubsHelper();
         $this->error = false;
         if (empty($this->api_key) || empty($this->access_token)) {
 
             $this->error = true;
-            MobbexHelper::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
+            MobbexSubsHelper::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
 
         }
 
@@ -55,7 +55,7 @@ class WC_Gateway_Mobbex_Subs extends WC_Payment_Gateway
             add_action('woocommerce_api_mobbex_subs_return_url', [$this, 'mobbex_subs_return_url']);
             add_action('woocommerce_api_mobbex_subs_webhook', [$this, 'mobbex_subs_webhook']);
             if ($this->use_button) {
-                add_action('woocommerce_after_checkout_form', [MobbexHelper::class, 'display_mobbex_button']);
+                add_action('woocommerce_after_checkout_form', [MobbexSubsHelper::class, 'display_mobbex_button']);
                 add_action('wp_enqueue_scripts', [$this, 'payment_scripts']);
             }
         }
@@ -291,7 +291,7 @@ class WC_Gateway_Mobbex_Subs extends WC_Payment_Gateway
         }
 
         if (false !== $error) {
-            return MobbexHelper::_redirect_to_cart_with_error($error);
+            return MobbexSubsHelper::_redirect_to_cart_with_error($error);
         }
 
         $order = wc_get_order($id);
