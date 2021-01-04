@@ -45,5 +45,8 @@ Al igual que el error anterior esto se debe a que el parametro de validación se
 
 ## Changelog
 
+### 1.0.1 :: 2021-01-04
+- Rename helper for compatibilities.
+
 ### 1.0.0 :: 2020-11-19
 - Initial release.
