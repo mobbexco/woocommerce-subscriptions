@@ -1,14 +1,18 @@
 <?php
 require_once 'utils.php';
 
-class MobbexSubsHelper extends WC_Settings_API
+class MobbexSubsHelper
 {
 
     public function __construct()
     {
-        $this->id = MOBBEX_SUBS_WC_GATEWAY_ID;
-        $this->api_key = $this->get_option('api-key');
-        $this->access_token = $this->get_option('access-token');
+        // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
+        $option_key = 'woocommerce_' . MOBBEX_SUBS_WC_GATEWAY_ID . '_settings';
+        $settings = get_option($option_key, null);
+        foreach ($settings as $key => $value) {
+            $key = str_replace('-', '_', $key);
+            $this->$key = $value;
+        }
     }
 
     public static function notice($type, $msg)
