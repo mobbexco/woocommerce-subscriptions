@@ -9,8 +9,10 @@ class MobbexSubsHelper
         // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
         $option_key = 'woocommerce_' . MOBBEX_SUBS_WC_GATEWAY_ID . '_settings';
 		$settings = get_option($option_key, null);
-        foreach ($settings as $key => $value)
+        foreach ($settings as $key => $value) {
+            $key = str_replace('-', '_', $key);
             $this->$key = $value;
+        }
     }
 
     public static function notice($type, $msg)
