@@ -45,6 +45,9 @@ Al igual que el error anterior esto se debe a que el parametro de validación se
 
 ## Changelog
 
+### 1.0.2 :: 2021-03-12
+- Fix helper properties loading.
+
 ### 1.0.1 :: 2021-01-04
 - Rename helper for compatibilities.
 

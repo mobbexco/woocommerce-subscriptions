@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mobbex for WooCommerce Subscriptions
  * Description: A small plugin that provides Woocommerce Subscriptions <-> Mobbex integration.
- * Version: 1.0.1
+ * Version: 1.0.2
  * WC tested up to: 4.2.2
  * Author: mobbex.com
  * Author URI: https://mobbex.com/
