@@ -1,0 +1,27 @@
+/* Product Admin Config styles */
+.two_fields_inline, .three_fields_inline {
+    width: 50%;
+    display: block;
+}
+
+.two_fields_inline > .field {
+    width: 48% !important;
+}
+
+.two_fields_inline > .field:first-child {
+    margin-right: 4% !important;
+}
+
+.three_fields_inline > .field {
+    width: 30.70 !important;
+}
+
+.three_fields_inline > .field:nth-child(-n+2) {
+    margin-right: 4% !important;
+}
+
+@media only screen and (max-width:1280px) {
+    .two_fields_inline, .three_fields_inline {
+        width: 80%;
+    }
+}
