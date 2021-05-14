@@ -1,4 +1,5 @@
 wcs-mobbex*.zip
+.vscode
 
 package.json
 package-lock.json
