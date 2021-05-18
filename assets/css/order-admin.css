@@ -1,31 +1,44 @@
 /* Order Admin Config styles */
-.mbbxs_history  {
+.mbbxs_payment  {
     width: 100%; 
     -webkit-border-vertical-spacing: 10px;
+    background: whitesmoke;
+    /* border-radius: 5px; */
+    padding-left: 5px;
+    padding-right: 5px;
 }
 
-.mbbxs_history .mbbx_msg {
+.mbbxs_payment .mbbx_msg {
     text-align: center;
     border-radius: 5px;
 }
 
-.mbbxs_history td.mbbx_msg_cancelled {
+.mbbxs_payment td.mbbx_msg_cancelled {
     color: red;
     background: #ffcbcb;
 }
 
-.mbbxs_history td.mbbx_msg_approved {
+.mbbxs_payment td.mbbx_msg_approved {
     color: green;
     background: #ebffcb;
+    min-width: 98px;
 }
 
-.mbbxs_history td.mbbx_msg_on-hold {
+.mbbxs_payment td.mbbx_msg_on-hold {
     color: blue;
     background: #cbd4ff;
 }
 
-.mbbxs_history td button.mbbx_retry_btn {
+.mbbxs_payment td button.mbbx_retry_btn {
     min-height: 18px;
     height: 18px;
     line-height: 0;
+}
+
+.mbbxs_payment td.mbbx_payment_ref {
+    overflow-wrap: anywhere;
+}
+
+.mbbxs_payment td.mbbx_payment_ref code {
+    display: block;
 }

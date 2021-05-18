@@ -108,7 +108,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             ],
 
-            'type' => [
+            /*'type' => [
 
                 'title'       => __('Subscription Manager', 'mobbex-subs-for-woocommerce'),
                 'type'        => 'select',
@@ -119,8 +119,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                     // TODO: 'manual'  => __('This plugin', 'mobbex-subs-for-woocommerce'),
                 ],
                 'default'     => 'dynamic',
-
-            ],
+            ],*/
 
             'title' => [
 
@@ -231,28 +230,21 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             return false;
         }
 
-        // Save webhook data by reference
-        $webhooks[$reference][] = $_POST;
-        update_post_meta($id, 'mbbxs_webhooks', $webhooks);
-
         switch ($type) {
             case 'subscription:registration':
+                // Get registration result from context status
+                $result = !empty($data['context']['status']) && $data['context']['status'] === 'success';
+
                 // Add order notes
                 $order->add_order_note('Mobbex Subscription uid: ' . $data['subscription']['uid'] . '.');
                 $order->add_order_note('Mobbex Subscriber uid:' . $data['subscriber']['uid'] . '.');
 
                 // Standalone mode
                 if (isset($standalone)) {
-                    switch ($state) {
-                        case 'approved':  
-                            $order->payment_complete($id);
-                            break;
-                        case 'on-hold':
-                            $order->update_status('on-hold', __('Awaiting Validation Payment', 'mobbex-subs-for-woocommerce'));
-                            break;
-                        case 'cancelled':
-                            $order->update_status('failed', __('Validation failed', 'mobbex-subs-for-woocommerce'));
-                            break;
+                    if ($result) {
+                        $order->payment_complete($id);
+                    } else {
+                        $order->update_status('failed', __('Validation failed', 'mobbex-subs-for-woocommerce'));
                     }
                 } else if (isset($wcs_sub)) {
                     // Save subscription data
@@ -261,7 +253,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                     update_post_meta($wcs_sub_id, 'mobbex_subscriber_uid', $data['subscriber']['uid']);
 
                     // Only if status is 200
-                    if ($status == 200) {
+                    if ($result) {
                         if ($order->get_total() > 0) {
                             // Execute first payment
                             $this->scheduled_subscription_payment($order->get_total(), $order);
@@ -270,6 +262,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                         }
                     }
                 }
+
+                // Save validation data
+                $webhooks['validations'][] = $_POST;
                 break;
 
             case 'subscription:execution':
@@ -289,8 +284,14 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                         $wcs_sub->payment_failed();
                     }
                 }
+
+                // Save payment data by reference
+                $webhooks['payments'][$reference][] = $_POST;
                 break;
         }
+
+        // Update webhooks post meta
+        update_post_meta($id, 'mbbxs_webhooks', $webhooks);
 
         return true;
     }

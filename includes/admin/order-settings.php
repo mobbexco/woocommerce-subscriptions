@@ -24,7 +24,7 @@ class Mbbx_Subs_Order_Settings
      */
     public static function add_subscription_panel()
     {
-        add_meta_box('mbbxs_order_panel', __('Subscriptions payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
+        add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
     }
 
     /**
@@ -34,22 +34,24 @@ class Mbbx_Subs_Order_Settings
     {
         global $post;
 
-        // Get data from webhooks post meta
-        $webhooks = get_post_meta($post->ID, 'mbbxs_webhooks', true) ?: [];
+        // Get payments from webhooks post meta
+        $webhooks = get_post_meta($post->ID, 'mbbxs_webhooks', true);
+        $payments = !empty($webhooks['payments']) ? $webhooks['payments'] : [];
 
-        echo '<table class="mbbxs_history"><tbody>';
+        // Display subscription payments executions history
+        foreach ($payments as $reference => $executions) {
+            echo '<table class="mbbxs_payment"><tbody>';
 
-        // Display subscription executions history
-        foreach ($webhooks as $reference => $executions) {
-            // Separate executions by Reference
-            echo "<td colspan='3'>Reference $reference</td>";
+            // Show payment reference
+            echo 
+            "<tr>
+                <td class='mbbx_payment_ref' colspan='3'>
+                    <b>" . __('Payment Reference', 'mobbex-subs-for-woocommerce') . "</b>
+                    <code>$reference</code>
+                </td>
+            </tr>";
 
             foreach ($executions as $key => $execution) {
-                // Only if is a subscription:execution
-                if ($execution['type'] != 'subscription:execution') {
-                    continue;
-                }
-
                 $retry = $msg = '';
                 $id    = $execution['data']['execution']['uid'];
                 $state = self::$helper::get_state($execution['data']['payment']['status']['code']);
@@ -62,7 +64,7 @@ class Mbbx_Subs_Order_Settings
                     case 'cancelled': $msg = __('Charge Failed', 'mobbex-subs-for-woocommerce');   break;
                 }
 
-                // If it is the last execution for this reference
+                // If it is the last execution for this payment
                 if (end(array_keys($executions)) == $key) {
                     // If there were previous payments and this was approved
                     if (count($executions) > 1 && $state == 'approved') {
@@ -74,7 +76,7 @@ class Mbbx_Subs_Order_Settings
                     }
                 }
 
-                // Render item
+                // Render execution item
                 echo 
                 "<tr>
                     <td><b>$date</b></td>
@@ -82,9 +84,9 @@ class Mbbx_Subs_Order_Settings
                     <td style='text-align: end;'>$retry</td>
                 </tr>";
             }
-        }
 
-        echo '</tbody></table>';
+            echo '</tbody></table>';
+        }
     }
 
     /**
