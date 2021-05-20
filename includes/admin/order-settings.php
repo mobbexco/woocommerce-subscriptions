@@ -17,6 +17,12 @@ class Mbbx_Subs_Order_Settings
 
         // Retry execution endpoint for subscriptions panel
         add_action('woocommerce_api_mbbxs_retry_execution', [self::class, 'retry_execution_endpoint']);
+
+        // Add action to modify subscription total
+        add_action('woocommerce_order_actions', [self::class, 'add_subscription_actions']);
+
+        // Modify total endpoint for order action
+        add_action('woocommerce_order_action_mbbxs_modify_total', [self::class, 'modify_total_endpoint']);
     }
 
     /**
@@ -25,6 +31,25 @@ class Mbbx_Subs_Order_Settings
     public static function add_subscription_panel()
     {
         add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
+    }
+
+    /**
+     * Add subscription actions to order actions select.
+     *
+     * @param array $actions
+     * @return array $actions
+     */
+    public static function add_subscription_actions($actions)
+    {
+        global $theorder;
+        $order_id = $theorder->id;
+
+        // Only add actions if order has a subscription
+        $has_subscription = get_post_meta($order_id, 'mobbex_subscription', true);
+        if (!empty($has_subscription))
+            $actions['mbbxs_modify_total'] = __('Modify Subscription Total', 'mobbex-subs-for-woocommerce'); // Modificar monto de la suscripción
+
+        return $actions;
     }
 
     /**
@@ -100,10 +125,14 @@ class Mbbx_Subs_Order_Settings
             wp_enqueue_style('mbbxs-order-style', plugin_dir_url(__FILE__) . '../../assets/css/order-admin.css');
             wp_enqueue_script('mbbxs-order', plugin_dir_url(__FILE__) . '../../assets/js/order-admin.js');
 
+            $order       = wc_get_order($post->ID);
+            $order_total = get_post_meta($post->ID, 'mbbxs_sub_total', true) ?: $order->get_total();
+
             // Add retry endpoint URL to script
             $mobbex_data = [
-                'order_id'  => $post->ID,
-                'retry_url' => home_url('/wc-api/mbbxs_retry_execution')
+                'order_id'    => $post->ID,
+                'order_total' => $order_total,
+                'retry_url'   => home_url('/wc-api/mbbxs_retry_execution')
             ];
             wp_localize_script('mbbxs-order', 'mobbex_data', $mobbex_data);
             wp_enqueue_script('mbbxs-order');
@@ -134,5 +163,38 @@ class Mbbx_Subs_Order_Settings
             'result' => $result,
             'msg'    => $msg,
         ]);
+    }
+
+    /**
+     * Modify subscription total.
+     * 
+     * Endpoint called by order action.
+     * 
+     * @param WC_Order $order
+     */
+    public static function modify_total_endpoint($order)
+    {
+        try {
+            // Get "new total" value from post data
+            $post_data = wp_unslash($_POST);
+            $new_total = !empty($post_data['mbbxs_new_total']) ? $post_data['mbbxs_new_total'] : false;
+
+            // If data look fine
+            if (is_numeric($new_total)) {
+                $order_id         = $order->get_id();
+                $subscription     = get_post_meta($order_id, 'mobbex_subscription', true);
+                $subscription_uid = !empty($subscription['uid']) ? $subscription['uid'] : false;
+
+                $result = self::$helper->modify_subscription($subscription_uid, ['total' => $new_total]);
+
+                if ($result) {
+                    update_post_meta($order_id, 'mbbxs_sub_total', $new_total);
+                    $order->add_order_note(__('Subscription Total Modified: $ ' , 'mobbex-subs-for-woocommerce') . $new_total);
+                }
+            }
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            $order->add_order_note(__('Subscription Total Modify ERROR: ', 'mobbex-subs-for-woocommerce') . $msg);
+        }
     }
 }

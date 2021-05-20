@@ -1,4 +1,6 @@
 /* Order Admin Config styles */
+
+/* Subscription Payments Panel */
 .mbbxs_payment  {
     width: 100%; 
     -webkit-border-vertical-spacing: 10px;
@@ -6,6 +8,7 @@
     /* border-radius: 5px; */
     padding-left: 5px;
     padding-right: 5px;
+    margin-top: 5px;
 }
 
 .mbbxs_payment .mbbx_msg {
@@ -41,4 +44,19 @@
 
 .mbbxs_payment td.mbbx_payment_ref code {
     display: block;
+}
+
+/* Order Actions Panel */
+.mbbxs_action_field {
+    display: none;
+}
+
+.mbbxs_action_field input {
+    display: inline-block;
+    max-width: 100px;
+}
+
+.mbbxs_action_field label {
+    display: inline-block;
+    margin: 10px 10px 10px 5px;
 }

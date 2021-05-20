@@ -214,6 +214,47 @@ class Mbbx_Subs_Helper
         throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
     }
 
+    /**
+     * Modify Subscription parameters using Mobbex API.
+     * 
+     * @param string|int $subscription_uid
+     * @param array $params Parameters to modify
+     * 
+     * @return bool $result
+     */
+    public function modify_subscription($subscription_uid, $params)
+    {
+        if (!$this->is_ready()) {
+            throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
+        }
+
+        if (empty($subscription_uid) || empty($params)) {
+            throw new Exception(__('Empty Subscription UID or params', 'mobbex-subs-for-woocommerce'));
+        }
+
+        // Modify Subscription
+        $response = wp_remote_post(str_replace('{id}', $subscription_uid, MOBBEX_MODIFY_SUBSCRIPTION), [
+            'headers' => [
+                'cache-control'  => 'no-cache',
+                'content-type'   => 'application/json',
+                'x-api-key'      => $this->api_key,
+                'x-access-token' => $this->access_token,
+            ],
+
+            'body'        => json_encode($params),
+            'data_format' => 'body',
+        ]);
+
+        if (!is_wp_error($response)) {
+            $response = json_decode($response['body'], true);
+
+            if (!empty($response['result']))
+                return true;
+        }
+
+        throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
+    }
+
     /*public function save_retried_execution($order_id, $execution_id)
     {
         $executions = get_post_meta($order_id, 'mbbxs_webhooks', true);
