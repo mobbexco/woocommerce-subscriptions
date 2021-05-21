@@ -14,4 +14,3 @@ define('MOBBEX_SUBS_WC_GATEWAY', 'WC_Gateway_Mbbx_Subs');
 define('MOBBEX_SUBS_WC_GATEWAY_ID', 'mobbex_subs');
 
 define('MOBBEX_SUBS_VERSION', '2.0.0');
-define('MOBBEX_SUBS_EMBED_VERSION', '1.0.17');
