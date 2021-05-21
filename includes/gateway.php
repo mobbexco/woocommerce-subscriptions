@@ -146,9 +146,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if (get_option('woocommerce_subscriptions_is_active')) {
             // Add option to select
             $this->form_fields['integration']['options']['wcs'] = __('WooCommerce Subscriptions', 'mobbex-subs-for-woocommerce');
-
-            // Select as default option
-            $this->form_fields['integration']['default'] = 'wcs';
         }
 
     }
@@ -249,7 +246,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 } else if (isset($wcs_sub)) {
                     // Save subscription data
                     update_post_meta($wcs_sub_id, 'mobbex_subscription', $data);
-                    update_post_meta($wcs_sub_id, 'mobbex_subscription_uid', $data['subscription']['uid']);
+                    update_post_meta($wcs_sub_id, 'mobbex_subscription_uid', $data['subscription']['uid']); // TODO: Save this also in standalone mode
                     update_post_meta($wcs_sub_id, 'mobbex_subscriber_uid', $data['subscriber']['uid']);
 
                     // Only if status is 200
