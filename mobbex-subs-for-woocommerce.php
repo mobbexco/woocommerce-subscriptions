@@ -49,6 +49,7 @@ class Mbbx_Subs_Gateway
             Mbbx_Subs_Gateway::load_update_checker();
             Mbbx_Subs_Gateway::load_helper();
             Mbbx_Subs_Gateway::load_subscription_product();
+            Mbbx_Subs_Gateway::load_cart();
             //Mbbx_Subs_Gateway::register_scheduled_event();
         } catch (Exception $e) {
             Mbbx_Subs_Gateway::$errors[] = $e->getMessage();
@@ -161,6 +162,15 @@ class Mbbx_Subs_Gateway
     private static function load_subscription_product()
     {
         require_once plugin_dir_path(__FILE__) . 'includes/subscription-product.php';
+    }
+
+    /**
+     * Utility functions and hooks for Cart
+     */
+    private static function load_cart()
+    {
+        require_once plugin_dir_path(__FILE__) . 'includes/cart.php';
+        Mbbxs_Cart::init();
     }
 
     private static function load_gateway()
