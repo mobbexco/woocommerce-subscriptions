@@ -92,6 +92,8 @@ class Mbbx_Subs_Helper
 	 * Check if Order has a Mobbex Subscription product.
 	 *
 	 * @param integer $order_id
+     * 
+     * @return bool
 	 */
     public function has_subscription($order_id)
     {
@@ -102,6 +104,23 @@ class Mbbx_Subs_Helper
             $product_id = $item->get_product()->get_id();
 
             if (Mbbx_Subs_Product::is_subscription($product_id))
+                return true;
+        }
+
+        return false;
+	}
+
+    /**
+	 * Check if the current Cart has a Mobbex Subscription product.
+	 *
+     * @return bool
+	 */
+    public static function cart_has_subscription()
+    {
+        $cart_items = WC()->cart->get_cart();
+
+        foreach ($cart_items as $item_key => $item) {
+            if (Mbbx_Subs_Product::is_subscription($item['product_id']))
                 return true;
         }
 
@@ -133,6 +152,24 @@ class Mbbx_Subs_Helper
             return 'cancelled';
         }
 	}
+
+    /**
+     * Remove items from cart by type.
+     * 
+     * @param string $type 'any' | 'subs'
+     */
+    public static function remove_cart_items($type = 'any')
+    {
+        $cart_items = !empty(WC()->cart->get_cart()) ? WC()->cart->get_cart() : [];
+
+        foreach ($cart_items as $item_key => $item) {
+            if ($type == 'any') {
+                WC()->cart->set_quantity($item_key , 0);
+            } else if ($type == 'subs' && Mbbx_Subs_Product::is_subscription($item['product_id'])) {
+                WC()->cart->set_quantity($item_key , 0);
+            }
+        }
+    }
 
     /**
      * Execute subscription charge manually using Mobbex API.
