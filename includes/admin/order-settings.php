@@ -2,12 +2,13 @@
 
 class Mbbx_Subs_Order_Settings
 {
-    public static Mbbx_Subs_Helper $helper;
+    /** @var Mbbxs_Helper */
+    public static $helper;
 
     public static function init()
     {
         // Load helper
-        self::$helper = new Mbbx_Subs_Helper;
+        self::$helper = new Mbbxs_Helper;
 
         // Add subscription panel to Order admin page
         add_action('add_meta_boxes', [self::class, 'add_subscription_panel']);

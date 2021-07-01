@@ -6,12 +6,13 @@ require_once 'utils.php';
  */
 class Mbbxs_Cart
 {
-    public static Mbbx_Subs_Helper $helper;
+    /** @var Mbbxs_Helper */
+    public static $helper;
 
     public static function init()
     {
         // Load helper
-        self::$helper = new Mbbx_Subs_Helper;
+        self::$helper = new Mbbxs_Helper;
 
         // Validate cart items
         add_filter('woocommerce_add_to_cart_validation', [self::class, 'validate_cart_items'], 10, 2);
