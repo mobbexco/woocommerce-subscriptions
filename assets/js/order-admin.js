@@ -1,18 +1,40 @@
-/**
- * Toggle an element display depending the value of a select.
- */
-function toggleElementDependigSelect(elementToToggle, select, valueToShow) {
-    var value = select.options[select.selectedIndex].value;
+(function (window) {
+    /**
+     * Toggle an element display depending the value of a select.
+     */
+    function toggleElementDependigSelect(elementToToggle, select, valueToShow) {
+        var value = select.options[select.selectedIndex].value;
 
-    // If current value is the value to show
-    if (value && value == valueToShow) {
-        elementToToggle.style.display = 'inline-block';
-    } else {
-        elementToToggle.style.display = 'none';
+        // If current value is the value to show
+        if (value && value == valueToShow) {
+            elementToToggle.style.display = 'inline-block';
+        } else {
+            elementToToggle.style.display = 'none';
+        }
     }
-}
 
-jQuery(function ($) {
+    function createNewTotalField() {
+        // Get woocommerce actions panel
+        var actionsPanel = document.getElementById('actions');
+
+        // Create field
+        var input = document.createElement('input');
+        input.setAttribute('type', 'text');
+        input.setAttribute('name', 'mbbxs_new_total');
+        input.setAttribute('id', 'mbbxs_new_total');
+        input.setAttribute('value', mobbex_data.order_total);
+
+        var label = document.createElement('label');
+        label.appendChild(document.createTextNode('New Total'));
+
+        var container = document.createElement('div');
+        container.setAttribute('class', 'mbbxs_action_field mbbxs_new_total_field');
+        container.appendChild(label);
+        container.appendChild(input);
+
+        // Add to actions panel
+        actionsPanel.appendChild(container);
+    }
 
     window.addEventListener('load', function () {
         // Get payment retry buttons
@@ -31,7 +53,7 @@ jQuery(function ($) {
                 };
 
                 // Call to plugin endpoint with data to retry payment
-                $.ajax({
+                jQuery.ajax({
                     dataType: "json",
                     method: "POST",
                     url: mobbex_data.retry_url,
@@ -52,21 +74,17 @@ jQuery(function ($) {
             }
         });
 
-        // Get actions panel elements
-        var actionsPanel  = document.getElementById('actions');
-        var actionsSelect = document.getElementsByName('wc_order_action')[0];
+        // Create subscription 'New total' field
+        createNewTotalField();
 
-        // Insert "new subscription total" field in actions panel
-        var modifyTotalField    = '<input type="text" name="mbbxs_new_total" id="mbbxs_new_total" value="' + mobbex_data.order_total + '"></input>';
-        actionsPanel.innerHTML += '<div class="mbbxs_action_field"><label>New total</label>' + modifyTotalField + '</div>';
+        // Get actions select and 'New total' field container
+        var actionsSelect  = document.getElementsByName('wc_order_action')[0];
+        var fieldContainer = document.querySelector('.mbbxs_new_total_field');
 
-        // Get "new subscription total field" container
-        var fieldContainer = document.querySelector('.mbbxs_action_field');
-
-        // Only show new total field when "Modify Subscription Total" action is selected
+        // Only show while its action is selected
         toggleElementDependigSelect(fieldContainer, actionsSelect, 'mbbxs_modify_total');
-        actionsSelect.onchange = function() {
+        actionsSelect.addEventListener('change', function() {
             toggleElementDependigSelect(fieldContainer, actionsSelect, 'mbbxs_modify_total')
-        };
+        });
     });
-});
+}) (window);
