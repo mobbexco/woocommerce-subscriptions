@@ -3,7 +3,8 @@ require_once 'utils.php';
 
 class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 {
-    public Mbbx_Subs_Helper $helper;
+    /** @var Mbbxs_Helper */
+    public $helper;
 
     public $supports = array(
         'products',
@@ -40,12 +41,12 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $this->api_key = $this->get_option('api-key');
         $this->access_token = $this->get_option('access-token');
 
-        $this->helper = new Mbbx_Subs_Helper();
+        $this->helper = new Mbbxs_Helper();
         $this->error = false;
 
         if (!$this->helper->is_ready()) {
             $this->error = true;
-            Mbbx_Subs_Helper::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
+            Mbbxs_Helper::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
         }
 
         // Always Required
@@ -59,7 +60,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             // Embed option
             if ($this->use_button) {
-                add_action('woocommerce_after_checkout_form', [Mbbx_Subs_Helper::class, 'display_mobbex_button']);
+                add_action('woocommerce_after_checkout_form', [Mbbxs_Helper::class, 'display_mobbex_button']);
                 add_action('wp_enqueue_scripts', [$this, 'payment_scripts']);
             }
         }
@@ -309,7 +310,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         }
 
         if (false !== $error) {
-            return Mbbx_Subs_Helper::_redirect_to_cart_with_error($error);
+            return Mbbxs_Helper::_redirect_to_cart_with_error($error);
         }
 
         $order = wc_get_order($id);

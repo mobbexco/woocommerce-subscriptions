@@ -1,7 +1,7 @@
 <?php
 require_once 'utils.php';
 
-class Mbbx_Subs_Helper
+class Mbbxs_Helper
 {
     public function __construct()
     {

@@ -16,9 +16,9 @@ class Mbbx_Subs_Gateway
     public static $version = '2.0.0';
 
     /**
-     * Helper.
+     * @var Mbbxs_Helper
      */
-    public static Mbbx_Subs_Helper $helper;
+    public static $helper;
 
     /**
      * Errors Array.
@@ -142,7 +142,7 @@ class Mbbx_Subs_Gateway
     private static function load_helper()
     {
         require_once plugin_dir_path(__FILE__) . 'includes/helper.php';
-        self::$helper = new Mbbx_Subs_Helper;
+        self::$helper = new Mbbxs_Helper;
     }
 
     private static function load_update_checker()

@@ -2,12 +2,13 @@
 
 class Mbbx_Subs_Product_Settings
 {
-    public static Mbbx_Subs_Helper $helper;
+    /** @var Mbbxs_Helper */
+    public static $helper;
 
     public static function init()
     {
         // Load helper
-        self::$helper = new Mbbx_Subs_Helper;
+        self::$helper = new Mbbxs_Helper;
 
         // Add/save subscription fields
 		add_action('woocommerce_product_options_general_product_data', [self::class, 'add_subscription_fields']);
