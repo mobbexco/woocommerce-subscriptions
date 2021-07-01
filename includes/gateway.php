@@ -446,9 +446,11 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function get_subscriber($order, $mbbx_subscription_uid)
     {
+        $order_id = $order->get_id();
         $current_user = wp_get_current_user();
+
         $dni_key = !empty($this->custom_dni) ? $this->custom_dni : '_billing_dni';
-        $reference = get_post_meta($order->get_id(), $dni_key, true) ? get_post_meta($order->get_id(), $dni_key, true) . $current_user->ID : $current_user->ID;
+        $reference = get_post_meta($order_id, $dni_key, true) ? get_post_meta($order_id, $dni_key, true) . $current_user->ID : $current_user->ID;
 
         $subscriber_body = [
             'customer' => [
@@ -456,14 +458,11 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'email' => $current_user->user_email ? : $order->get_billing_email(),
                 'phone' => get_user_meta($current_user->ID,'phone_number',true) ? : $order->get_billing_phone(),
                 'uid' => $current_user->ID ? : null,
-                'identification' => get_post_meta($order->get_id(), $dni_key, true),
+                'identification' => get_post_meta($order_id, $dni_key, true),
             ],
             'reference' => $reference,
             'test' => $this->test_mode,
-            'startDate' => [
-                'day' => date('d'),
-                'month' => date('m'),
-            ],
+            'startDate' => $this->helper::get_start_date($order_id),
         ];
 
         // Create subscriber
@@ -484,7 +483,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             if (!empty($response['data'])) {
                 // Save data as post meta
-                update_post_meta($order->get_id(), 'mobbex_subscriber', $response['data']);
+                update_post_meta($order_id, 'mobbex_subscriber', $response['data']);
 
                 return $response['data'];
             }
