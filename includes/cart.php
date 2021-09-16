@@ -21,8 +21,8 @@ class Mbbxs_Cart
         add_filter('woocommerce_add_to_cart_redirect',  [self::class, 'redirect_signup_to_checkout']);
 
         // Change add to cart text on Mobbex Subscriptions
-        add_filter('woocommerce_product_add_to_cart_text', [self::class, 'display_signup_button']);
-        add_filter('woocommerce_product_single_add_to_cart_text', [self::class, 'display_signup_button']);
+        add_filter('woocommerce_product_add_to_cart_text', [self::class, 'display_signup_button'], 10, 2);
+        add_filter('woocommerce_product_single_add_to_cart_text', [self::class, 'display_signup_button'], 10, 2);
 
         // Disable the rest of payment gateways when there is a mobbex subscription
         add_filter('woocommerce_available_payment_gateways', [self::class, 'filter_checkout_payment_gateways']);
@@ -32,13 +32,12 @@ class Mbbxs_Cart
      * Display signup button changing text of add to cart on mobbex subscriptions.
      * 
      * @param string $text
+     * @param WC_Product $product
      * 
      * @return string $text
      */
-    public static function display_signup_button($text)
+    public static function display_signup_button($text, $product)
     {
-        global $product;
-
         if (Mbbx_Subs_Product::is_subscription($product->get_id()))
             $text = __('Sign Up', 'mobbex-subs-for-woocommerce');
 
