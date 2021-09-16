@@ -58,7 +58,7 @@ class Mbbxs_Cart
      */
     public static function validate_cart_items($valid, $product_id)
     {
-        // Alawys remove mobbex subscriptions from cart
+        // Always remove mobbex subscriptions from cart
         self::$helper::remove_cart_items('subs');
 
         // If is a subscription remove all other products of cart
@@ -96,10 +96,16 @@ class Mbbxs_Cart
         if (is_admin() && !defined('DOING_AJAX'))
             return;
 
-        // Filter available gateways by key
+        // Get gateway id formatted
+        $mobbex_gateway = [MOBBEX_SUBS_WC_GATEWAY_ID => true];
+
+        // If cart has a mobbex subscription
         if (self::$helper::cart_has_subscription()) {
-            $whitelist = [MOBBEX_SUBS_WC_GATEWAY_ID => true];
-            $available_gateways = array_intersect_key($available_gateways, $whitelist);
+            // Remove all payment gateways except mobbex
+            $available_gateways = array_intersect_key($available_gateways, $mobbex_gateway);
+        } else if (!self::$helper->cart_has_wcs_subscription()) {
+            // If there are no subscriptions in the cart, remove mobbex from available gateways
+            $available_gateways = array_diff_key($available_gateways, $mobbex_gateway);
         }
 
         return $available_gateways;

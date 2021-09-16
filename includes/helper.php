@@ -128,6 +128,16 @@ class Mbbxs_Helper
 	}
 
     /**
+	 * Check if the current Cart has a WCS Subscription product.
+	 *
+     * @return bool
+	 */
+    public function cart_has_wcs_subscription()
+    {
+        return ($this->is_wcs_active() && WC_Subscriptions_Cart::cart_contains_subscription());
+	}
+
+    /**
 	 * Checks if page is pay for order and change subs payment page.
 	 */
     public static function is_subs_change_method()
