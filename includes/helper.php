@@ -128,14 +128,24 @@ class Mbbxs_Helper
 	}
 
     /**
-	 * Check if the current Cart has a WCS Subscription product.
-	 *
+     * Check if the current Order has a Mobbex Subscription product.
+     *
      * @return bool
-	 */
-    public function cart_has_wcs_subscription()
+     */
+    public static function order_has_subscription()
     {
-        return ($this->is_wcs_active() && WC_Subscriptions_Cart::cart_contains_subscription());
-	}
+        if (empty($_GET['pay_for_order']) || empty(get_query_var('order-pay')))
+            return false;
+
+        $order = wc_get_order(get_query_var('order-pay'));
+
+        foreach ($order->get_items() as $item) {
+            if (Mbbx_Subs_Product::is_subscription($item->get_product()->get_id()))
+                return true;
+        }
+
+        return false;
+    }
 
     /**
 	 * Checks if page is pay for order and change subs payment page.
@@ -220,7 +230,7 @@ class Mbbxs_Helper
         $url = str_replace(['{id}', '{sid}'], [$mbbx_subscription_uid, $mbbx_subscriber_uid], MOBBEX_SUBSCRIPTION);
         $body = [
             'total' => $total,
-            'test' => $this->test_mode,
+            'test' => $this->test_mode == 'yes',
         ];
 
         $response = wp_remote_post($url, [
