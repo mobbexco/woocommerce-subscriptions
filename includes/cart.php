@@ -99,11 +99,13 @@ class Mbbxs_Cart
         $mobbex_gateway = [MOBBEX_SUBS_WC_GATEWAY_ID => true];
 
         // If cart has a mobbex subscription
-        if (self::$helper::cart_has_subscription()) {
+        if (self::$helper::cart_has_subscription() || self::$helper::order_has_subscription()) {
             // Remove all payment gateways except mobbex
             $available_gateways = array_intersect_key($available_gateways, $mobbex_gateway);
-        } else if (!self::$helper->cart_has_wcs_subscription()) {
-            // If there are no subscriptions in the cart, remove mobbex from available gateways
+        } else if (self::$helper->is_wcs_active() && (WC_Subscriptions_Cart::cart_contains_subscription() || wcs_order_contains_subscription(get_query_var('order-pay')))) {
+            // Nothing
+        } else {
+            // By default, remove mobbex from available gateways
             $available_gateways = array_diff_key($available_gateways, $mobbex_gateway);
         }
 
