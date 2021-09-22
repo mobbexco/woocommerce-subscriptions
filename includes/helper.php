@@ -230,7 +230,7 @@ class Mbbxs_Helper
         $url = str_replace(['{id}', '{sid}'], [$mbbx_subscription_uid, $mbbx_subscriber_uid], MOBBEX_SUBSCRIPTION);
         $body = [
             'total' => $total,
-            'test' => $this->test_mode,
+            'test' => $this->test_mode == 'yes',
         ];
 
         $response = wp_remote_post($url, [

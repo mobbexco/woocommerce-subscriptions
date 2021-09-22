@@ -240,6 +240,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 // Standalone mode
                 if (isset($standalone)) {
                     if ($result) {
+                        $this->helper->execute_charge($data['subscription']['uid'], $data['subscriber']['uid'], $order->get_total());
                         $order->payment_complete($id);
                     } else {
                         $order->update_status('failed', __('Validation failed', 'mobbex-subs-for-woocommerce'));
@@ -462,7 +463,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'identification' => get_post_meta($order_id, $dni_key, true),
             ],
             'reference' => $reference,
-            'test' => $this->test_mode,
+            'test' => $this->test_mode == 'yes',
             'startDate' => $this->helper::get_start_date($order_id),
         ];
 
