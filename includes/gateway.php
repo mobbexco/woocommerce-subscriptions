@@ -463,7 +463,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'identification' => get_post_meta($order_id, $dni_key, true),
             ],
             'reference' => $reference,
-            'test' => $this->test_mode == 'yes',
+            'test' => $this->test_mode,
             'startDate' => $this->helper::get_start_date($order_id),
         ];
 

@@ -66,15 +66,15 @@ class Mbbx_Subs_Gateway
         // Always
         Mbbx_Subs_Gateway::load_gateway();
         Mbbx_Subs_Gateway::add_gateway();
+        Mbbx_Subs_Gateway::load_order_settings();
 
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_action_links']);
         add_filter('plugin_row_meta', [$this, 'plugin_row_meta'], 10, 2);
 
         // Standalone mode
-        if (!self::$helper->is_wcs_active()) {
-            Mbbx_Subs_Gateway::load_order_settings();
+        if (!self::$helper->is_wcs_active())
             Mbbx_Subs_Gateway::load_product_settings();
-        }
+
         /*add_filter('cron_schedules', function ($schedules) {
             $schedules['5seconds'] = array(
                 'interval' => 5,

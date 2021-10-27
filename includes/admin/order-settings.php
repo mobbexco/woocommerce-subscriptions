@@ -46,8 +46,7 @@ class Mbbx_Subs_Order_Settings
         $order_id = $theorder->id;
 
         // Only add actions if order has a subscription
-        $has_subscription = get_post_meta($order_id, 'mobbex_subscription', true);
-        if (!empty($has_subscription))
+        if (self::$helper->has_subscription($order_id) || self::$helper->is_wcs_active() && wcs_order_contains_subscription($order_id))
             $actions['mbbxs_modify_total'] = __('Modify Subscription Total', 'mobbex-subs-for-woocommerce'); // Modificar monto de la suscripción
 
         return $actions;
