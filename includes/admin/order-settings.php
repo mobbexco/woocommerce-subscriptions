@@ -31,6 +31,12 @@ class Mbbx_Subs_Order_Settings
      */
     public static function add_subscription_panel()
     {
+        global $post;
+
+        // Only show if order has a subscription
+        if (!self::$helper->has_any_subscription($post->ID))
+            return;
+
         add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
     }
 
@@ -46,7 +52,7 @@ class Mbbx_Subs_Order_Settings
         $order_id = $theorder->id;
 
         // Only add actions if order has a subscription
-        if (self::$helper->has_subscription($order_id) || self::$helper->is_wcs_active() && wcs_order_contains_subscription($order_id))
+        if (self::$helper->has_any_subscription($order_id))
             $actions['mbbxs_modify_total'] = __('Modify Subscription Total', 'mobbex-subs-for-woocommerce'); // Modificar monto de la suscripción
 
         return $actions;

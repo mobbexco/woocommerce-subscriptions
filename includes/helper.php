@@ -89,6 +89,18 @@ class Mbbxs_Helper
     }
 
     /**
+     * Check if Order has a Mobbex Subscription product or a WCS Subscription.
+     *
+     * @param integer $order_id
+     * 
+     * @return bool
+     */
+    public function has_any_subscription($order_id)
+    {
+        return $this->has_subscription($order_id) || $this->is_wcs_active() && wcs_order_contains_subscription($order_id);
+    }
+
+    /**
 	 * Check if Order has a Mobbex Subscription product.
 	 *
 	 * @param integer $order_id
