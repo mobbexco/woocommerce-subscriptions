@@ -97,7 +97,7 @@ class Mbbxs_Helper
      */
     public function has_any_subscription($order_id)
     {
-        return $this->has_subscription($order_id) || $this->is_wcs_active() && wcs_order_contains_subscription($order_id);
+        return $this->has_subscription($order_id) || $this->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
     }
 
     /**
@@ -348,6 +348,29 @@ class Mbbxs_Helper
         }
 
         throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
+    }
+
+    /**
+     * Update order total.
+     * 
+     * @param WC_Order|WC_Subscription $order
+     * @param int|string $total
+     */
+    public function update_order_total($order, $total)
+    {
+        if ($total == $order->get_total())
+            return;
+
+        // Create an item with total difference
+        $item = new WC_Order_Item_Fee();
+
+        $item->set_name(__('Modificación de monto', 'mobbex-subs-for-woocommerce'));
+        $item->set_amount($total - $order->get_total());
+        $item->set_total($total - $order->get_total());
+
+        // Add the item and recalculate totals
+        $order->add_item($item);
+        $order->calculate_totals();
     }
 
     /*public function save_retried_execution($order_id, $execution_id)

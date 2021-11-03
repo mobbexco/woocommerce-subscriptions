@@ -25,7 +25,7 @@
         input.setAttribute('value', mobbex_data.order_total);
 
         var label = document.createElement('label');
-        label.appendChild(document.createTextNode('New Total'));
+        label.appendChild(document.createTextNode('Nuevo monto'));
 
         var container = document.createElement('div');
         container.setAttribute('class', 'mbbxs_action_field mbbxs_new_total_field');

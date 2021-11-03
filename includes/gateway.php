@@ -234,8 +234,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 $result = !empty($data['context']['status']) && $data['context']['status'] === 'success';
 
                 // Add order notes
-                $order->add_order_note('Mobbex Subscription uid: ' . $data['subscription']['uid'] . '.');
-                $order->add_order_note('Mobbex Subscriber uid:' . $data['subscriber']['uid'] . '.');
+                $order->add_order_note('Mobbex Subscription UID: ' . $data['subscription']['uid']);
+                $order->add_order_note('Mobbex Subscriber UID:' . $data['subscriber']['uid']);
 
                 // Standalone mode
                 if (isset($standalone)) {
