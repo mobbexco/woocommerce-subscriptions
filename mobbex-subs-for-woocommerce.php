@@ -149,7 +149,7 @@ class Mbbx_Subs_Gateway
     {
         require 'plugin-update-checker/plugin-update-checker.php';
         $myUpdateChecker = Puc_v4_Factory::buildUpdateChecker(
-            'https://github.com/mobbexco/woocommerce-subscriptions/',
+            'https://github.com/mobbexco/woocommerce-subscriptions-v2/',
             __FILE__,
             'mobbex-subs-plugin-update-checker'
         );
