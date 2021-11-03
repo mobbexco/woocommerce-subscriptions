@@ -34,10 +34,8 @@ class Mbbx_Subs_Order_Settings
         global $post;
 
         // Only show if order has a subscription
-        if (!self::$helper->has_any_subscription($post->ID))
-            return;
-
-        add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
+        if (get_current_screen() == 'shop_order' && self::$helper->has_any_subscription($post->ID))
+            add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
     }
 
     /**
