@@ -4,5 +4,3 @@ wcs-mobbex*.zip
 package.json
 package-lock.json
 node_modules
-
-build.bat
