@@ -41,6 +41,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $this->api_key = $this->get_option('api-key');
         $this->access_token = $this->get_option('access-token');
 
+        $this->send_subscriber_email = ($this->get_option('send_subscriber_email') === 'yes');
+
         $this->helper = new Mbbxs_Helper();
         $this->error = false;
 
@@ -141,6 +143,14 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             ],
 
+            'send_subscriber_email' => [
+
+                'title' => __('Enable emails to Subscriber', 'mobbex-subs-for-woocommerce'),
+                'type' => 'checkbox',
+                'label' => __('Enable Subscriber Emails', 'mobbex-subs-for-woocommerce'),
+                'default' => 'yes'
+            
+            ]
         ];
 
         // Add integration options if are detected
@@ -410,6 +420,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'setupFee'    => isset($setup_fee) ? $setup_fee : '',
             'interval'    => isset($inverval) ? $inverval : '',
             'trial'       => isset($trial) ? $trial : '',
+            'features'    => $this->get_subscription_features(),
         ];
 
         // Create subscription
@@ -518,5 +529,16 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if (!isset($result) || is_wp_error($result) || $result === false)
             $wcs_sub->payment_failed(); //check this in 400 status
+    }
+
+    private function get_subscription_features()
+    {
+        $features = array();
+
+        if (!$this->send_subscriber_email) {
+            array_push($features, 'no_email');
+        }
+
+        return $features;
     }
 }
