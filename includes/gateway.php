@@ -203,7 +203,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     {
         $id    = $_REQUEST['mobbex_order_id'];
         $token = $_REQUEST['mobbex_token'];
-        $data  = $_POST['data'];
+        $data  = isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'application/json' ? json_decode(file_get_contents('php://input'), true) : $_POST['data'];
 
         $this->process_webhook($id, $token, $data);
 
