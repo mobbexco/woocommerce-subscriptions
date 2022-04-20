@@ -1,4 +1,4 @@
-function mbbxsToggleOptions(optionToCheck, valueToShow, optionsToToggle) {
+function mbbxsSubsToggleOptions(optionToCheck, valueToShow, optionsToToggle) {
     // Works with multiple elements
     for (var option of optionsToToggle) {
         if (optionToCheck.checked === valueToShow) {
@@ -37,9 +37,9 @@ window.addEventListener('load', function () {
     ];
 
     // Show all subscription options when subscription mode is checked
-    mbbxsToggleOptions(isSubscription, true, options);
+    mbbxsSubsToggleOptions(isSubscription, true, options);
     isSubscription.onclick = function () {
-        mbbxsToggleOptions(isSubscription, true, options);
+        mbbxsSubsToggleOptions(isSubscription, true, options);
     }
 
     // Get charge interval and period
