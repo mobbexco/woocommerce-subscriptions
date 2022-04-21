@@ -135,7 +135,7 @@ class Mbbxs_Helper
 	 */
     public static function cart_has_subscription()
     {
-        $cart_items = WC()->cart->get_cart();
+        $cart_items = WC()->cart ? WC()->cart->get_cart() : [];
 
         foreach ($cart_items as $item_key => $item) {
             if (Mbbx_Subs_Product::is_subscription($item['product_id']))

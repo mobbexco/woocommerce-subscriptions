@@ -413,6 +413,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'setupFee'    => isset($setup_fee) ? $setup_fee : $total,
             'interval'    => isset($inverval) ? $inverval : '',
             'trial'       => isset($trial) ? $trial : '',
+            'test'        => $this->test_mode,
             'features'    => $this->get_subscription_features(),
         ];
 
