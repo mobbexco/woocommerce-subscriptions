@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mobbex Subscriptions for WooCommerce
  * Description: Plugin that integrates Mobbex Subscriptions in WooCommerce.
- * Version: 2.1.0
+ * Version: 2.1.1
  * WC tested up to: 4.2.2
  * Author: mobbex.com
  * Author URI: https://mobbex.com/
@@ -13,7 +13,7 @@ require_once 'includes/utils.php';
 
 class Mbbx_Subs_Gateway
 {
-    public static $version = '2.1.0';
+    public static $version = '2.1.1';
 
     /**
      * @var Mbbxs_Helper
