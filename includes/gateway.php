@@ -201,23 +201,22 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function mobbex_subs_webhook()
     {
-        $id    = $_REQUEST['mobbex_order_id'];
-        $token = $_REQUEST['mobbex_token'];
-        $data  = isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'application/json' ? json_decode(file_get_contents('php://input'), true)['data'] : $_POST['data'];
+        $id        = $_REQUEST['mobbex_order_id'];
+        $token     = $_REQUEST['mobbex_token'];
+        $postData  = isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'application/json' ? json_decode(file_get_contents('php://input'), true) : $_POST;
 
-        $this->process_webhook($id, $token, $data);
+        $this->process_webhook($id, $token, $postData['data'], $postData['type']);
 
         echo "WebHook OK: Mobbex for WooCommerce Subscriptions v" . MOBBEX_SUBS_VERSION;
         die();
     }
 
-    public function process_webhook($id, $token, $data)
+    public function process_webhook($id, $token, $data, $type)
     {
-        $type      = $_POST['type'];
         $status    = $data['payment']['status']['code'];
         $reference = $data['payment']['reference'];
 
-        if (empty($status) || empty($id) || empty($token) || empty($type) || !$this->helper->valid_mobbex_token($token)) {
+        if (empty($status) || empty($id) || empty($token) || !$type || empty($type) || !$this->helper->valid_mobbex_token($token)) {
             return false;
         }
 
