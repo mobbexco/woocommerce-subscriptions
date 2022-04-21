@@ -250,7 +250,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 // Standalone mode
                 if (isset($standalone)) {
                     if ($result) {
-                        $this->helper->execute_charge($data['subscription']['uid'], $data['subscriber']['uid'], $order->get_total());
                         $order->payment_complete($id);
                     } else {
                         $order->update_status('failed', __('Validation failed', 'mobbex-subs-for-woocommerce'));
@@ -261,15 +260,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                     update_post_meta($wcs_sub_id, 'mobbex_subscription_uid', $data['subscription']['uid']); // TODO: Save this also in standalone mode
                     update_post_meta($wcs_sub_id, 'mobbex_subscriber_uid', $data['subscriber']['uid']);
 
-                    // Only if status is 200
-                    if ($result) {
-                        if ($order->get_total() > 0) {
-                            // Execute first payment
-                            $this->scheduled_subscription_payment($order->get_total(), $order);
-                        } else if ($order->get_total() == 0){
-                            $wcs_sub->payment_complete();
-                        }
-                    }
+                    // Enable subscription
+                    if ($result)
+                        $wcs_sub->payment_complete();
                 }
 
                 // Save validation data
@@ -417,9 +410,10 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'webhook'     => $this->helper->get_api_endpoint('mobbex_subs_webhook', $order_id),
             'reference'   => "wc_order_{$order_id}_time_" . time(),
             'return_url'  => $return_url,
-            'setupFee'    => isset($setup_fee) ? $setup_fee : '',
+            'setupFee'    => isset($setup_fee) ? $setup_fee : $total,
             'interval'    => isset($inverval) ? $inverval : '',
             'trial'       => isset($trial) ? $trial : '',
+            'test'        => $this->test_mode,
             'features'    => $this->get_subscription_features(),
         ];
 
@@ -533,7 +527,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     private function get_subscription_features()
     {
-        $features = array();
+        $features = ['charge_on_first_source'];
 
         if (!$this->send_subscriber_email) {
             array_push($features, 'no_email');

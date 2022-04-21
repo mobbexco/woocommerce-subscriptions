@@ -50,7 +50,7 @@ class Mbbx_Subs_Order_Settings
         global $post;
 
         // Only add actions if order has a subscription
-        if (self::$helper->has_any_subscription($post->ID))
+        if (is_admin() && $post && self::$helper->has_any_subscription($post->ID))
             $actions['mbbxs_modify_total'] = __('Modificar monto de la suscripción', 'mobbex-subs-for-woocommerce');
 
         return $actions;

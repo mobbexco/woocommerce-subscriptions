@@ -3,6 +3,12 @@ require_once 'utils.php';
 
 class Mbbxs_Helper
 {
+    public static $periods = [
+        'd' => 'day',
+        'm' => 'month',
+        'y' => 'year'
+    ];
+
     public function __construct()
     {
         // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
@@ -129,7 +135,7 @@ class Mbbxs_Helper
 	 */
     public static function cart_has_subscription()
     {
-        $cart_items = WC()->cart->get_cart();
+        $cart_items = WC()->cart ? WC()->cart->get_cart() : [];
 
         foreach ($cart_items as $item_key => $item) {
             if (Mbbx_Subs_Product::is_subscription($item['product_id']))
@@ -197,17 +203,14 @@ class Mbbxs_Helper
     {
         // Get subscription interval and period
         $subscription = get_post_meta($order_id, 'mobbex_subscription', true);
-        $interval     = substr($subscription['interval'], 1);
-        $period       = substr($subscription['interval'], 0, 1);
 
-        // Get full period name
-        $periods_names = ['d' => 'day', 'm' => 'month', 'y' => 'year'];
-        $period_name   = $periods_names[$period];
+        $interval = preg_replace('/[^0-9]/', '', (string) $subscription['interval']) ?: 1;
+        $period   = self::$periods[preg_replace('/[0-9]/', '', (string) $subscription['interval']) ?: 'm'];
 
         return [
-            'day'   => date('d', strtotime("+ $interval $period_name")),
-            'month' => date('m', strtotime("+ $interval $period_name")),
-            'year'  => date('y', strtotime("+ $interval $period_name")),
+            'day'   => date('d', strtotime("+ $interval $period")),
+            'month' => date('m', strtotime("+ $interval $period")),
+            'year'  => date('y', strtotime("+ $interval $period")),
         ];
     }
 
