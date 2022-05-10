@@ -192,29 +192,6 @@ class Mbbxs_Helper
 	}
 
     /**
-     * Get start subscription date of subscriber.
-     * It's set at the end of the first billing period.
-     * 
-     * @param mixed $order_id 
-     * 
-     * @return array 
-     */
-    public static function get_start_date($order_id)
-    {
-        // Get subscription interval and period
-        $subscription = get_post_meta($order_id, 'mobbex_subscription', true);
-
-        $interval = preg_replace('/[^0-9]/', '', (string) $subscription['interval']) ?: 1;
-        $period   = self::$periods[preg_replace('/[0-9]/', '', (string) $subscription['interval']) ?: 'm'];
-
-        return [
-            'day'   => date('d', strtotime("+ $interval $period")),
-            'month' => date('m', strtotime("+ $interval $period")),
-            'year'  => date('y', strtotime("+ $interval $period")),
-        ];
-    }
-
-    /**
      * Remove items from cart by type.
      * 
      * @param string $type 'any' | 'subs'

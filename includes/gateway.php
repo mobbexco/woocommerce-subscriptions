@@ -459,16 +459,20 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $reference = get_post_meta($order_id, $dni_key, true) ? get_post_meta($order_id, $dni_key, true) . $current_user->ID : $current_user->ID;
 
         $subscriber_body = [
-            'customer' => [
-                'name' => $current_user->display_name ? : $order->get_formatted_billing_full_name(),
-                'email' => $current_user->user_email ? : $order->get_billing_email(),
-                'phone' => get_user_meta($current_user->ID,'phone_number',true) ? : $order->get_billing_phone(),
-                'uid' => $current_user->ID ? : null,
+            'reference' => $reference,
+            'test'      => $this->test_mode,
+            'startDate' => [
+                'day'   => date('d'),
+                'month' => date('m'),
+                'year'  => date('y'),
+            ],
+            'customer'  => [
+                'name'           => $current_user->display_name ? : $order->get_formatted_billing_full_name(),
+                'email'          => $current_user->user_email ? : $order->get_billing_email(),
+                'phone'          => get_user_meta($current_user->ID,'phone_number',true) ? : $order->get_billing_phone(),
+                'uid'            => $current_user->ID ? : null,
                 'identification' => get_post_meta($order_id, $dni_key, true),
             ],
-            'reference' => $reference,
-            'test' => $this->test_mode,
-            'startDate' => $this->helper::get_start_date($order_id),
         ];
 
         // Create subscriber
