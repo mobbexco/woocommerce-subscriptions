@@ -265,5 +265,18 @@ class Mbbx_Subs_Gateway
     }*/
 }
 
+function install_mobbex_subs_tables()
+{
+    global $wpdb;
+    // Get install query from sql file
+    $querys = explode('/', str_replace('PREFIX_', $wpdb->prefix, file_get_contents(WP_PLUGIN_DIR . '/woocommerce-mobbex-subs/setup/install.sql'))); 
+    //Execute the querys
+    foreach ($querys as $query) {
+        $wpdb->get_results($query);
+    }
+    
+}
+
 $mbbx_subs_gateway = new Mbbx_Subs_Gateway;
 add_action('plugins_loaded', [ & $mbbx_subs_gateway, 'init']);
+register_activation_hook(__FILE__, 'install_mobbex_subs_tables');
