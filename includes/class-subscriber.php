@@ -59,7 +59,7 @@ class MobbexSubscriber extends \Mobbex\Model
         $customer_id      = null
     ) {
         $this->helper = new \Mbbxs_Helper();
-        $this->logger = new \MobbexLogger;
+        $this->logger = new \Mbbxs_Logger;
         $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
         parent::__construct(...func_get_args());
@@ -128,7 +128,7 @@ class MobbexSubscriber extends \Mobbex\Model
             'data'             => json_encode($webhookData)
         ];
         
-        return $wpdb->insert($wpdb->prefix.'mobbex_execution', $data, \MobbexHelper::db_column_format($data));
+        return $wpdb->insert($wpdb->prefix.'mobbex_execution', $data);
     }
 
     /**

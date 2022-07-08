@@ -69,7 +69,7 @@ class MobbexSubscription extends \Mobbex\Model {
         $limit       = null
     ) {
         $this->helper = new \Mbbxs_Helper();
-        $this->logger = new \MobbexLogger();
+        $this->logger = new \Mbbxs_Logger();
         $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
         parent::__construct(...func_get_args());
