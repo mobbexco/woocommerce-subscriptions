@@ -74,9 +74,11 @@ class Mbbx_Subs_Gateway
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_action_links']);
         add_filter('plugin_row_meta', [$this, 'plugin_row_meta'], 10, 2);
 
-        // Standalone mode
-        if (!self::$helper->is_wcs_active())
-            Mbbx_Subs_Gateway::load_product_settings();
+        //Product Settings
+        require_once plugin_dir_path(__FILE__) . 'includes/admin/product-settings.php';
+        add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_subscription']);
+        
+        Mbbx_Subs_Gateway::load_product_settings();
 
         /*add_filter('cron_schedules', function ($schedules) {
             $schedules['5seconds'] = array(
@@ -194,7 +196,6 @@ class Mbbx_Subs_Gateway
      */
     private static function load_product_settings()
     {
-        require_once plugin_dir_path(__FILE__) . 'includes/admin/product-settings.php';
         Mbbx_Subs_Product_Settings::init();
     }
 
