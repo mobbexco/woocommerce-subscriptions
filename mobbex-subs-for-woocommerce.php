@@ -10,6 +10,9 @@
  */
 
 require_once 'includes/utils.php';
+require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/model.php';
+require_once 'includes/class-subscription.php';
+require_once 'includes/class-subscriber.php';
 
 class Mbbx_Subs_Gateway
 {
