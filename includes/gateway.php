@@ -149,7 +149,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'type' => 'checkbox',
                 'label' => __('Enable Subscriber Emails', 'mobbex-subs-for-woocommerce'),
                 'default' => 'yes'
-            
+
             ]
         ];
 
@@ -175,24 +175,19 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         }
 
         $order = wc_get_order($order_id);
-        $return_url = $this->helper->get_api_endpoint('mobbex_subs_return_url', $order_id);
 
-        // Check if it's a payment method change or new payment
-        if ($this->helper->is_subs_change_method()) {
-            // Use parent order to get data from db
-            $subscription_data = get_post_meta($order->order->get_id(), 'mobbex_subscription', true);
-            $subscriber_data   = get_post_meta($order->order->get_id(), 'mobbex_subscriber', true);
-        } else {
-            // Register new subscription using API
-            $subscription_data = get_post_meta($order_id, 'mobbex_subscription', true) ? : $this->get_subscription($order, $return_url);
-            $subscriber_data   = get_post_meta($order_id, 'mobbex_subscriber', true) ? : $this->get_subscriber($order, $subscription_data['uid']);
-        }
+        //Save order id in session
+        WC()->session->set('order_id', $order_id);
+
+        //Get subscriber & Subscription data
+        $subscription = $this->get_subscription($order);
+        $subscriber   = $this->get_subscriber($order, $subscription->uid);
 
         // If data looks fine
-        if (!empty($subscriber_data) && !empty($subscription_data)) {
+        if (!empty($subscriber->uid) && !empty($subscription->uid)) {
             return [
                 'result' => 'success',
-                'redirect' => $subscriber_data['sourceUrl'],
+                'redirect' => $subscriber->source_url,
             ];
         }
 
@@ -201,35 +196,36 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function mobbex_subs_webhook()
     {
-        $id        = $_REQUEST['mobbex_order_id'];
         $token     = $_REQUEST['mobbex_token'];
         $postData  = isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'application/json' ? json_decode(file_get_contents('php://input'), true) : $_POST;
 
-        $this->process_webhook($id, $token, $postData['data'], $postData['type']);
+        $this->process_webhook($token, $postData['data'], $postData['type']);
 
         echo "WebHook OK: Mobbex for WooCommerce Subscriptions v" . MOBBEX_SUBS_VERSION;
         die();
     }
 
-    public function process_webhook($id, $token, $data, $type)
+    public function process_webhook($token, $data, $type)
     {
         $status    = $data['payment']['status']['code'];
         $reference = $data['payment']['reference'];
 
-        if (empty($status) || empty($id) || empty($token) || !$type || empty($type) || !$this->helper->valid_mobbex_token($token)) {
+        if (empty($status) || empty($token) || !$type || empty($type) || !$this->helper->valid_mobbex_token($token)) {
             return false;
         }
 
-        $order    = wc_get_order($id);
-        $state    = $this->helper->get_state($status);
-        $webhooks = get_post_meta($id, 'mbbxs_webhooks', true) ?: [];
+        $subscription = $this->helper->getSubscriptionByUid($data['subscription']['uid']);
+        $subscriber   = $this->helper->getSubscriberByUid($data['subscriber']['uid']);
+        $order_id     = $subscriber->order_id;
+        $order        = wc_get_order($order_id);
+        $state        = $this->helper->get_state($status);
+        $dates        = $subscription->calculateDates();
 
-        if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($id)) {
+        if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($order_id)) {
             // Get a WCS subscription if possible
-            $subscriptions = wcs_get_subscriptions_for_order($id, ['order_type' => 'any']);
+            $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub       = end($subscriptions);
-            $wcs_sub_id    = key($subscriptions);
-        } else if ($this->helper->has_subscription($id)) {
+        } else if ($this->helper->has_subscription($order_id)) {
             // If has a mobbex subscription set standalone
             $standalone = true;
         } else {
@@ -237,73 +233,73 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             return false;
         }
 
-        switch ($type) {
-            case 'subscription:registration':
+        if($type === 'subscription:registration' || $type === 'subscription:execution'){
+
+            if($type === 'subscription:registration'){
                 // Get registration result from context status
                 $result = !empty($data['context']['status']) && $data['context']['status'] === 'success';
-
+    
+                // Save registration data and update subscriber state
+                $subscriber->register_data = json_encode($data);
+                $subscriber->state         = $status;
+                $subscriber->start_date    = $dates['current'];
+    
                 // Add order notes
                 $order->add_order_note('Mobbex Subscription UID: ' . $data['subscription']['uid']);
                 $order->add_order_note('Mobbex Subscriber UID:' . $data['subscriber']['uid']);
-
+    
                 // Standalone mode
                 if (isset($standalone)) {
                     if ($result) {
-                        $order->payment_complete($id);
+                        $order->payment_complete($order_id);
                     } else {
                         $order->update_status('failed', __('Validation failed', 'mobbex-subs-for-woocommerce'));
                     }
                 } else if (isset($wcs_sub)) {
-                    // Save subscription data
-                    update_post_meta($wcs_sub_id, 'mobbex_subscription', $data);
-                    update_post_meta($wcs_sub_id, 'mobbex_subscription_uid', $data['subscription']['uid']); // TODO: Save this also in standalone mode
-                    update_post_meta($wcs_sub_id, 'mobbex_subscriber_uid', $data['subscriber']['uid']);
-
                     // Enable subscription
                     if ($result)
                         $wcs_sub->payment_complete();
                 }
-
-                // Save validation data
-                $webhooks['validations'][] = $_POST;
-                break;
-
-            case 'subscription:execution':
-                // If status look fine
-                if ($state == 'approved' || $state == 'on-hold') {
-                    // Mark as payment complete
-                    if (isset($standalone)) {
-                        $order->payment_complete();
-                    } else if (isset($wcs_sub)) {
-                        $wcs_sub->payment_complete();
-                    }
-                } else {
-                    // Mark as payment failed
-                    if (isset($standalone)) {
-                        $order->update_status('failed', __('Execution failed', 'mobbex-subs-for-woocommerce'));
-                    } else if (isset($wcs_sub)) {
-                        $wcs_sub->payment_failed();
-                    }
-                }
-
-                // Save payment data by reference
-                $webhooks['payments'][$reference][] = $_POST;
-                break;
+            }
         }
 
-        // Update webhooks post meta
-        update_post_meta($id, 'mbbxs_webhooks', $webhooks);
+        // If status look fine
+        if ($state == 'approved' || $state == 'on-hold') {
+            // Mark as payment complete
+            if (isset($standalone)) {
+                $order->payment_complete();
+            } else if (isset($wcs_sub)) {
+                $wcs_sub->payment_complete();
+            }
+        } else {
+            // Mark as payment failed
+            if (isset($standalone)) {
+                $order->update_status('failed', __('Execution failed', 'mobbex-subs-for-woocommerce'));
+            } else if (isset($wcs_sub)) {
+                $wcs_sub->payment_failed();
+            }
+        }
+            
+        // Update execution dates
+        $subscriber->last_execution = $dates['current'];
+        $subscriber->next_execution = $dates['next'];
+
+        //Save the subscriber with updated data
+        $subscriber->save();
+
+        // Save webhooks data in execution table
+        $subscriber->saveExecution($data, $order_id, $subscriber->last_execution);
 
         return true;
     }
 
     public function mobbex_subs_return_url()
     {
-        $id     = $_GET['mobbex_order_id'];
+        $id     = WC()->session->get('order_id');
         $status = $_GET['status'];
         $token  = $_GET['mobbex_token'];
+        $error  = false;
 
-        $error = false;
         if (empty($status) || empty($id) || empty($token)) {
             $error = "No se pudo validar la transacción. Contacte con el administrador de su sitio";
         }
@@ -316,7 +312,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             return Mbbxs_Helper::_redirect_to_cart_with_error($error);
         }
 
-        $order = wc_get_order($id);
+        //Get the order from id
+        $order = wc_get_order( $id );
 
         if ($status == 0 || $status >= 400) {
             // Try to restore the cart here
@@ -361,9 +358,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * 
      * @param WC_Order|WC_Abstract_Order $order
      * @param string $return_url
-     * @return array|null $response_data
+     * @return MobbexSubscription|null $response_data
      */
-    public function get_subscription($order, $return_url)
+    public function get_subscription($order)
     {
         $order_id = $order->get_id();
         $sub_type = isset($this->helper->type) ? $this->helper->type : 'dynamic';
@@ -373,74 +370,23 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $product    = $item->get_product();
             $product_id = $product->get_id();
 
-            if (Mbbx_Subs_Product::is_subscription($product_id)) {
-                $sub_name   = $product->get_name();
+            if (Mbbx_Subs_Product::is_subscription($product_id) || WC_Subscriptions_Product::is_subscription($product)) {
+                $id = $product->get_id();
 
                 if ($sub_type === 'dynamic') {
-                    $inverval  = implode(Mbbx_Subs_Product::get_charge_interval($product_id));
+                    $interval  = implode(Mbbx_Subs_Product::get_charge_interval($product_id));
                     $trial     = Mbbx_Subs_Product::get_free_trial($product_id)['interval'];
                     $setup_fee = Mbbx_Subs_Product::get_signup_fee($product_id);
                 }
-            } else if (WC_Subscriptions_Product::is_subscription($product)) {
-                $sub_name = $product->get_name();
             }
         }
 
-        if ($this->helper->has_subscription($order_id)) {
-            // Get total
-            $total = $order->get_total();
-        } else if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($order_id)) {
-            // Get wcs subscription
-            $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
-            $wcs_sub       = end($subscriptions);
+        $subscription = $sub_type === 'dynamic' ? $this->helper->create_mobbex_subscription($id, $sub_type, $interval, $trial, $setup_fee, $order_id) : $this->helper->create_mobbex_subscription($id, $sub_type);
 
-            $total = $wcs_sub->get_total();
-        } else {
-            return;
-        }
+        if (!empty($subscription->uid))
+            return $subscription;
 
-        $body = [
-            'total'       => $total,
-            'currency'    => 'ARS',
-            'type'        => isset($wcs_sub) ? 'manual' : 'dynamic',
-            'name'        => $sub_name,
-            'description' => $sub_name,
-            'limit'       => 0,
-            'webhook'     => $this->helper->get_api_endpoint('mobbex_subs_webhook', $order_id),
-            'reference'   => "wc_order_{$order_id}_time_" . time(),
-            'return_url'  => $return_url,
-            'setupFee'    => isset($setup_fee) ? $setup_fee : $total,
-            'interval'    => isset($inverval) ? $inverval : '',
-            'trial'       => isset($trial) ? $trial : '',
-            'test'        => $this->test_mode,
-            'features'    => $this->get_subscription_features(),
-        ];
-
-        // Create subscription
-        $response = wp_remote_post(MOBBEX_CREATE_SUBSCRIPTION, [
-            'headers' => [
-                'cache-control'  => 'no-cache',
-                'content-type'   => 'application/json',
-                'x-api-key'      => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
-
-            'body'        => json_encode($body),
-            'data_format' => 'body',
-        ]);
-
-        if (!is_wp_error($response)) {
-            $response = json_decode($response['body'], true);
-
-            if (!empty($response['data'])) {
-                // Save data as post meta
-                update_post_meta($order_id, 'mobbex_subscription', $response['data']);
-
-                return $response['data'];
-            }
-        }
-
-        return;
+        return null;
     }
 
     /**
@@ -448,7 +394,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * 
      * @param WC_Order|WC_Abstract_Order $order
      * @param integer $mbbx_subscription_uid
-     * @return array|null $response_data
+     * @return MobbexSubscriber|null $response_data
      */
     public function get_subscriber($order, $mbbx_subscription_uid)
     {
@@ -458,46 +404,28 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $dni_key = !empty($this->custom_dni) ? $this->custom_dni : '_billing_dni';
         $reference = get_post_meta($order_id, $dni_key, true) ? get_post_meta($order_id, $dni_key, true) . $current_user->ID : $current_user->ID;
 
-        $subscriber_body = [
-            'reference' => $reference,
-            'test'      => $this->test_mode,
-            'startDate' => [
-                'day'   => date('d'),
-                'month' => date('m'),
-                'year'  => date('y'),
-            ],
-            'customer'  => [
-                'name'           => $current_user->display_name ? : $order->get_formatted_billing_full_name(),
-                'email'          => $current_user->user_email ? : $order->get_billing_email(),
-                'phone'          => get_user_meta($current_user->ID,'phone_number',true) ? : $order->get_billing_phone(),
-                'uid'            => $current_user->ID ? : null,
-                'identification' => get_post_meta($order_id, $dni_key, true),
-            ],
-        ];
+        $name        = $current_user->display_name ?: $order->get_formatted_billing_full_name();
+        $email       = $current_user->user_email ?: $order->get_billing_email();
+        $phone       = get_user_meta($current_user->ID, 'phone_number', true) ?: $order->get_billing_phone();
+        $dni         = get_post_meta($order_id, $dni_key, true);
+        $customer_id = $current_user->ID ?: null;
 
         // Create subscriber
-        $response = wp_remote_post(str_replace('{id}', $mbbx_subscription_uid, MOBBEX_CREATE_SUBSCRIBER), [
-            'headers' => [
-                'cache-control' => 'no-cache',
-                'content-type' => 'application/json',
-                'x-api-key' => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
+        $subscriber = new \MobbexSubscriber(
+            $order_id,
+            $mbbx_subscription_uid,
+            $reference,
+            $name,
+            $email,
+            $phone,
+            $dni,
+            $customer_id
+        );
 
-            'body' => json_encode($subscriber_body),
-            'data_format' => 'body',
-        ]);
+        $result = $subscriber->save();
 
-        if (!is_wp_error($response)) {
-            $response = json_decode($response['body'], true);
-
-            if (!empty($response['data'])) {
-                // Save data as post meta
-                update_post_meta($order_id, 'mobbex_subscriber', $response['data']);
-
-                return $response['data'];
-            }
-        }
+        if ($result)
+            return $subscriber;
 
         return null;
     }
@@ -508,7 +436,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * @param integer $total
      * @param WC_Order|WC_Abstract_Order $order
      */
-    public function scheduled_subscription_payment($total, $order) 
+    public function scheduled_subscription_payment($total, $order)
     {
         // Get subscription from order id
         $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
@@ -526,16 +454,5 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if (!isset($result) || is_wp_error($result) || $result === false)
             $wcs_sub->payment_failed(); //check this in 400 status
-    }
-
-    private function get_subscription_features()
-    {
-        $features = ['charge_on_first_source'];
-
-        if (!$this->send_subscriber_email) {
-            array_push($features, 'no_email');
-        }
-
-        return $features;
     }
 }
