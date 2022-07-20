@@ -73,8 +73,9 @@ class MobbexSubscriber extends \Mobbex\Model
     public function create()
     {
 
-        $subscription     = $this->helper->getSubscriptionByUid($this->subscription_uid);
-        $dates            = $subscription->calculateDates();
+        $subscription = $this->helper->getSubscriptionByUid($this->subscription_uid);
+        $dates        = $subscription->calculateDates();
+        $order        = wc_get_order($this->order_id);
 
         $data = [
             'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
@@ -82,6 +83,7 @@ class MobbexSubscriber extends \Mobbex\Model
             'body'   => [
                 'reference' => (string) $this->reference,
                 'test'      => ($this->helper->test_mode === 'yes'),
+                'total'     => $order->get_total(),
                 'startDate' => [
                     'day'   => date('d', strtotime($dates['current'])),
                     'month' => date('m', strtotime($dates['current'])),
