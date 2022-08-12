@@ -10,6 +10,11 @@ class Mbbx_Subs_Product_Settings
         // Load helper
         self::$helper = new Mbbxs_Helper;
 
+        if(self::$helper->is_wcs_active()){
+            add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_sub_integration_wcs']);
+            return;
+        }
+
         // Add/save subscription fields
 		add_action('woocommerce_product_options_general_product_data', [self::class, 'add_subscription_fields']);
 		add_action('woocommerce_process_product_meta', [self::class, 'save_subscription_fields']);
@@ -157,6 +162,11 @@ class Mbbx_Subs_Product_Settings
         $free_trial_period   = (!empty($_POST['mbbxs_free_trial_period']) && in_array($_POST['mbbxs_free_trial_period'], $possible_periods)) ? esc_attr($_POST['mbbxs_free_trial_period']) : '';
         $signup_fee          = (!empty($_POST['mbbxs_signup_fee']) && is_numeric($_POST['mbbxs_signup_fee'])) ? (int) $_POST['mbbxs_signup_fee'] : 0;
         // TODO: Validate that interval and period work fine together in dynamic subscription mode
+        
+        //Create/update subscription.
+        $sub_type = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
+        if(Mbbx_Subs_Product::is_subscription($post_id))
+            $subscription = $sub_type === 'dynamic' ? self::$helper->create_mobbex_subscription($post_id, $sub_type, $charge_interval . $charge_period, $free_trial_interval, $signup_fee) : self::$helper->create_mobbex_subscription($post_id, $sub_type);
 
         // Save data
         update_post_meta($post_id, 'mbbxs_subscription_mode', $subscription_mode);
@@ -169,6 +179,22 @@ class Mbbx_Subs_Product_Settings
             'period'   => $free_trial_period,
         ]);
         update_post_meta($post_id, 'mbbxs_signup_fee', $signup_fee);
+
+        //Save Subscription 
+        $subscription->save();
+    }
+
+    /**
+     * Create/Update Mobbex Subscription in wcs integration mode.
+     * @param int|string $post_id
+     */
+    public static function create_mobbex_sub_integration_wcs($post_id)
+    {
+        //Create/update subscription.
+        if(self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription( $post_id ));
+            $subscription = self::$helper->create_mobbex_subscription($post_id, 'manual');
+        if($subscription)
+            $subscription->save();
     }
 
     /**
