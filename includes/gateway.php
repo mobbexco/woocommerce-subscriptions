@@ -185,7 +185,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         } else {
             // Register new subscription using API
             $subscription_data = get_post_meta($order_id, 'mobbex_subscription', true) ? : $this->get_subscription($order, $return_url);
-            $subscriber_data   = get_post_meta($order_id, 'mobbex_subscriber', true) ? : $this->get_subscriber($order, $subscription_data['uid']);
+            $subscriber_data   = $this->get_subscriber($order, $subscription_data['uid'], get_post_meta($order_id, 'mobbex_subscriber', true) ? get_post_meta($order_id, 'mobbex_subscriber', true)['uid'] : '');
         }
 
         // If data looks fine
@@ -394,7 +394,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub       = end($subscriptions);
 
-            $total = $wcs_sub->get_total();
+            $total = $order->get_total();
         } else {
             return;
         }
@@ -448,9 +448,10 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * 
      * @param WC_Order|WC_Abstract_Order $order
      * @param integer $mbbx_subscription_uid
+     * @param string $uid
      * @return array|null $response_data
      */
-    public function get_subscriber($order, $mbbx_subscription_uid)
+    public function get_subscriber($order, $mbbx_subscription_uid, $uid)
     {
         $order_id = $order->get_id();
         $current_user = wp_get_current_user();
@@ -473,10 +474,13 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'uid'            => $current_user->ID ? : null,
                 'identification' => get_post_meta($order_id, $dni_key, true),
             ],
+            'total' => $order->get_total(),
         ];
 
+        $endpoint = str_replace('{id}', $mbbx_subscription_uid, MOBBEX_CREATE_SUBSCRIBER) . ($uid ? "/$uid" : '');
+
         // Create subscriber
-        $response = wp_remote_post(str_replace('{id}', $mbbx_subscription_uid, MOBBEX_CREATE_SUBSCRIBER), [
+        $response = wp_remote_post($endpoint, [
             'headers' => [
                 'cache-control' => 'no-cache',
                 'content-type' => 'application/json',
@@ -496,6 +500,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 update_post_meta($order_id, 'mobbex_subscriber', $response['data']);
 
                 return $response['data'];
+            } else if(isset($response['data']) && !empty($uid)) {
+                return get_post_meta($order_id, 'mobbex_subscriber', true);
             }
         }
 
