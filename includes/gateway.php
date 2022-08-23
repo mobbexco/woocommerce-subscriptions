@@ -460,7 +460,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $reference = get_post_meta($order_id, $dni_key, true) ? get_post_meta($order_id, $dni_key, true) . $current_user->ID : $current_user->ID;
 
         $subscriber_body = [
-            'reference' => $reference,
+            'reference' => (string) $reference,
             'test'      => $this->test_mode,
             'startDate' => [
                 'day'   => date('d'),
