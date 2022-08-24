@@ -317,13 +317,13 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if ($status == 0 || $status >= 400) {
             // Try to restore the cart here
-            $redirect = $order->get_cancel_order_url();
+            $redirect = $order->get_cancel_order_url_raw();
         } else if ($status == 2 || $status == 3 || $status == 4 || $status >= 200 && $status < 400) {
             // Redirect
             $redirect = $order->get_checkout_order_received_url();
         }
 
-        wp_safe_redirect($redirect);
+        wp_redirect($redirect);
     }
 
     public function payment_scripts()
