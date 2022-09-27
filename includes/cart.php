@@ -64,6 +64,8 @@ class Mbbxs_Cart
         if (Mbbx_Subs_Product::is_subscription($product_id))
             self::$helper::remove_cart_items();
 
+        Mbbx_Helper::cart_has_more_than_one_subscription();
+
         return $valid;
     }
 

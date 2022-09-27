@@ -145,6 +145,23 @@ class Mbbxs_Helper
         return false;
 	}
 
+    
+    /**
+     * Check if the current Cart has more than one Subscription product.
+    */
+    public static function cart_has_more_than_one_subscription()
+    {
+        $cart_items = WC()->cart ? WC()->cart->get_cart() : [];
+        $subs_counter = 0;
+        
+        foreach ($cart_items as $item_key => $item) {
+            if (Mbbx_Subs_Product::is_subscription($item['product_id']))
+                $subs_counter++;
+        }
+        if($subs_counter > 1){Mbbxs_Helper::$helper::remove_cart_items();}
+        else{return false;}
+	}
+
     /**
      * Check if the current Order has a Mobbex Subscription product.
      *
