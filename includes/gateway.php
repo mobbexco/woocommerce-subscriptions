@@ -220,6 +220,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function process_webhook($id, $token, $data, $type)
     {
+        $postData  = isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'application/json' ? json_decode(file_get_contents('php://input'), true) : $_POST;
         $status    = $data['payment']['status']['code'];
         $reference = $data['payment']['reference'];
 
@@ -272,7 +273,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 }
 
                 // Save validation data
-                $webhooks['validations'][] = $_POST;
+                $webhooks['validations'][] = $postData;
                 break;
 
             case 'subscription:execution':
@@ -294,7 +295,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 }
 
                 // Save payment data by reference
-                $webhooks['payments'][$reference][] = $_POST;
+                $webhooks['payments'][$reference][] = $postData;
                 break;
         }
 
