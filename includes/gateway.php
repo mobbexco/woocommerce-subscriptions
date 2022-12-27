@@ -182,6 +182,13 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             // Use parent order to get data from db
             $subscription_data = get_post_meta($order->order->get_id(), 'mobbex_subscription', true);
             $subscriber_data   = get_post_meta($order->order->get_id(), 'mobbex_subscriber', true);
+        } else if (wcs_order_contains_renewal($order)) {
+            $result = $this->scheduled_subscription_payment($order->get_total(), $order);
+
+            return [
+                'result'   => $result ? 'success' : 'error',
+                'redirect' => $result ? $order->get_checkout_order_received_url() : Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción'),
+            ];
         } else {
             // Register new subscription using API
             $subscription_data = get_post_meta($order_id, 'mobbex_subscription', true) ? : $this->get_subscription($order, $return_url);
@@ -513,6 +520,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * 
      * @param integer $total
      * @param WC_Order|WC_Abstract_Order $order
+     * 
+     * @return bool Result of charge execution.
      */
     public function scheduled_subscription_payment($total, $order) 
     {
@@ -532,6 +541,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if (!isset($result) || is_wp_error($result) || $result === false)
             $wcs_sub->payment_failed(); //check this in 400 status
+
+        return $result;
     }
 
     private function get_subscription_features()
