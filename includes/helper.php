@@ -166,6 +166,24 @@ class Mbbxs_Helper
     }
 
     /**
+     * Check if current cart (or pending order) has a wcs subscription.
+     * 
+     * @return bool|null Null if wcs is inactive.
+     */
+    public function cart_has_wcs_subscription()
+    {
+        if (!$this->is_wcs_active())
+            return;
+
+        // Try to get pending order (for manual renewals)
+        $pending_order = wc_get_order(get_query_var('order-pay'));
+
+        return \WC_Subscriptions_Cart::cart_contains_subscription()
+            || wcs_cart_contains_renewal()
+            || ($pending_order && wcs_order_contains_subscription($pending_order));
+    }
+
+    /**
 	 * Checks if page is pay for order and change subs payment page.
 	 */
     public static function is_subs_change_method()
