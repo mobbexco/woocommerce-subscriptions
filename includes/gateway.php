@@ -402,7 +402,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub       = end($subscriptions);
 
-            $total = $order->get_total();
+            $total = $wcs_sub->get_total();
+            $trial = $wcs_sub->get_trial_period();
         } else {
             return;
         }
@@ -421,7 +422,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'interval'    => isset($inverval) ? $inverval : '',
             'trial'       => isset($trial) ? $trial : '',
             'test'        => $this->test_mode,
-            'features'    => $this->get_subscription_features(),
+            'features'    => $this->get_subscription_features(!empty($trial)),
         ];
 
         // Create subscription
@@ -546,13 +547,22 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         return $result;
     }
 
-    private function get_subscription_features()
+    /**
+     * Retrieve the subscription features.
+     * 
+     * @param bool $trial If subscription has a free trial configured.
+     * 
+     * @return string[]
+     */
+    private function get_subscription_features($trial = false)
     {
-        $features = ['charge_on_first_source'];
+        $features = [];
 
-        if (!$this->send_subscriber_email) {
-            array_push($features, 'no_email');
-        }
+        if (!$trial)
+            $features[] = 'charge_on_first_source';
+
+        if (!$this->send_subscriber_email)
+            $features[] = 'no_email';
 
         return $features;
     }
