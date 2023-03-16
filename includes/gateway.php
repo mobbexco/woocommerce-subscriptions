@@ -517,6 +517,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'identification' => get_post_meta($order_id, $dni_key, true),
             ],
             'total' => $order->get_total(),
+            'addresses' => $this->get_addresses($order)
         ];
 
         $endpoint = str_replace('{id}', $mbbx_subscription_uid, MOBBEX_CREATE_SUBSCRIBER) . ($uid ? "/$uid" : '');
@@ -548,6 +549,46 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         }
 
         return null;
+    }
+
+    /**
+     * Set address data.
+     * 
+     * @param Class $object Order class.
+     * 
+     */
+    public function get_addresses($object)
+    {
+        foreach (['billing', 'shipping'] as $type) {
+
+            foreach (['address_1', 'address_2', 'city', 'state', 'postcode', 'country'] as $method)
+                ${$method} = "get_" . $type . "_" . $method;
+
+            $this->addresses[] = [
+                'type'         => $type,
+                'country'      => $this->convert_country_code($object->$country()),
+                'state'        => $object->$state(),
+                'city'         => $object->$city(),
+                'zipCode'      => $object->$postcode(),
+                'street'       => trim(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1()))),
+                'streetNumber' => str_replace(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1())), '', trim($object->$address_1())),
+                'streetNotes'  => $object->$address_2()
+            ];
+        }
+    }
+
+    /**
+     * Converts the WooCommerce country codes to 3-letter ISO codes.
+     * 
+     * @param string $code 2-Letter ISO code.
+     * 
+     * @return string|null
+     */
+    public function convert_country_code($code)
+    {
+        $countries = include ('iso-3166.php') ?: [];
+
+        return isset($countries[$code]) ? $countries[$code] : null;
     }
 
     /**
