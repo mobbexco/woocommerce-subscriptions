@@ -16,6 +16,7 @@ class Mbbxs_Cart
 
         // Validate cart items
         add_filter('woocommerce_add_to_cart_validation', [self::class, 'validate_cart_items'], 10, 2);
+        add_filter('woocommerce_update_cart_validation', [self::class, 'validate_cart_update'], 10, 4);
 
         // Redirect to checkout on subscription sign up 
         add_filter('woocommerce_add_to_cart_redirect',  [self::class, 'redirect_signup_to_checkout']);
@@ -46,9 +47,7 @@ class Mbbxs_Cart
 
     /**
      * Validate Cart items.
-     * 
-     * The checkout only works with one mobbex subscription at a time,
-     * and does not allow products of other types.
+     * Avoid have more than one subscription or items with subscriptions in cart.
      * 
      * @param bool $valid
      * @param int $product_id
@@ -57,14 +56,37 @@ class Mbbxs_Cart
      */
     public static function validate_cart_items($valid, $product_id)
     {
-        // Always remove mobbex subscriptions from cart
-        self::$helper::remove_cart_items('subs');
+        $product = wc_get_product($product_id);
 
-        // If is a subscription remove all other products of cart
-        if (Mbbx_Subs_Product::is_subscription($product_id))
-            self::$helper::remove_cart_items();
+        if (\Mbbxs_Helper::cart_has_subscription() || self::$helper->cart_has_wcs_subscription()) {
+            wc_add_notice(__("You can't add items in a cart with a subscription, please clean your cart before.", 'mobbex-for-woocommerce'), 'error');
+            return false;
+        } else if (!empty(WC()->cart->get_cart()) && (Mbbx_Subs_Product::is_subscription($product_id) || strpos($product->get_type(), 'subscription') !== false)) {
+            wc_add_notice(__("You can't add a subscription in a cart with items, please clean your cart before.", 'mobbex-for-woocommerce'), 'error');
+            return false;
+        }
 
         return $valid;
+    }
+
+    /**
+     * Validate cart items update. 
+     * Avoid to increase the number of subscriptions in a cart.
+     * @param bool $valid
+     * @param string $cart_item_key
+     * @param array $values
+     * @param string $quantity
+     * 
+     * @return bool
+     */
+    public static function validate_cart_update($valid, $cart_item_key, $values, $quantity)
+    {
+        if (\Mbbxs_Helper::cart_has_subscription() || self::$helper->cart_has_wcs_subscription()) {
+            wc_add_notice(__("You can't have more than one subscription per cart.", 'mobbex-for-woocommerce'), 'error');
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -81,7 +103,7 @@ class Mbbxs_Cart
             $url = wc_get_checkout_url();
 
         return $url;
-	}
+    }
 
     /**
      * Filter checkout payment gateways by product type.
