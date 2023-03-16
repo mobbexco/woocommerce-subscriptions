@@ -422,6 +422,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'trial'       => isset($trial) ? $trial : '',
             'test'        => $this->test_mode,
             'features'    => $this->get_subscription_features(),
+            'options'     => [
+                'platform' => $this->get_platform_data(),
+            ],
         ];
 
         // Create subscription
@@ -449,6 +452,37 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         }
 
         return;
+    }
+
+    /**
+     * Returns the name & version of the plugins involved in the subscription.
+     */
+    public function get_platform_data()
+    {
+        global $wp_version;
+
+        $platform = [
+            [
+                'name'    => 'WordPress',
+                'version' => $wp_version,
+            ],
+            [
+                'name'    => 'Woocommerce',
+                'version' => defined('WC_VERSION') ? WC_VERSION : '',
+            ],
+            [
+                'name'    => 'Mobbex Subscriptions for Woocommerce',
+                'version' => MOBBEX_SUBS_VERSION,
+            ],
+        ];
+
+        //If integrated with woocommerces subs add plugin version to body
+        if ($this->helper->integration === 'wcs') {
+            $wcs_data = get_plugin_data(WP_PLUGIN_DIR . '/woocommerce-subscriptions/woocommerce-subscriptions.php');
+            $body['options']['platform'][] = ['name' => 'Woocommerce Subscriptions', 'version' => $wcs_data['Version']];
+        }
+
+        return $platform;
     }
 
     /**
