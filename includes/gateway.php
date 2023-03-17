@@ -35,8 +35,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $this->enabled = $this->get_option('enabled');
         $this->title = $this->get_option('title');
 
-        $this->use_button = false;
         $this->test_mode = ($this->get_option('test_mode') === 'yes');
+        $this->embed = ($this->get_option('embed') === 'yes');
 
         $this->api_key = $this->get_option('api-key');
         $this->access_token = $this->get_option('access-token');
@@ -140,6 +140,15 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'type' => 'checkbox',
                 'label' => __('Enable Test Mode.', 'mobbex-subs-for-woocommerce'),
                 'default' => 'no',
+
+            ],
+
+            'embed' => [
+
+                'title' => __('Enable/Disable Embed Mode', 'mobbex-subs-for-woocommerce'),
+                'type' => 'checkbox',
+                'label' => __('Enable Embed Mode.', 'mobbex-subs-for-woocommerce'),
+                'default' => 'yes',
 
             ],
 
@@ -424,6 +433,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'features'    => $this->get_subscription_features(isset($wcs_sub) && !(float) $order->get_total()),
             'options'     => [
                 'platform' => $this->get_platform_data(),
+                'embed'    => (bool) $this->embed,
             ],
         ];
 
