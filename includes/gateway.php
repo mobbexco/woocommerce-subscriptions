@@ -403,7 +403,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $wcs_sub       = end($subscriptions);
 
             $total = $wcs_sub->get_total();
-            $trial = $wcs_sub->get_trial_period();
         } else {
             return;
         }
@@ -422,7 +421,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'interval'    => isset($inverval) ? $inverval : '',
             'trial'       => isset($trial) ? $trial : '',
             'test'        => $this->test_mode,
-            'features'    => $this->get_subscription_features(!empty($trial)),
+            'features'    => $this->get_subscription_features(isset($wcs_sub) && !(float) $order->get_total()),
         ];
 
         // Create subscription
