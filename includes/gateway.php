@@ -422,6 +422,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'trial'       => isset($trial) ? $trial : '',
             'test'        => $this->test_mode,
             'features'    => $this->get_subscription_features(isset($wcs_sub) && !(float) $order->get_total()),
+            'options'     => [
+                'platform' => $this->get_platform_data(),
+            ],
         ];
 
         // Create subscription
@@ -449,6 +452,37 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         }
 
         return;
+    }
+
+    /**
+     * Returns the name & version of the plugins involved in the subscription.
+     */
+    public function get_platform_data()
+    {
+        global $wp_version;
+
+        $platform = [
+            [
+                'name'    => 'WordPress',
+                'version' => $wp_version,
+            ],
+            [
+                'name'    => 'Woocommerce',
+                'version' => defined('WC_VERSION') ? WC_VERSION : '',
+            ],
+            [
+                'name'    => 'Mobbex Subscriptions for Woocommerce',
+                'version' => MOBBEX_SUBS_VERSION,
+            ],
+        ];
+
+        //If integrated with woocommerces subs add plugin version to body
+        if ($this->helper->integration === 'wcs') {
+            $wcs_data = get_plugin_data(WP_PLUGIN_DIR . '/woocommerce-subscriptions/woocommerce-subscriptions.php');
+            $body['options']['platform'][] = ['name' => 'Woocommerce Subscriptions', 'version' => $wcs_data['Version']];
+        }
+
+        return $platform;
     }
 
     /**
@@ -483,6 +517,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'identification' => get_post_meta($order_id, $dni_key, true),
             ],
             'total' => $order->get_total(),
+            'addresses' => $this->get_addresses($order)
         ];
 
         $endpoint = str_replace('{id}', $mbbx_subscription_uid, MOBBEX_CREATE_SUBSCRIBER) . ($uid ? "/$uid" : '');
@@ -514,6 +549,46 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         }
 
         return null;
+    }
+
+    /**
+     * Set address data.
+     * 
+     * @param Class $object Order class.
+     * 
+     */
+    public function get_addresses($object)
+    {
+        foreach (['billing', 'shipping'] as $type) {
+
+            foreach (['address_1', 'address_2', 'city', 'state', 'postcode', 'country'] as $method)
+                ${$method} = "get_" . $type . "_" . $method;
+
+            $this->addresses[] = [
+                'type'         => $type,
+                'country'      => $this->convert_country_code($object->$country()),
+                'state'        => $object->$state(),
+                'city'         => $object->$city(),
+                'zipCode'      => $object->$postcode(),
+                'street'       => trim(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1()))),
+                'streetNumber' => str_replace(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1())), '', trim($object->$address_1())),
+                'streetNotes'  => $object->$address_2()
+            ];
+        }
+    }
+
+    /**
+     * Converts the WooCommerce country codes to 3-letter ISO codes.
+     * 
+     * @param string $code 2-Letter ISO code.
+     * 
+     * @return string|null
+     */
+    public function convert_country_code($code)
+    {
+        $countries = include ('iso-3166.php') ?: [];
+
+        return isset($countries[$code]) ? $countries[$code] : null;
     }
 
     /**
