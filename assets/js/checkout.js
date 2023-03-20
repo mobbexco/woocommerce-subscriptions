@@ -73,11 +73,11 @@ jQuery(function ($) {
             type: 'subscriber_source',
 
             onResult: (data) => {
-                location.href = response.return_url + '&status=' + data.status.code;
+                window.top.location.href = response.return_url + '&status=' + data.status.code;
+
             },
-            onClose: (cancelled) => {
-                if (cancelled === true)
-                    location.reload();
+            onClosePressed: () => {
+                window.top.location.reload();
             },
             onError: () => {
                 handleErrorResponse({
