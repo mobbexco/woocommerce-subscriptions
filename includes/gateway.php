@@ -35,8 +35,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $this->enabled = $this->get_option('enabled');
         $this->title = $this->get_option('title');
 
-        $this->use_button = false;
         $this->test_mode = ($this->get_option('test_mode') === 'yes');
+        $this->embed = ($this->get_option('embed') === 'yes');
 
         $this->api_key = $this->get_option('api-key');
         $this->access_token = $this->get_option('access-token');
@@ -59,12 +59,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if (!$this->error && $this->helper->is_ready()) {
             add_action('woocommerce_api_mobbex_subs_return_url', [$this, 'mobbex_subs_return_url']);
             add_action('woocommerce_api_mobbex_subs_webhook', [$this, 'mobbex_subs_webhook']);
-
-            // Embed option
-            if ($this->use_button) {
-                add_action('woocommerce_after_checkout_form', [Mbbxs_Helper::class, 'display_mobbex_button']);
-                add_action('wp_enqueue_scripts', [$this, 'payment_scripts']);
-            }
+            add_action('wp_enqueue_scripts', [$this, 'payment_scripts']);
         }
 
     }
@@ -143,6 +138,15 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             ],
 
+            'embed' => [
+
+                'title' => __('Enable/Disable Embed Mode', 'mobbex-subs-for-woocommerce'),
+                'type' => 'checkbox',
+                'label' => __('Enable Embed Mode.', 'mobbex-subs-for-woocommerce'),
+                'default' => 'yes',
+
+            ],
+
             'send_subscriber_email' => [
 
                 'title' => __('Enable emails to Subscriber', 'mobbex-subs-for-woocommerce'),
@@ -198,8 +202,14 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         // If data looks fine
         if (!empty($subscriber_data) && !empty($subscription_data)) {
             return [
-                'result' => 'success',
-                'redirect' => $subscriber_data['sourceUrl'],
+                'result'     => 'success',
+                'redirect'   => $this->embed ? false : $subscriber_data['sourceUrl'],
+                'return_url' => $return_url,
+                'data'       => [
+                    'id'  => $subscription_data['uid'],
+                    'sid' => $subscriber_data['uid'],
+                    'url' => $subscriber_data['sourceUrl']
+                ],
             ];
         }
 
@@ -339,29 +349,31 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function payment_scripts()
     {
-        if (is_wc_endpoint_url('order-received') || (!is_cart() && !is_checkout_pay_page())) {
+        $dir_url = str_replace('/includes', '', plugin_dir_url(__FILE__));
+
+        // Only if directory url looks good
+        if (empty($dir_url) || substr($dir_url, -1) != '/')
+            return apply_filters('simple_history_log', 'Mobbex Subs. Enqueue Error: Invalid dir_url' . $dir_url, null, 'error');
+
+        // Checkout page
+        if (!is_checkout())
             return;
-        }
 
-        // if our payment gateway is disabled, we do not have to enqueue JS too
-        if (!$this->helper->is_ready()) {
-            return;
-        }
+        // Exclude scripts from cache plugins minification
+        !defined('DONOTCACHEPAGE') && define('DONOTCACHEPAGE', true);
+        !defined('DONOTMINIFY') && define('DONOTMINIFY', true);
 
-        $order_url = home_url('/mobbex?wc-ajax=checkout');
+        wp_enqueue_script('mobbex-embed', 'https://res.mobbex.com/js/embed/mobbex.embed@1.0.23.js', null, \Mbbx_Subs_Gateway::$version);
+        wp_enqueue_script('mobbex-sdk', 'https://res.mobbex.com/js/sdk/mobbex@1.1.0.js', null, \Mbbx_Subs_Gateway::$version);
 
-        // let's suppose it is our payment processor JavaScript that allows to obtain a token
-        wp_enqueue_script('mobbex-button', 'https://res.mobbex.com/js/embed/mobbex.embed@' . MOBBEX_SUBS_EMBED_VERSION . '.js', null, MOBBEX_SUBS_EMBED_VERSION, false);
+        // Enqueue payment asset files
+        wp_enqueue_style('mobbex-subs-checkout-style', $dir_url . 'assets/css/checkout.css', null, \Mbbx_Subs_Gateway::$version);
+        wp_register_script('mobbex-subs-checkout-script', $dir_url . 'assets/js/checkout.js', ['jquery'], \Mbbx_Subs_Gateway::$version);
 
-        // Inject our bootstrap JS to intercept the WC button press and invoke standard JS
-        wp_register_script('mobbex-bootstrap', plugins_url('assets/js/mobbex.bootstrap.js', __FILE__), array('jquery'), MOBBEX_SUBS_VERSION, false);
-
-        $mobbex_data = array(
-            'order_url' => $order_url,
-        );
-
-        wp_localize_script('mobbex-bootstrap', 'mobbex_data', $mobbex_data);
-        wp_enqueue_script('mobbex-bootstrap');
+        wp_localize_script('mobbex-subs-checkout-script', 'mobbex_data', [
+            'is_pay_for_order' => !empty($_GET['pay_for_order']),
+        ]);
+        wp_enqueue_script('mobbex-subs-checkout-script');
     }
 
     /**
@@ -424,6 +436,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'features'    => $this->get_subscription_features(isset($wcs_sub) && !(float) $order->get_total()),
             'options'     => [
                 'platform' => $this->get_platform_data(),
+                'embed'    => (bool) $this->embed,
             ],
         ];
 
