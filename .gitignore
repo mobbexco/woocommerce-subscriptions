@@ -1,6 +1,7 @@
 wcs-mobbex*.zip
 .vscode
 
+.DS_STORE
 package.json
 package-lock.json
 node_modules
