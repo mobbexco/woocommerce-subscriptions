@@ -179,9 +179,6 @@ class Mbbx_Subs_Product_Settings
             'period'   => $free_trial_period,
         ]);
         update_post_meta($post_id, 'mbbxs_signup_fee', $signup_fee);
-
-        //Save Subscription 
-        $subscription->save();
     }
 
     /**
