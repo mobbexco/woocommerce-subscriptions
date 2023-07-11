@@ -406,17 +406,17 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             }
         }
 
-        if ($this->helper->has_subscription($order_id)) {
+        if ($this->helper->is_wcs_active()) {
+            if (!wcs_order_contains_subscription($order_id))
+                return apply_filters('simple_history_log', __METHOD__ . ": Order #$order_id does not contain a WooCommerce Subscription", null, 'error');
+
+            $wcs_sub = end(wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']));
+            $total   = $wcs_sub->get_total();
+        } else if ($this->helper->has_subscription($order_id)) {
             // Get total
             $total = $order->get_total();
-        } else if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($order_id)) {
-            // Get wcs subscription
-            $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
-            $wcs_sub       = end($subscriptions);
-
-            $total = $wcs_sub->get_total();
         } else {
-            return;
+            return apply_filters('simple_history_log', __METHOD__ . ": Order #$order_id does not contain any Subscription", null, 'error');
         }
 
         $body = [
