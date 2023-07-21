@@ -408,13 +408,13 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if ($this->helper->has_subscription($order_id)) {
             // Get total
-            $total = $order->get_total();
+            $total = $order->get_total() - $this->get_subscription_discount();
         } else if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($order_id)) {
             // Get wcs subscription
             $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub       = end($subscriptions);
 
-            $total = $wcs_sub->get_total();
+            $total = $wcs_sub->get_total() - $this->get_subscription_discount();
         } else {
             return;
         }
@@ -652,5 +652,19 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $features[] = 'no_email';
 
         return $features;
+    }
+
+    /**
+     * Gets the discount value/s and calculates the sum of these
+     * 
+     * @return int $discount total coupon discount
+     * 
+     */
+    public function get_subscription_discount()
+    {
+        $discount = WC()->cart->get_coupon_discount_totals();
+
+        // If there is more than one coupon, calculate the sum of their discounts
+        return $discount ? array_sum($discount) : 0 ;
     }
 }
