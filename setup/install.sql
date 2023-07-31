@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS PREFIX_mobbex_subscriptions (
+CREATE TABLE IF NOT EXISTS PREFIX_mobbex_subscription (
     `product_id` INT(11) NOT NULL PRIMARY KEY,
     `uid` TEXT NOT NULL,
     `type` TEXT NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS PREFIX_mobbex_subscriptions (
     `signup_fee` DECIMAL(18,2) NOT NULL
 );
 /
-CREATE TABLE IF NOT EXISTS PREFIX_mobbex_subscribers (
+CREATE TABLE IF NOT EXISTS PREFIX_mobbex_subscriber (
     `order_id` INT(11) NOT NULL PRIMARY KEY,
     `uid` TEXT NOT NULL,
     `subscription_uid` TEXT NOT NULL,

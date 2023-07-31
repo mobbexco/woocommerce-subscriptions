@@ -23,8 +23,8 @@ class MobbexSubscriber extends \Mobbex\Model
     public $next_execution;
     public $result;
 
-    public $table    = 'mobbex_subscribers';
-    public $primary  = 'order_id';
+    public $table       = 'mobbex_subscriber';
+    public $primary_key = 'order_id';
     public $fillable = [
         'order_id',
         'subscription_uid',
@@ -84,6 +84,7 @@ class MobbexSubscriber extends \Mobbex\Model
                 'reference' => (string) $this->reference,
                 'test'      => ($this->helper->test_mode === 'yes'),
                 'total'     => $order->get_total(),
+                'addresses' => $this->get_addresses($order),
                 'startDate' => [
                     'day'   => date('d', strtotime($dates['current'])),
                     'month' => date('m', strtotime($dates['current'])),
@@ -104,6 +105,46 @@ class MobbexSubscriber extends \Mobbex\Model
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
         }
+    }
+
+    /**
+     * Set address data.
+     * 
+     * @param Class $object Order class.
+     * 
+     */
+    public function get_addresses($object)
+    {
+        foreach (['billing', 'shipping'] as $type) {
+
+            foreach (['address_1', 'address_2', 'city', 'state', 'postcode', 'country'] as $method)
+                ${$method} = "get_" . $type . "_" . $method;
+
+            $this->addresses[] = [
+                'type'         => $type,
+                'country'      => $this->convert_country_code($object->$country()),
+                'state'        => $object->$state(),
+                'city'         => $object->$city(),
+                'zipCode'      => $object->$postcode(),
+                'street'       => trim(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1()))),
+                'streetNumber' => str_replace(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1())), '', trim($object->$address_1())),
+                'streetNotes'  => $object->$address_2()
+            ];
+        }
+    }
+
+    /**
+     * Converts the WooCommerce country codes to 3-letter ISO codes.
+     * 
+     * @param string $code 2-Letter ISO code.
+     * 
+     * @return string|null
+     */
+    public function convert_country_code($code)
+    {
+        $countries = include ('iso-3166.php') ?: [];
+
+        return isset($countries[$code]) ? $countries[$code] : null;
     }
 
     /**
@@ -149,18 +190,18 @@ class MobbexSubscriber extends \Mobbex\Model
         }
 
         $data = [
-            'order_id'         => $this->order_id,
-            'uid'              => $this->uid,
-            'subscription_uid' => $this->subscription_uid,
+            'order_id'         => $this->order_id ?: '',
+            'uid'              => $this->uid ?: '',
+            'subscription_uid' => $this->subscription_uid ?: '',
             'state'            => $this->state ?: '',
             'test'             => ($this->helper->test_mode === 'yes'),
-            'name'             => $this->name,
-            'email'            => $this->email,
-            'phone'            => $this->phone,
-            'identification'   => $this->identification,
+            'name'             => $this->name ?: '',
+            'email'            => $this->email ?: '',
+            'phone'            => $this->phone ?: '',
+            'identification'   => $this->identification ?: '',
             'customer_id'      => $this->customer_id ?: '',
-            'source_url'       => $this->source_url,
-            'control_url'      => $this->control_url,
+            'source_url'       => $this->source_url ?: '',
+            'control_url'      => $this->control_url ?: '',
             'register_data'    => $this->register_data ?: '',
             'start_date'       => $this->start_date ?: '',
             'last_execution'   => $this->last_execution ?: '',

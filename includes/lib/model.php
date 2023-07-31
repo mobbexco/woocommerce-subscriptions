@@ -4,6 +4,9 @@ namespace Mobbex;
 
 abstract class Model
 {
+    /** @var wpdb */
+    public $db;
+
     public $table;
     public $primary_key;
 
@@ -14,32 +17,33 @@ abstract class Model
      */
     public function __construct(...$props)
     {
-        //load the data from db
+        //Wp global db connection
+        $this->db = $GLOBALS['wpdb'];
+        //Errors logger
+        $this->logger = new \Mbbxs_Logger();
+        //Load the model
         $this->load($props);
-        //load the params from construct
+        //Fill properties
         $this->fill($props);
-        
     }
 
-    public function load($props)
+    /**
+     * Load the transaction in the model.
+     */
+    private function load($props)
     {
         if (empty($props[0]))
             return $this;
 
-        //Get data from database
-        global $wpdb;
-        $query = "SELECT * FROM ".$wpdb->prefix.$this->table." WHERE ".$this->primary."=".$props[0];
-        $params = $wpdb->get_results($query, 'ARRAY_A');
+        $params = $this->get_data($props[0]);
 
-        if(!empty($params[0])){
-            foreach ($params[0] as $key => $value) {
-                $this->$key = $value;
-            }
+        if (empty($params))
+            return $this->update = false;
 
-            return $this->update = true;
-        }
+        foreach ($params as $key => $value)
+            $this->$key = in_array($key, $this->array_columns) ? json_decode($value, true) : $value;
 
-        return $this->update = false;
+        return $this->update = true;
     }
 
     /**
@@ -49,9 +53,28 @@ abstract class Model
      */
     public function fill($props)
     {
-        foreach ($props as $key => $value)
+        foreach ($props as $key => $value) {
             if (isset($this->fillable[$key]))
                 $this->{$this->fillable[$key]} = $value;
+        }
+    }
+
+    /**
+     * Get data from db table.
+     * 
+     * @param string $key
+     * 
+     * @return array|null An asociative array with transaction values.
+     */
+    public function get_data($key)
+    {
+        // Make request to db
+        $result = $this->db->get_results(
+            "SELECT * FROM " . $this->db->prefix . $this->table . " WHERE $this->primary_key=$key LIMIT 1;",
+            ARRAY_A
+        );
+
+        return isset($result[0]) ? $result[0] : null;
     }
 
     public function save($data)
@@ -59,10 +82,20 @@ abstract class Model
         global $wpdb;
 
         if($this->update){
-            $wpdb->update($wpdb->prefix.$this->table, $data, [$this->primary => $data[$this->primary]]);
-            return empty($wpdb->last_error) ? true : false;
+            $wpdb->update($wpdb->prefix.$this->table, $data, [$this->primary_key => $data[$this->primary_key]]);
+
+            if (empty($wpdb->last_error))
+                return true;
+            $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
+            return false;
+
         } else {
-            return $wpdb->insert($wpdb->prefix.$this->table, $data);
+            $wpdb->insert($wpdb->prefix.$this->table, $data);
+
+            if (empty($wpdb->last_error))
+                return true;
+            $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
+            return false;
         }
     }
 }

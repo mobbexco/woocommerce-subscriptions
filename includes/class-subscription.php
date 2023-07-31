@@ -18,8 +18,8 @@ class MobbexSubscription extends \Mobbex\Model {
     public $setup_fee;
     public $result;
 
-    public $table    = 'mobbex_subscriptions';
-    public $primary  = 'product_id';
+    public $table       = 'mobbex_subscription';
+    public $primary_key = 'product_id';
     
     public $periods = [
         'd' => 'day',
@@ -69,8 +69,10 @@ class MobbexSubscription extends \Mobbex\Model {
         $limit       = null
     ) {
         $this->helper = new \Mbbxs_Helper();
-        $this->logger = new \Mbbxs_Logger();
         $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
+
+        $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url', $product_id);
+        $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook', $product_id);
 
         parent::__construct(...func_get_args());
     }
@@ -82,10 +84,12 @@ class MobbexSubscription extends \Mobbex\Model {
      */
     public function create()
     {
-        $features = ['charge_on_first_source'];
+        $features = [];
+        
         if(get_option('send_subscriber_email') === 'yes')
             array_push($features, 'no_email');
-
+        if(!$this->free_trial)
+            array_push($features, 'charge_on_first_source');
 
         $data = [
             'uri'    => 'subscriptions/' . $this->uid,
@@ -101,10 +105,14 @@ class MobbexSubscription extends \Mobbex\Model {
                 'interval'    => $this->interval,
                 'trial'       => $this->free_trial,
                 'limit'       => $this->limit,
-                'return_url'  => $this->helper->get_api_endpoint('mobbex_subs_return_url', $this->product_id),
-                'webhook'     => $this->helper->get_api_endpoint('mobbex_subs_webhook', $this->product_id),
+                'return_url'  => $this->return_url,
+                'webhook'     => $this->webhook_url,
                 'features'    => $features,
-                'test'        => ($this->helper->test_mode === 'yes')
+                'test'        => ($this->helper->test_mode === 'yes'),
+                'options'     => [
+                    'platform' => $this->get_platform_data(),
+                    'embed'    => get_option('send_subscriber_email') === 'yes',
+                ],
             ]
         ];
 
@@ -131,17 +139,17 @@ class MobbexSubscription extends \Mobbex\Model {
             $this->uid = $response['uid'];
 
         $data = [
-            'product_id'  => $this->product_id,
-            'uid'         => $this->uid,
-            'type'        => $this->type,
+            'product_id'  => $this->product_id ?: '',
+            'uid'         => $this->uid ?: '',
+            'type'        => $this->type ?: '',
             'state'       => $this->state ?: 200,
-            'interval'    => $this->interval,
-            'name'        => $this->name,
-            'description' => $this->description,
-            'total'       => $this->total,
-            'limit'       => $this->limit,
-            'free_trial'  => $this->free_trial,
-            'signup_fee'  => $this->setup_fee,
+            'interval'    => $this->interval ?: '',
+            'name'        => $this->name ?: '',
+            'description' => $this->description ?: '',
+            'total'       => $this->total ?: '',
+            'limit'       => $this->limit ?: '',
+            'free_trial'  => $this->free_trial ?: '',
+            'signup_fee'  => $this->setup_fee ?: '',
         ];
 
         return $this->uid && parent::save($data);
@@ -161,5 +169,36 @@ class MobbexSubscription extends \Mobbex\Model {
             'current' => date('Y-m-d H:i:s'),
             'next'    => date('Y-m-d H:i:s', strtotime("+ $interval $period"))
         ];
+    }
+
+    /**
+     * Returns the name & version of the plugins involved in the subscription.
+     */
+    public function get_platform_data()
+    {
+        global $wp_version;
+
+        $platform = [
+            [
+                'name'    => 'WordPress',
+                'version' => $wp_version,
+            ],
+            [
+                'name'    => 'Woocommerce',
+                'version' => defined('WC_VERSION') ? WC_VERSION : '',
+            ],
+            [
+                'name'    => 'Mobbex Subscriptions for Woocommerce',
+                'version' => MOBBEX_SUBS_VERSION,
+            ],
+        ];
+
+        //If integrated with woocommerces subs add plugin version to body
+        if ($this->helper->integration === 'wcs') {
+            $wcs_data = get_plugin_data(WP_PLUGIN_DIR . '/woocommerce-subscriptions/woocommerce-subscriptions.php');
+            $body['options']['platform'][] = ['name' => 'Woocommerce Subscriptions', 'version' => $wcs_data['Version']];
+        }
+
+        return $platform;
     }
 }

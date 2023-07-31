@@ -166,6 +166,24 @@ class Mbbxs_Helper
     }
 
     /**
+     * Check if current cart (or pending order) has a wcs subscription.
+     * 
+     * @return bool|null Null if wcs is inactive.
+     */
+    public function cart_has_wcs_subscription()
+    {
+        if (!$this->is_wcs_active())
+            return;
+
+        // Try to get pending order (for manual renewals)
+        $pending_order = wc_get_order(get_query_var('order-pay'));
+
+        return \WC_Subscriptions_Cart::cart_contains_subscription()
+            || wcs_cart_contains_renewal()
+            || ($pending_order && wcs_order_contains_subscription($pending_order));
+    }
+
+    /**
 	 * Checks if page is pay for order and change subs payment page.
 	 */
     public static function is_subs_change_method()
@@ -393,8 +411,11 @@ class Mbbxs_Helper
             0,
         );
 
-        if(!empty($subscription))
+        if(!empty($subscription)){
+            //Save Subscription 
+            $subscription->save();
             return $subscription;
+        }
 
         return null;
     }
@@ -409,7 +430,7 @@ class Mbbxs_Helper
     public function getSubscriptionByUid($uid)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscriptions"." WHERE uid='$uid'", 'ARRAY_A');
+        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscription"." WHERE uid='$uid'", 'ARRAY_A');
 
         return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
     }
@@ -424,7 +445,7 @@ class Mbbxs_Helper
     public function getSubscriberByUid($uid)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscribers". " WHERE uid='$uid'", 'ARRAY_A');
+        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscriber". " WHERE uid='$uid'", 'ARRAY_A');
 
         return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
     }
