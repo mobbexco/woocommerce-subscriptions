@@ -10,6 +10,11 @@
  */
 
 require_once 'includes/utils.php';
+require_once 'includes/logger.php';
+require_once !class_exists('Mobbex\Model') ? 'includes/lib/class-api.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/class-api.php';
+require_once !class_exists('Mobbex\Model') ? 'includes/lib/model.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/model.php';
+require_once 'includes/class-subscription.php';
+require_once 'includes/class-subscriber.php';
 
 class Mbbx_Subs_Gateway
 {
@@ -71,9 +76,11 @@ class Mbbx_Subs_Gateway
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_action_links']);
         add_filter('plugin_row_meta', [$this, 'plugin_row_meta'], 10, 2);
 
-        // Standalone mode
-        if (!self::$helper->is_wcs_active())
-            Mbbx_Subs_Gateway::load_product_settings();
+        //Product Settings
+        require_once plugin_dir_path(__FILE__) . 'includes/admin/product-settings.php';
+        add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_subscription']);
+        
+        Mbbx_Subs_Gateway::load_product_settings();
 
         /*add_filter('cron_schedules', function ($schedules) {
             $schedules['5seconds'] = array(
@@ -191,7 +198,6 @@ class Mbbx_Subs_Gateway
      */
     private static function load_product_settings()
     {
-        require_once plugin_dir_path(__FILE__) . 'includes/admin/product-settings.php';
         Mbbx_Subs_Product_Settings::init();
     }
 
@@ -265,5 +271,18 @@ class Mbbx_Subs_Gateway
     }*/
 }
 
+function install_mobbex_subs_tables()
+{
+    global $wpdb;
+    // Get install query from sql file
+    $querys = explode('/', str_replace('PREFIX_', $wpdb->prefix, file_get_contents(WP_PLUGIN_DIR . '/woocommerce-mobbex-subs/setup/install.sql'))); 
+    //Execute the querys
+    foreach ($querys as $query) {
+        $wpdb->get_results($query);
+    }
+    
+}
+
 $mbbx_subs_gateway = new Mbbx_Subs_Gateway;
 add_action('plugins_loaded', [ & $mbbx_subs_gateway, 'init']);
+register_activation_hook(__FILE__, 'install_mobbex_subs_tables');
