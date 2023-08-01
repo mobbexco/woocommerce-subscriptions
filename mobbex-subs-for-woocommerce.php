@@ -78,7 +78,6 @@ class Mbbx_Subs_Gateway
 
         //Product Settings
         require_once plugin_dir_path(__FILE__) . 'includes/admin/product-settings.php';
-        add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_subscription']);
         
         Mbbx_Subs_Gateway::load_product_settings();
 
