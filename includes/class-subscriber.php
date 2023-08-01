@@ -83,7 +83,7 @@ class MobbexSubscriber extends \Mobbex\Model
             'body'   => [
                 'reference' => (string) $this->reference,
                 'test'      => ($this->helper->test_mode === 'yes'),
-                'total'     => $order->get_total(),
+                'total'     => $this->get_total($order),
                 'addresses' => $this->get_addresses($order),
                 'startDate' => [
                     'day'   => date('d', strtotime($dates['current'])),
@@ -105,6 +105,43 @@ class MobbexSubscriber extends \Mobbex\Model
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
         }
+    }
+
+    /**
+     * Get order total with discounts
+     * 
+     * @param WC_Order|WC_Abstract_Order $order
+     * 
+     * @return float $total
+     */
+    public function get_total($order)
+    {
+        if ($this->helper->has_subscription($this->order_id)) {
+            // Get total
+            $total = $order->get_total() - $this->get_subscription_discount();
+        } else if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($this->order_id)) {
+            // Get wcs subscription
+            $subscriptions = wcs_get_subscriptions_for_order($this->order_id, ['order_type' => 'any']);
+            $wcs_sub       = end($subscriptions);
+
+            $total = $wcs_sub->get_total() - $this->get_subscription_discount();
+        }
+
+        return $total ?: $order->get_total();
+    }
+
+    /**
+     * Gets the discount value/s and calculates the sum of these
+     * 
+     * @return int $discount total coupon discount
+     * 
+     */
+    public function get_subscription_discount()
+    {
+        $discount = WC()->cart->get_coupon_discount_totals();
+
+        // If there is more than one coupon, calculate the sum of their discounts
+        return $discount ? array_sum($discount) : 0;
     }
 
     /**

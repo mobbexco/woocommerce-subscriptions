@@ -407,12 +407,17 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             }
         }
 
+        if ($this->helper->is_wcs_active()) {
+            if (!wcs_order_contains_subscription($order_id))
+                return apply_filters('simple_history_log', __METHOD__ . ": Order #$order_id does not contain a WooCommerce Subscription", null, 'error');
+        } else if (!$this->helper->has_subscription($order_id)) {
+            return apply_filters('simple_history_log', __METHOD__ . ": Order #$order_id does not contain any Subscription", null, 'error');
+        }
+        
         $subscription = $sub_type === 'dynamic' ? $this->helper->create_mobbex_subscription($id, $sub_type, $interval, $trial, $setup_fee, $order_id) : $this->helper->create_mobbex_subscription($id, $sub_type);
 
-        if (!empty($subscription->uid)){
-
+        if (!empty($subscription->uid))
             return $subscription;
-        }
 
         return null;
     }
@@ -487,3 +492,4 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         return $result;
     }
 }
+
