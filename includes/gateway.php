@@ -472,8 +472,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $dni         = get_post_meta($order_id, $dni_key, true);
         $customer_id = $current_user->ID ?: null;
 
-        $endpoint = str_replace('{id}', $mbbx_subscription_uid, MOBBEX_CREATE_SUBSCRIBER) . ($uid ? "/$uid" : '');
-
         // Create subscriber
         $subscriber = new \MobbexSubscriber(
             $order_id,
