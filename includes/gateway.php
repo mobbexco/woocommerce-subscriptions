@@ -187,7 +187,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if ($this->helper->is_subs_change_method()) {
             $subscription = $this->get_subscription($order->order);
             $subscriber   = $this->get_subscriber($order->order, $subscription->uid);
-        } else if (wcs_order_contains_renewal($order)) {
+        } else if ($this->helper->is_wcs_active() && wcs_order_contains_renewal($order)) {
             $result = $this->scheduled_subscription_payment($order->get_total(), $order);
     
             return [
