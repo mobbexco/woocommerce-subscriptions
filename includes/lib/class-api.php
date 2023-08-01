@@ -44,7 +44,7 @@ class MobbexApi
             return false;
 
         if (empty($data['method']) || empty($data['uri']))
-            throw new \Exception('Mobbex request error: Missing arguments', 0, $data);
+            throw new \Exception('Mobbex request error: Missing arguments'. "data: $data", 0);
 
         $curl = curl_init();
 
@@ -66,16 +66,16 @@ class MobbexApi
 
         // Throw curl errors
         if ($error)
-            throw new \Exception('Curl error in Mobbex request #:' . $error, curl_errno($curl), $data);
+            throw new \Exception('Curl error in Mobbex request #:' . $error . "data: $data", curl_errno($curl));
 
         $result = json_decode($response, true);
 
         // Throw request errors
         if (!$result)
-            throw new \Exception('Mobbex request error: Invalid response format', 0, $data);
+            throw new \Exception('Mobbex request error: Invalid response format'. "data: $data", 0);
 
         if (!$result['result'])
-            throw new \Exception('Mobbex request error #' . $result['code'] . ': ' . $result['error'], 0, $data);
+            throw new \Exception('Mobbex request error #' . $result['code'] . ': ' . $result['error']. "data: $data", 0);
 
         return isset($result['data']) ? $result['data'] : $result['result'];
     }
