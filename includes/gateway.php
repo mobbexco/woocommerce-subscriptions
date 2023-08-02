@@ -291,24 +291,27 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                         $wcs_sub->payment_complete();
                 }
             }
+        
+            //Add order status
+            // If status look fine
+            if ($state == 'approved' || $state == 'on-hold') {
+                // Mark as payment complete
+                if (isset($standalone)) {
+                    $order->payment_complete();
+                } else if (isset($wcs_sub)) {
+                    $wcs_sub->payment_complete();
+                }
+            } else {
+                // Mark as payment failed
+                if (isset($standalone)) {
+                    $order->update_status('failed', __('Execution failed', 'mobbex-subs-for-woocommerce'));
+                } else if (isset($wcs_sub)) {
+                    $wcs_sub->payment_failed();
+                }
+            }
         }
 
-        // If status look fine
-        if ($state == 'approved' || $state == 'on-hold') {
-            // Mark as payment complete
-            if (isset($standalone)) {
-                $order->payment_complete();
-            } else if (isset($wcs_sub)) {
-                $wcs_sub->payment_complete();
-            }
-        } else {
-            // Mark as payment failed
-            if (isset($standalone)) {
-                $order->update_status('failed', __('Execution failed', 'mobbex-subs-for-woocommerce'));
-            } else if (isset($wcs_sub)) {
-                $wcs_sub->payment_failed();
-            }
-        }
+
             
         // Update execution dates
         $subscriber->last_execution = $dates['current'];
