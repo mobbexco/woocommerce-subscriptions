@@ -387,13 +387,13 @@ class Mbbxs_Helper
      * 
      * @param int|string $product_id
      * @param string $sub_type
+     * @param int|string $setup_fee
      * @param int|string $interval
      * @param int|string $trial
-     * @param int|string $setup_fee
      * 
      * @return \MobbexSubscription|null
      */
-    public function create_mobbex_subscription($product_id, $sub_type, $interval = '', $trial = '', $setup_fee = '')
+    public function create_mobbex_subscription($product_id, $sub_type, $setup_fee, $interval = '', $trial = '')
     {
         $product = wc_get_product($product_id);
         $sub_name = $product->get_name();
