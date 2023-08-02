@@ -138,6 +138,15 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             ],
 
+            'debug_mode' => [
+
+                'title' => __('Enable/Disable Debug Mode', 'mobbex-subs-for-woocommerce'),
+                'type' => 'checkbox',
+                'label' => __('Enable Debug Mode.', 'mobbex-subs-for-woocommerce'),
+                'default' => 'no',
+
+            ],
+
             'embed' => [
 
                 'title' => __('Enable/Disable Embed Mode', 'mobbex-subs-for-woocommerce'),
