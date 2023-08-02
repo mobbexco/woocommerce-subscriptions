@@ -23,9 +23,10 @@ class MobbexSubscriber extends \Mobbex\Model
     public $next_execution;
     public $result;
 
-    public $table       = 'mobbex_subscriber';
-    public $primary_key = 'order_id';
-    public $fillable = [
+    public $table         = 'mobbex_subscriber';
+    public $primary_key   = 'order_id';
+    public $array_columns = ['register_data'];
+    public $fillable      = [
         'order_id',
         'subscription_uid',
         'reference',
@@ -239,7 +240,7 @@ class MobbexSubscriber extends \Mobbex\Model
             'customer_id'      => $this->customer_id ?: '',
             'source_url'       => $this->source_url ?: '',
             'control_url'      => $this->control_url ?: '',
-            'register_data'    => $this->register_data ?: '',
+            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
             'start_date'       => $this->start_date ?: '',
             'last_execution'   => $this->last_execution ?: '',
             'next_execution'   => $this->next_execution ?: ''

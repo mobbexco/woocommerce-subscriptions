@@ -9,6 +9,7 @@ abstract class Model
 
     public $table;
     public $primary_key;
+    public $array_columns = [];
 
     /**
      * Instance the model and try to fill properties.
