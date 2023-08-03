@@ -244,8 +244,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             return false;
         }
 
-        $subscription = $this->helper->getSubscriptionByUid($data['subscription']['uid']);
-        $subscriber   = $this->helper->getSubscriberByUid($data['subscriber']['uid']);
+        $subscription = \MobbexSubscription::get_by_uid($data['subscription']['uid']);
+        $subscriber   = \MobbexSubscriber::get_by_uid($data['subscriber']['uid']);
         $order_id     = $subscriber->order_id;
         $order        = wc_get_order($order_id);
         $state        = $this->helper->get_state($status);
@@ -442,10 +442,10 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function get_subscriber($order, $mbbx_subscription_uid)
     {
-        $order_id = $order->get_id();
+        $order_id     = $order->get_id();
         $current_user = wp_get_current_user();
 
-        $dni_key = !empty($this->custom_dni) ? $this->custom_dni : '_billing_dni';
+        $dni_key   = !empty($this->custom_dni) ? $this->custom_dni : '_billing_dni';
         $reference = get_post_meta($order_id, $dni_key, true) ? get_post_meta($order_id, $dni_key, true) . $current_user->ID : $current_user->ID;
 
         $name        = $current_user->display_name ?: $order->get_formatted_billing_full_name();
@@ -491,12 +491,12 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $subscription = $this->get_subscription($order);
 
         if(!empty($subscription->uid))
-            $subscriber   = $this->get_subscriber($order, $subscription->uid);
+            $subscriber = new \MobbexSubscriber($wcs_sub->order->get_id());
 
         // if subscription is registered and is not empty
         if (!empty($subscription->uid) && !empty($subscriber->uid) && !empty($total)) {
             // Execute charge manually
-            $result = $this->helper->execute_charge($subscription->uid, $subscriber->uid, $total);
+            $result = $subscriber->execute_charge($total);
         }
 
         if (!isset($result) || is_wp_error($result) || $result === false)

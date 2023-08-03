@@ -6,8 +6,8 @@ class MobbexSubscriber extends \Mobbex\Model
     public $api;
 
     public $order_id;
-    public $uid;
     public $subscription_uid;
+    public $uid;
     public $state;
     public $test;
     public $name;
@@ -40,9 +40,9 @@ class MobbexSubscriber extends \Mobbex\Model
     /**
      * Build a Subscriber from cart id.
      * 
-     * @param int|null $cartId
+     * @param string|null $order_id
      * @param string|null $subscriptionUid
-     * @param bool|null $test Enable test mode for this subscriber.
+     * @param string|null $reference
      * @param string|null $name
      * @param string|null $email
      * @param string|null $phone
@@ -74,7 +74,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public function create()
     {
 
-        $subscription = $this->helper->getSubscriptionByUid($this->subscription_uid);
+        $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid);
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
