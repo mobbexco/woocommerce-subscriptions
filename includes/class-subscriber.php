@@ -248,6 +248,31 @@ class MobbexSubscriber extends \Mobbex\Model
         
         return $this->uid && parent::save($data);
     }
+
+    /**
+     * Execute subscription charge manually using Mobbex API.
+     * 
+     * @param integer $total
+     * @return array|null $response_result
+     */
+    public function execute_charge($total)
+    {
+        $data = [
+            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
+            'method' => 'GET',
+            'body'   => [
+                'total' => $total,
+                'test' => ($this->helper->test_mode === 'yes'),
+            ]
+        ];
+
+        try {
+            return $this->api->request($data);
+        } catch (\Exception $e) {
+            $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
+        }
+    }
+
     /**
      * Get a Subscriber using UID.
      * 

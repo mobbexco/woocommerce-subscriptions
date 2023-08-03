@@ -227,43 +227,7 @@ class Mbbxs_Helper
         }
     }
 
-    /**
-     * Execute subscription charge manually using Mobbex API.
-     * 
-     * @param string $mbbx_subscription_uid
-     * @param string $mbbx_subscriber_uid
-     * @param integer $total
-     * @return array|null $response_result
-     */
-    public function execute_charge($mbbx_subscription_uid, $mbbx_subscriber_uid, $total)
-    {
-        $url = str_replace(['{id}', '{sid}'], [$mbbx_subscription_uid, $mbbx_subscriber_uid], MOBBEX_SUBSCRIPTION);
-        $body = [
-            'total' => $total,
-            'test' => $this->test_mode == 'yes',
-        ];
 
-        $response = wp_remote_post($url, [
-            'headers' => [
-                'cache-control' => 'no-cache',
-                'content-type' => 'application/json',
-                'x-api-key' => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
-
-            'body' => json_encode($body),
-            'data_format' => 'body',
-        ]);
-
-        if (!is_wp_error($response)) {
-            $response = json_decode($response['body'], true);
-
-            if (!empty($response['result']))
-                return $response['result'];
-        }
-
-        return;
-    }
 
     /**
      * Retry Subscription execution using Mobbex API.
