@@ -419,34 +419,4 @@ class Mbbxs_Helper
 
         return null;
     }
-
-    /**
-     * Get a Subscription using UID.
-     * 
-     * @param string $uid
-     * 
-     * @return \MobbexSubscription|null
-     */
-    public function getSubscriptionByUid($uid)
-    {
-        global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscription"." WHERE uid='$uid'", 'ARRAY_A');
-
-        return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
-    }
-
-    /**
-     * Get a Subscriber using UID.
-     * 
-     * @param string $uid
-     * 
-     * @return \MobbexSubscriber|null
-     */
-    public function getSubscriberByUid($uid)
-    {
-        global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscriber". " WHERE uid='$uid'", 'ARRAY_A');
-
-        return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
-    }
 }

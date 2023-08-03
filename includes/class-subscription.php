@@ -201,4 +201,19 @@ class MobbexSubscription extends \Mobbex\Model {
 
         return $platform;
     }
+
+    /**
+     * Get a Subscription using UID.
+     * 
+     * @param string $uid
+     * 
+     * @return \MobbexSubscription|null
+     */
+    public static function get_by_uid($uid)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE uid='$uid'", 'ARRAY_A');
+
+        return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
+    }
 }

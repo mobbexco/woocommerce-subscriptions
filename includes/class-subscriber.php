@@ -248,4 +248,18 @@ class MobbexSubscriber extends \Mobbex\Model
         
         return $this->uid && parent::save($data);
     }
+    /**
+     * Get a Subscriber using UID.
+     * 
+     * @param string $uid
+     * 
+     * @return \MobbexSubscriber|null
+     */
+    public static function get_by_uid($uid)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$uid'", 'ARRAY_A');
+
+        return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
+    }
 }
