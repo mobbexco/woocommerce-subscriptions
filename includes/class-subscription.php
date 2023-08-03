@@ -97,7 +97,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'body'   => [
                 'reference'   => $this->reference,
                 'total'       => $this->total,
-                'setupFee'    => $this->setup_fee,
+                'setupFee'    => $this->setup_fee ?: $this->total,
                 'currency'    => 'ARS',
                 'type'        => $this->type,
                 'name'        => $this->name,
