@@ -55,7 +55,7 @@ abstract class Model
     public function fill($props)
     {
         foreach ($props as $key => $value) {
-            if (isset($this->fillable[$key]))
+            if (isset($this->fillable[$key]) && $value)
                 $this->{$this->fillable[$key]} = $value;
         }
     }
