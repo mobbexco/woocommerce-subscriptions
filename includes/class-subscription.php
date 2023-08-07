@@ -97,14 +97,14 @@ class MobbexSubscription extends \Mobbex\Model {
             'body'   => [
                 'reference'   => $this->reference,
                 'total'       => $this->total,
-                'setupFee'    => $this->setup_fee,
+                'setupFee'    => $this->setup_fee ?: $this->total,
                 'currency'    => 'ARS',
                 'type'        => $this->type,
                 'name'        => $this->name,
                 'description' => $this->name,
-                'interval'    => $this->interval,
-                'trial'       => $this->free_trial,
-                'limit'       => $this->limit,
+                'interval'    => $this->interval ?: '',
+                'trial'       => $this->free_trial ?: '',
+                'limit'       => $this->limit ?: 0,
                 'return_url'  => $this->return_url,
                 'webhook'     => $this->webhook_url,
                 'features'    => $features,
@@ -200,5 +200,20 @@ class MobbexSubscription extends \Mobbex\Model {
         }
 
         return $platform;
+    }
+
+    /**
+     * Get a Subscription using UID.
+     * 
+     * @param string $uid
+     * 
+     * @return \MobbexSubscription|null
+     */
+    public static function get_by_uid($uid)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE uid='$uid'", 'ARRAY_A');
+
+        return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
     }
 }

@@ -6,8 +6,8 @@ class MobbexSubscriber extends \Mobbex\Model
     public $api;
 
     public $order_id;
-    public $uid;
     public $subscription_uid;
+    public $uid;
     public $state;
     public $test;
     public $name;
@@ -23,9 +23,10 @@ class MobbexSubscriber extends \Mobbex\Model
     public $next_execution;
     public $result;
 
-    public $table       = 'mobbex_subscriber';
-    public $primary_key = 'order_id';
-    public $fillable = [
+    public $table         = 'mobbex_subscriber';
+    public $primary_key   = 'order_id';
+    public $array_columns = ['register_data'];
+    public $fillable      = [
         'order_id',
         'subscription_uid',
         'reference',
@@ -39,9 +40,9 @@ class MobbexSubscriber extends \Mobbex\Model
     /**
      * Build a Subscriber from cart id.
      * 
-     * @param int|null $cartId
+     * @param string|null $order_id
      * @param string|null $subscriptionUid
-     * @param bool|null $test Enable test mode for this subscriber.
+     * @param string|null $reference
      * @param string|null $name
      * @param string|null $email
      * @param string|null $phone
@@ -73,7 +74,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public function create()
     {
 
-        $subscription = $this->helper->getSubscriptionByUid($this->subscription_uid);
+        $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid);
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
@@ -239,12 +240,51 @@ class MobbexSubscriber extends \Mobbex\Model
             'customer_id'      => $this->customer_id ?: '',
             'source_url'       => $this->source_url ?: '',
             'control_url'      => $this->control_url ?: '',
-            'register_data'    => $this->register_data ?: '',
+            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
             'start_date'       => $this->start_date ?: '',
             'last_execution'   => $this->last_execution ?: '',
             'next_execution'   => $this->next_execution ?: ''
         ];
         
         return $this->uid && parent::save($data);
+    }
+
+    /**
+     * Execute subscription charge manually using Mobbex API.
+     * 
+     * @param integer $total
+     * @return array|null $response_result
+     */
+    public function execute_charge($total)
+    {
+        $data = [
+            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
+            'method' => 'GET',
+            'body'   => [
+                'total' => $total,
+                'test' => ($this->helper->test_mode === 'yes'),
+            ]
+        ];
+
+        try {
+            return $this->api->request($data);
+        } catch (\Exception $e) {
+            $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
+        }
+    }
+
+    /**
+     * Get a Subscriber using UID.
+     * 
+     * @param string $uid
+     * 
+     * @return \MobbexSubscriber|null
+     */
+    public static function get_by_uid($uid)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$uid'", 'ARRAY_A');
+
+        return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
     }
 }

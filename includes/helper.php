@@ -227,43 +227,7 @@ class Mbbxs_Helper
         }
     }
 
-    /**
-     * Execute subscription charge manually using Mobbex API.
-     * 
-     * @param string $mbbx_subscription_uid
-     * @param string $mbbx_subscriber_uid
-     * @param integer $total
-     * @return array|null $response_result
-     */
-    public function execute_charge($mbbx_subscription_uid, $mbbx_subscriber_uid, $total)
-    {
-        $url = str_replace(['{id}', '{sid}'], [$mbbx_subscription_uid, $mbbx_subscriber_uid], MOBBEX_SUBSCRIPTION);
-        $body = [
-            'total' => $total,
-            'test' => $this->test_mode == 'yes',
-        ];
 
-        $response = wp_remote_post($url, [
-            'headers' => [
-                'cache-control' => 'no-cache',
-                'content-type' => 'application/json',
-                'x-api-key' => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
-
-            'body' => json_encode($body),
-            'data_format' => 'body',
-        ]);
-
-        if (!is_wp_error($response)) {
-            $response = json_decode($response['body'], true);
-
-            if (!empty($response['result']))
-                return $response['result'];
-        }
-
-        return;
-    }
 
     /**
      * Retry Subscription execution using Mobbex API.
@@ -387,13 +351,13 @@ class Mbbxs_Helper
      * 
      * @param int|string $product_id
      * @param string $sub_type
+     * @param int|string $setup_fee
      * @param int|string $interval
      * @param int|string $trial
-     * @param int|string $setup_fee
      * 
      * @return \MobbexSubscription|null
      */
-    public function create_mobbex_subscription($product_id, $sub_type, $interval = '', $trial = '', $setup_fee = '')
+    public function create_mobbex_subscription($product_id, $sub_type, $setup_fee, $interval = '', $trial = '')
     {
         $product = wc_get_product($product_id);
         $sub_name = $product->get_name();
@@ -418,35 +382,5 @@ class Mbbxs_Helper
         }
 
         return null;
-    }
-
-    /**
-     * Get a Subscription using UID.
-     * 
-     * @param string $uid
-     * 
-     * @return \MobbexSubscription|null
-     */
-    public function getSubscriptionByUid($uid)
-    {
-        global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscription"." WHERE uid='$uid'", 'ARRAY_A');
-
-        return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
-    }
-
-    /**
-     * Get a Subscriber using UID.
-     * 
-     * @param string $uid
-     * 
-     * @return \MobbexSubscriber|null
-     */
-    public function getSubscriberByUid($uid)
-    {
-        global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " .$wpdb->prefix."mobbex_subscriber". " WHERE uid='$uid'", 'ARRAY_A');
-
-        return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
     }
 }

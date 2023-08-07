@@ -9,6 +9,7 @@ abstract class Model
 
     public $table;
     public $primary_key;
+    public $array_columns = [];
 
     /**
      * Instance the model and try to fill properties.
@@ -54,7 +55,7 @@ abstract class Model
     public function fill($props)
     {
         foreach ($props as $key => $value) {
-            if (isset($this->fillable[$key]))
+            if (isset($this->fillable[$key]) && $value)
                 $this->{$this->fillable[$key]} = $value;
         }
     }

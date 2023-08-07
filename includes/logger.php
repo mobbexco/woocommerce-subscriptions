@@ -8,14 +8,14 @@ class Mbbxs_Logger
         $this->error  = false;
         $this->helper = new Mbbxs_Helper;
 
-        if (!$this->helper->settings['api-key'] || !$this->helper->settings['access-token'])
+        if (!$this->helper->api_key || !$this->helper->access_token)
             $this->error = self::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-for-woocommerce'));
 
     }
 
     public function debug($message = 'debug', $data = [], $force = false)
     {
-        if ($this->helper->settings['debug_mode'] != 'yes' && !$force)
+        if ($this->helper->debug_mode != 'yes' && !$force)
             return;
 
         apply_filters(
