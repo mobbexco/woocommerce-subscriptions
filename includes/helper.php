@@ -350,28 +350,26 @@ class Mbbxs_Helper
      * Creates/Update a Mobbex Subscription & return Subscription class
      * 
      * @param int|string $product_id
-     * @param string $sub_type
-     * @param int|string $setup_fee
-     * @param int|string $interval
-     * @param int|string $trial
+     * @param array $sub_options
+     * @param string $id Order id for compatibility with 2.x
      * 
      * @return \MobbexSubscription|null
      */
-    public function create_mobbex_subscription($product_id, $sub_type, $setup_fee, $interval = '', $trial = '')
+    public function create_mobbex_subscription($product_id, $sub_options, $id = null)
     {
         $product = wc_get_product($product_id);
         $sub_name = $product->get_name();
-
+        
         $subscription = new \MobbexSubscription(
-            $product_id,
+            $id ?: $product_id,
             "wc_order_{$product_id}_time_" . time(),
             $product->get_price(),
-            $setup_fee,
-            $sub_type,
+            $sub_options['setup_fee'],
+            $sub_options['type'],
             $sub_name,
             $sub_name,
-            $interval,
-            $trial,
+            $sub_options['interval'],
+            $sub_options['trial'],
             0,
         );
 
@@ -382,5 +380,74 @@ class Mbbxs_Helper
         }
 
         return null;
+    }
+
+    /**
+     * Get order total with discounts
+     * 
+     * @param WC_Order|WC_Abstract_Order $order
+     * 
+     * @return float $total
+     */
+    public function get_total($order)
+    {
+        if ($this->helper->has_subscription($this->order_id) && WC()->cart) {
+            // Get total
+            $total = $order->get_total() - $this->get_subscription_discount();
+        } else if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($this->order_id) && WC()->cart) {
+            // Get wcs subscription
+            $subscriptions = wcs_get_subscriptions_for_order($this->order_id, ['order_type' => 'any']);
+            $wcs_sub       = end($subscriptions);
+
+            $total = $wcs_sub->get_total() - $this->get_subscription_discount($order);
+        }
+
+        return $total ?: $order->get_total();
+    }
+
+    /**
+     * Gets the discount value/s and calculates the sum of these
+     * 
+     * @return int $discount total coupon discount
+     * 
+     */
+    public function get_subscription_discount()
+    {
+        $discount = WC()->cart->get_coupon_discount_totals();
+        
+        return $discount ? array_sum($discount) : 0;
+    }
+
+    /**
+     * Store old 2.x subscribers & subscriptions in database
+     * 
+     * @param WC_Order|WC_Abstract_Order $order
+     */
+    public function migrate_subscriptions($order)
+    {
+        foreach ($order->get_items() as $item) {
+
+            if (
+                (!\MobbexSubscription::is_stored($order->get_id()) && !empty(get_post_meta($order->get_id(), 'mobbex_subscription', true)))
+                || (!\MobbexSubscriber::is_stored($order->get_id()) && !empty(get_post_meta($order->get_id(), 'mobbex_subscriber', true)))
+            ) {
+                //get old data
+                $subscription_data = get_post_meta($order->get_id(), 'mobbex_subscription', true);
+                $subscriber_data   = get_post_meta($order->get_id(), 'mobbex_subscriber', true);
+
+                //get subscription & subscriber classes
+                $subscription = new \MobbexSubscription($order->get_id());
+                $subscriber   = new \MobbexSubscriber($order->get_id());
+
+                //Load subscription and subscriber uid
+                $subscription->uid            = $subscription_data['uid'];
+                $subscriber->subscription_uid = $subscription_data['uid'];
+                $subscriber->uid              = $subscriber_data['uid'];
+
+                //Save the data
+                $subscription->save();
+                $subscriber->save();
+            }
+        }
     }
 }

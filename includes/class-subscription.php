@@ -117,9 +117,7 @@ class MobbexSubscription extends \Mobbex\Model {
         ];
 
         try {
-            $response = $this->api->request($data);
-
-            return $response;
+            return $this->api->request($data);
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscription Create/Update Error: ' . $e->getMessage(), [], true);
         }
@@ -215,5 +213,13 @@ class MobbexSubscription extends \Mobbex\Model {
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE uid='$uid'", 'ARRAY_A');
 
         return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
+    }
+
+    public static function is_stored($id)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
+
+        return !empty($result[0]);
     }
 }
