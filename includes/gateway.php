@@ -194,7 +194,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         //Check if it's a payment method change, a manual renewal or new payment
         if ($this->helper->is_subs_change_method()) {
-            $this->helper->migrate_subscriptions($order);
+            $this->helper->maybe_migrate_subscriptions($order);
             $subscription = $this->get_subscription($order);
             $subscriber   = $this->get_subscriber($order, $subscription->uid);
         } else if ($this->helper->is_wcs_active() && wcs_order_contains_renewal($order)) {
@@ -213,7 +213,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if (!empty($subscriber->uid) && !empty($subscription->uid)) {
             return [
                 'result'     => 'success',
-                'redirect'   => $this->embed ? false : $subscriber->source_url,
+                'redirect'   => $this->helper->embed ? false : $subscriber->source_url,
                 'return_url' => $subscription->return_url,
                 'data'       => [
                     'id'  => $subscription->uid,
@@ -249,7 +249,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         //Compatibility with 2.x subscriptions
         if($id){
             $order = wc_get_order($id);
-            $this->helper->migrate_subscriptions($id);
+            $this->helper->maybe_migrate_subscriptions($order);
         }
 
         $subscription = \MobbexSubscription::get_by_uid($data['subscription']['uid']);
@@ -421,12 +421,10 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             if ($this->helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product))
                 $sub_options['setup_fee'] = WC_Subscriptions_Product::get_sign_up_fee($product) ?: 0;
 
-            if (Mbbx_Subs_Product::is_subscription($product_id) || WC_Subscriptions_Product::is_subscription($product)) {
-                if ($sub_options['type'] === 'dynamic') {
+            if (Mbbx_Subs_Product::is_subscription($product_id)) {
                     $sub_options['interval']  = implode(Mbbx_Subs_Product::get_charge_interval($product_id));
                     $sub_options['trial']     = Mbbx_Subs_Product::get_free_trial($product_id)['interval'];
                     $sub_options['setup_fee'] = Mbbx_Subs_Product::get_signup_fee($product_id);
-                }
             }
 
             if ($this->helper->is_wcs_active() && !\WC_Subscriptions_Product::is_subscription($product) && !$this->helper->has_subscription($order_id)) {
@@ -435,21 +433,14 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             }
         }
 
-        //Add support to 2.x subscriptions
-        $id = $product_id;
-        if($this->helper->is_wcs_active()){
-            $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
-            $wcs_sub = end($subscriptions);
-            $id = \MobbexSubscription::is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
-        }
-
-        $subscription = $sub_options['type'] === 'dynamic' ? $this->helper->create_mobbex_subscription($product_id, $sub_options, $id) : $this->helper->create_mobbex_subscription($product_id, $sub_options, $id);
+        $subscription = $sub_options['type'] === 'dynamic' ? $this->helper->create_mobbex_subscription($product_id, $sub_options, $order) : $this->helper->create_mobbex_subscription($product_id, $sub_options, $order);
 
         if (!empty($subscription->uid))
             return $subscription;
 
         return;
     }
+
 
     /**
      * Get subscriber.
@@ -463,7 +454,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $order_id     = $order->get_id();
         $current_user = wp_get_current_user();
 
-        $dni_key   = !empty($this->custom_dni) ? $this->custom_dni : '_billing_dni';
+        $dni_key   = !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni';
         $reference = get_post_meta($order_id, $dni_key, true) ? get_post_meta($order_id, $dni_key, true) . $current_user->ID : $current_user->ID;
 
         $name        = $current_user->display_name ?: $order->get_formatted_billing_full_name();
@@ -483,9 +474,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $dni,
             $customer_id
         );
-
-        //set total
-        $subscriber->total = $this->helper->get_total($order);
 
         //Save subscriber
         $result = $subscriber->save();
@@ -511,7 +499,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $wcs_sub = end($subscriptions);
         
         //Migrate subscriptions
-        $this->helper->migrate_subscriptions($wcs_sub->order);
+        $this->helper->maybe_migrate_subscriptions($wcs_sub->order);
         
         //get mobbex subscriber & subscription
         $subscription = $this->get_subscription($order, $wcs_sub->order->get_id());

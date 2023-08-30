@@ -355,13 +355,13 @@ class Mbbxs_Helper
      * 
      * @return \MobbexSubscription|null
      */
-    public function create_mobbex_subscription($product_id, $sub_options, $id = null)
+    public function create_mobbex_subscription($product_id, $sub_options, $order = null)
     {
         $product = wc_get_product($product_id);
         $sub_name = $product->get_name();
         
         $subscription = new \MobbexSubscription(
-            $id ?: $product_id,
+            $this->get_post_id($product_id, $order),
             "wc_order_{$product_id}_time_" . time(),
             $product->get_price(),
             $sub_options['setup_fee'],
@@ -383,39 +383,22 @@ class Mbbxs_Helper
     }
 
     /**
-     * Get order total with discounts
+     * Get the post id for 2.x subs compatibility.
      * 
-     * @param WC_Order|WC_Abstract_Order $order
+     * @param string $product_id
+     * @param mixed $order
      * 
-     * @return float $total
+     * @return string
      */
-    public function get_total($order)
+    public function get_post_id($product_id, $order)
     {
-        if ($this->helper->has_subscription($this->order_id) && WC()->cart) {
-            // Get total
-            $total = $order->get_total() - $this->get_subscription_discount();
-        } else if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($this->order_id) && WC()->cart) {
-            // Get wcs subscription
-            $subscriptions = wcs_get_subscriptions_for_order($this->order_id, ['order_type' => 'any']);
-            $wcs_sub       = end($subscriptions);
-
-            $total = $wcs_sub->get_total() - $this->get_subscription_discount($order);
+        if ($order && $this->is_wcs_active()) {
+            $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
+            $wcs_sub = end($subscriptions);
+            return \MobbexSubscription::is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
+        } else {
+            return $product_id;
         }
-
-        return $total ?: $order->get_total();
-    }
-
-    /**
-     * Gets the discount value/s and calculates the sum of these
-     * 
-     * @return int $discount total coupon discount
-     * 
-     */
-    public function get_subscription_discount()
-    {
-        $discount = WC()->cart->get_coupon_discount_totals();
-        
-        return $discount ? array_sum($discount) : 0;
     }
 
     /**
@@ -423,30 +406,68 @@ class Mbbxs_Helper
      * 
      * @param WC_Order|WC_Abstract_Order $order
      */
-    public function migrate_subscriptions($order)
+    public function maybe_migrate_subscriptions($order)
     {
         foreach ($order->get_items() as $item) {
 
-            if (
-                (!\MobbexSubscription::is_stored($order->get_id()) && !empty(get_post_meta($order->get_id(), 'mobbex_subscription', true)))
-                || (!\MobbexSubscriber::is_stored($order->get_id()) && !empty(get_post_meta($order->get_id(), 'mobbex_subscriber', true)))
-            ) {
-                //get old data
-                $subscription_data = get_post_meta($order->get_id(), 'mobbex_subscription', true);
-                $subscriber_data   = get_post_meta($order->get_id(), 'mobbex_subscriber', true);
+            $old_subscription = get_post_meta($order->get_id(), 'mobbex_subscription', true);
+            $old_subscriber   = get_post_meta($order->get_id(), 'mobbex_subscriber', true);
 
-                //get subscription & subscriber classes
-                $subscription = new \MobbexSubscription($order->get_id());
-                $subscriber   = new \MobbexSubscriber($order->get_id());
+            //Migrate data if there are an old subscription
+            if($old_subscription){
+                //get type
+                $type = $this->is_wcs_active() ? 'manual' : 'dynamic';
 
-                //Load subscription and subscriber uid
-                $subscription->uid            = $subscription_data['uid'];
-                $subscriber->subscription_uid = $subscription_data['uid'];
-                $subscriber->uid              = $subscriber_data['uid'];
+                //Load subscription
+                $subscription = new \MobbexSubscription(
+                    $order->get_id(),
+                    "wc_order_{$order->get_id()}", 
+                    isset($old_subscription['total']) ? $old_subscription['total'] : '',
+                    isset($old_subscription['setupFee']) ? $old_subscription['setupFee'] : '',
+                    $type,
+                    isset($old_subscription['name']) ? $old_subscription['name'] : '',
+                    isset($old_subscription['description']) ? $old_subscription['description'] : '',
+                    isset($old_subscription['interval']) ? $old_subscription['interval'] : '',
+                    isset($old_subscription['trial']) ? $old_subscription['trial'] : '',
+                    isset($old_subscription['limit']) ? $old_subscription['limit'] : '',
+                );
+
+                //Set uid
+                $subscription->uid        = isset($old_subscription['uid']) ? $old_subscription['uid'] : '';
+                $subscription->return_url = isset($old_subscription['return_url']) ? $old_subscription['return_url'] : '';
+                $subscription->webhook    = isset($old_subscription['webhook']) ? $old_subscription['webhook'] : '';
 
                 //Save the data
                 $subscription->save();
-                $subscriber->save();
+
+                //update metapost
+                update_post_meta($order->get_id(), 'mobbex_subscription', '');
+            }
+
+            //Migrate data if there are an old subscriber
+            if($old_subscriber){
+                //load Subscriber
+                $subscriber = new \MobbexSubscriber(
+                    $order->get_id(),
+                    isset($old_subscription['uid']) ? $old_subscription['uid'] : '',
+                    isset($old_subscriber['reference']) ? $old_subscriber['reference'] : '',
+                    $order->get_billing_first_name(),
+                    $order->get_billing_email(),
+                    $order->get_billing_phone(),
+                    get_post_meta($order->get_id(), !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni', true),
+                    $order->get_customer_id(),
+                );
+
+                //set other data
+                $subscriber->uid         = isset($old_subscriber['uid']) ? $old_subscriber['uid'] : '';
+                $subscriber->source_url  = isset($old_subscriber['sourceUrl']) ? $old_subscriber['sourceUrl'] : '';
+                $subscriber->control_url = isset($old_subscriber['subscriberUrl']) ? $old_subscriber['subscriberUrl'] : '';
+
+                //Save the data
+                $subscriber->update();
+
+                //update metapost
+                update_post_meta($order->get_id(), 'mobbex_subscriber', '');
             }
         }
     }

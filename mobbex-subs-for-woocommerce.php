@@ -277,15 +277,14 @@ class Mbbx_Subs_Gateway
     {
         try {
             // Check current version updated
-            if (get_option('woocommerce-mobbex-version') < MOBBEX_VERSION)
+            if (get_option('woocommerce-mobbex-subs-version') < MOBBEX_SUBS_VERSION)
                 return;
             
             // Apply upgrades
             install_mobbex_subs_tables();
-            migrate_standalone_subs();
             
             // Update db version
-            update_option('woocommerce-mobbex-version', MOBBEX_VERSION);
+            update_option('woocommerce-mobbex-subs-version', MOBBEX_SUBS_VERSION);
             
         } catch (\Exception $e) {
             self::$errors[] = 'Mobbex DB Upgrade error';

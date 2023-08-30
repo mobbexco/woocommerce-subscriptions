@@ -44,7 +44,7 @@ class MobbexSubscription extends \Mobbex\Model {
      * Build a Subscription from product id.
      * 
      * @param object $api
-     * @param int|null $productId
+     * @param int|null $productId It can be an order id for old subscriptions support
      * @param string|null $reference
      * @param int|float|null $total Amount to charge.
      * @param int|float|null $setupFee Different initial amount.
