@@ -52,6 +52,7 @@ class Mbbx_Subs_Gateway
             Mbbx_Subs_Gateway::check_dependencies();
             Mbbx_Subs_Gateway::load_textdomain();
             Mbbx_Subs_Gateway::load_update_checker();
+            Mbbx_Subs_Gateway::check_upgrades();
             Mbbx_Subs_Gateway::load_helper();
             Mbbx_Subs_Gateway::load_subscription_product();
             Mbbx_Subs_Gateway::load_cart();
@@ -268,6 +269,27 @@ class Mbbx_Subs_Gateway
     {
         $var = 'example';
     }*/
+
+    /**
+     * Check pending database upgrades and upgrade if is needed.
+     */
+    public static function check_upgrades()
+    {
+        try {
+            // Check current version updated
+            if (get_option('woocommerce-mobbex-subs-version') < MOBBEX_SUBS_VERSION)
+                return;
+            
+            // Apply upgrades
+            install_mobbex_subs_tables();
+            
+            // Update db version
+            update_option('woocommerce-mobbex-subs-version', MOBBEX_SUBS_VERSION);
+            
+        } catch (\Exception $e) {
+            self::$errors[] = 'Mobbex DB Upgrade error';
+        }
+    }
 }
 
 function install_mobbex_subs_tables()
@@ -279,7 +301,6 @@ function install_mobbex_subs_tables()
     foreach ($querys as $query) {
         $wpdb->get_results($query);
     }
-    
 }
 
 $mbbx_subs_gateway = new Mbbx_Subs_Gateway;

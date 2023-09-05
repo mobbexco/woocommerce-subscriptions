@@ -44,7 +44,7 @@ class MobbexSubscription extends \Mobbex\Model {
      * Build a Subscription from product id.
      * 
      * @param object $api
-     * @param int|null $productId
+     * @param int|null $productId It can be an order id for old subscriptions support
      * @param string|null $reference
      * @param int|float|null $total Amount to charge.
      * @param int|float|null $setupFee Different initial amount.
@@ -117,9 +117,7 @@ class MobbexSubscription extends \Mobbex\Model {
         ];
 
         try {
-            $response = $this->api->request($data);
-
-            return $response;
+            return $this->api->request($data);
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscription Create/Update Error: ' . $e->getMessage(), [], true);
         }
@@ -215,5 +213,13 @@ class MobbexSubscription extends \Mobbex\Model {
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE uid='$uid'", 'ARRAY_A');
 
         return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
+    }
+
+    public static function is_stored($id)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
+
+        return !empty($result[0]);
     }
 }

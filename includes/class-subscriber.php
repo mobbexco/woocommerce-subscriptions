@@ -36,6 +36,8 @@ class MobbexSubscriber extends \Mobbex\Model
         'identification',
         'customer_id'
     ];
+    
+    public $total;
 
     /**
      * Build a Subscriber from cart id.
@@ -69,22 +71,26 @@ class MobbexSubscriber extends \Mobbex\Model
     /**
      * Create a Subscriber using Mobbex API.
      * 
+     * @param bool $update True for create/edit subscriber
+     * 
      * @return string|null UID if created correctly.
      */
-    public function create()
+    public function create($update = false)
     {
-
         $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid);
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
         $data = [
             'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
-            'method' => 'POST',
-            'body'   => [
+            'method' => $update ? 'GET' : 'POST',
+        ];
+
+        if(!$update){
+            $data['body'] = [
                 'reference' => (string) $this->reference,
                 'test'      => ($this->helper->test_mode === 'yes'),
-                'total'     => $this->get_total($order),
+                'total'     => $order->get_total(),
                 'addresses' => $this->get_addresses($order),
                 'startDate' => [
                     'day'   => date('d', strtotime($dates['current'])),
@@ -98,51 +104,14 @@ class MobbexSubscriber extends \Mobbex\Model
                     'identification' => $this->identification,
                     'customer_id'    => $this->customer_id
                 ]
-            ]
-        ];
+            ];
+        }
 
         try {
             return $this->api->request($data);
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
         }
-    }
-
-    /**
-     * Get order total with discounts
-     * 
-     * @param WC_Order|WC_Abstract_Order $order
-     * 
-     * @return float $total
-     */
-    public function get_total($order)
-    {
-        if ($this->helper->has_subscription($this->order_id)) {
-            // Get total
-            $total = $order->get_total() - $this->get_subscription_discount();
-        } else if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($this->order_id)) {
-            // Get wcs subscription
-            $subscriptions = wcs_get_subscriptions_for_order($this->order_id, ['order_type' => 'any']);
-            $wcs_sub       = end($subscriptions);
-
-            $total = $wcs_sub->get_total() - $this->get_subscription_discount();
-        }
-
-        return $total ?: $order->get_total();
-    }
-
-    /**
-     * Gets the discount value/s and calculates the sum of these
-     * 
-     * @return int $discount total coupon discount
-     * 
-     */
-    public function get_subscription_discount()
-    {
-        $discount = WC()->cart->get_coupon_discount_totals();
-
-        // If there is more than one coupon, calculate the sum of their discounts
-        return $discount ? array_sum($discount) : 0;
     }
 
     /**
@@ -222,9 +191,9 @@ class MobbexSubscriber extends \Mobbex\Model
         $this->result = $this->create();
 
         if ($this->result) {
-            $this->uid         = $this->result['uid'];
-            $this->source_url  = $this->result['sourceUrl'];
-            $this->control_url = $this->result['subscriberUrl'];
+            $this->uid         = $this->result['subscriber']['uid'];
+            $this->source_url  = $this->result['subscriber']['sourceUrl'];
+            $this->control_url = $this->result['subscriber']['subscriberUrl'];
         }
 
         $data = [
@@ -246,6 +215,45 @@ class MobbexSubscriber extends \Mobbex\Model
             'next_execution'   => $this->next_execution ?: ''
         ];
         
+        return $this->uid && parent::save($data);
+    }
+
+    /**
+     * Update customer data in db.
+     */
+    public function update()
+    {
+        $this->result = $this->create(true);
+
+        if ($this->result['subscriber']) {
+            $this->uid            = $this->result['subscriber']['uid'];
+            $this->test           = $this->result['subscriber']['test'];
+            $this->name           = $this->result['subscriber']['customerData']['name'];
+            $this->email          = $this->result['subscriber']['customerData']['email'];
+            $this->phone          = $this->result['subscriber']['customerData']['phone'];
+            $this->identification = $this->result['subscriber']['customerData']['identification'];
+            $this->start_date     = $this->result['subscriber']['startDate'];
+        }
+
+        $data = [
+            'order_id'         => $this->order_id ?: '',
+            'uid'              => $this->uid ?: '',
+            'subscription_uid' => $this->subscription_uid ?: '',
+            'state'            => $this->state ?: '',
+            'test'             => ($this->helper->test_mode === 'yes'),
+            'name'             => $this->name ?: '',
+            'email'            => $this->email ?: '',
+            'phone'            => $this->phone ?: '',
+            'identification'   => $this->identification ?: '',
+            'customer_id'      => $this->customer_id ?: '',
+            'source_url'       => $this->source_url ?: '',
+            'control_url'      => $this->control_url ?: '',
+            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
+            'start_date'       => $this->start_date ?: '',
+            'last_execution'   => $this->last_execution ?: '',
+            'next_execution'   => $this->next_execution ?: ''
+        ];
+
         return $this->uid && parent::save($data);
     }
 
@@ -286,5 +294,13 @@ class MobbexSubscriber extends \Mobbex\Model
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$uid'", 'ARRAY_A');
 
         return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
+    }
+
+    public static function is_stored($id)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE order_id='$id'", 'ARRAY_A');
+
+        return !empty($result[0]);
     }
 }

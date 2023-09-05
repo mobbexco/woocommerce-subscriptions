@@ -151,6 +151,9 @@ class Mbbx_Subs_Product_Settings
      */
     public static function save_subscription_fields($post_id)
     {
+        //get product
+        $product = wc_get_product($post_id);
+
         // Set possible periods for validation
         $possible_periods = ['d', 'w', 'm', 'y'];
 
@@ -163,10 +166,21 @@ class Mbbx_Subs_Product_Settings
         $signup_fee          = (!empty($_POST['mbbxs_signup_fee']) && is_numeric($_POST['mbbxs_signup_fee'])) ? (int) $_POST['mbbxs_signup_fee'] : 0;
         // TODO: Validate that interval and period work fine together in dynamic subscription mode
         
+        //sub options
+        $sub_options = [
+            'type'      => 'dynamic',
+            'interval'  => $charge_interval . $charge_period,
+            'trial'     => $free_trial_interval,
+            'setup_fee' => $signup_fee,
+            'post_id'   => $post_id,
+            'reference' => "wc_order_{$post_id}",
+            'price'     => $product->get_price(),
+            'name'      => $product->get_name(),
+        ];
+
         //Create/update subscription.
-        $sub_type = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
         if(Mbbx_Subs_Product::is_subscription($post_id))
-            $subscription = $sub_type === 'dynamic' ? self::$helper->create_mobbex_subscription($post_id, $sub_type, $charge_interval . $charge_period, $free_trial_interval, $signup_fee) : self::$helper->create_mobbex_subscription($post_id, $sub_type, $signup_fee);
+            $subscription = $sub_options['type'] === 'dynamic' ? self::$helper->create_mobbex_subscription($sub_options) : self::$helper->create_mobbex_subscription($sub_options);
 
         // Save data
         update_post_meta($post_id, 'mbbxs_subscription_mode', $subscription_mode);
@@ -187,12 +201,27 @@ class Mbbx_Subs_Product_Settings
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
+        //get product
+        $product = wc_get_product($post_id);
+
         //get sign up fee
         $setup_fee = isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0;
 
+        //sub options
+        $sub_options = [
+            'type'      => 'manual',
+            'interval'  => '',
+            'trial'     => '',
+            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'post_id'   => $post_id,
+            'reference' => "wc_order_{$post_id}",
+            'price'     => $product->get_price(),
+            'name'      => $product->get_name(),
+        ];
+
         //Create/update subscription.
         if(self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription( $post_id ));
-            $subscription = self::$helper->create_mobbex_subscription($post_id, 'manual', $setup_fee);
+            $subscription = self::$helper->create_mobbex_subscription($sub_options);
         if($subscription)
             $subscription->save();
     }
