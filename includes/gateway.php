@@ -417,6 +417,14 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         foreach ($order->get_items() as $item) {
             $product    = $item->get_product();
             $product_id = $product->get_id();
+            $post_id    = $this->helper->get_post_id($product_id, $order);
+
+            //Add basic options
+            $sub_options['post_id']   = $post_id; 
+            $sub_options['reference'] = "wc_order_{$post_id}";
+            $sub_options['price']     = $product->get_price();
+            $sub_options['name']      = $product->get_name();
+            
 
             if ($this->helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product))
                 $sub_options['setup_fee'] = WC_Subscriptions_Product::get_sign_up_fee($product) ?: 0;
@@ -433,7 +441,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             }
         }
 
-        $subscription = $sub_options['type'] === 'dynamic' ? $this->helper->create_mobbex_subscription($product_id, $sub_options, $order) : $this->helper->create_mobbex_subscription($product_id, $sub_options, $order);
+        $subscription = $sub_options['type'] === 'dynamic' ? $this->helper->create_mobbex_subscription($sub_options) : $this->helper->create_mobbex_subscription($sub_options);
 
         if (!empty($subscription->uid))
             return $subscription;

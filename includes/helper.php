@@ -349,25 +349,20 @@ class Mbbxs_Helper
     /**
      * Creates/Update a Mobbex Subscription & return Subscription class
      * 
-     * @param int|string $product_id
      * @param array $sub_options
-     * @param string $id Order id for compatibility with 2.x
      * 
      * @return \MobbexSubscription|null
      */
-    public function create_mobbex_subscription($product_id, $sub_options, $order = null)
+    public function create_mobbex_subscription($sub_options)
     {
-        $product = wc_get_product($product_id);
-        $sub_name = $product->get_name();
-        
         $subscription = new \MobbexSubscription(
-            $this->get_post_id($product_id, $order),
-            "wc_order_{$product_id}_time_" . time(),
-            $product->get_price(),
+            $sub_options['post_id'],
+            $sub_options['reference'],
+            $sub_options['price'],
             $sub_options['setup_fee'],
             $sub_options['type'],
-            $sub_name,
-            $sub_name,
+            $sub_options['name'],
+            $sub_options['name'],
             $sub_options['interval'],
             $sub_options['trial'],
             0,
