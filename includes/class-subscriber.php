@@ -69,46 +69,39 @@ class MobbexSubscriber extends \Mobbex\Model
     }
 
     /**
-     * Create a Subscriber using Mobbex API.
-     * 
-     * @param bool $update True for create/edit subscriber
+     * Syncronize Subscriber data on Mobbex.
      * 
      * @return string|null UID if created correctly.
      */
-    public function create($update = false)
+    public function sync()
     {
         $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid);
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
-        $data = [
-            'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
-            'method' => $update ? 'GET' : 'POST',
-        ];
-
-        if(!$update){
-            $data['body'] = [
-                'reference' => (string) $this->reference,
-                'test'      => ($this->helper->test_mode === 'yes'),
-                'total'     => $order->get_total(),
-                'addresses' => $this->get_addresses($order),
-                'startDate' => [
-                    'day'   => date('d', strtotime($dates['current'])),
-                    'month' => date('m', strtotime($dates['current'])),
-                    'year'  => date('Y', strtotime($dates['current'])),
-                ],
-                'customer'  => [
-                    'name'           => $this->name,
-                    'email'          => $this->email,
-                    'phone'          => $this->phone,
-                    'identification' => $this->identification,
-                    'customer_id'    => $this->customer_id
-                ]
-            ];
-        }
-
         try {
-            return $this->api->request($data);
+            return $this->api->request([
+                'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
+                'method' => 'POST',
+                'body'   => [
+                    'reference' => (string) $this->reference,
+                    'test'      => ($this->helper->test_mode === 'yes'),
+                    'total'     => $order->get_total(),
+                    'addresses' => $this->get_addresses($order),
+                    'startDate' => [
+                        'day'   => date('d', strtotime($dates['current'])),
+                        'month' => date('m', strtotime($dates['current'])),
+                        'year'  => date('Y', strtotime($dates['current'])),
+                    ],
+                    'customer'  => [
+                        'name'           => $this->name,
+                        'email'          => $this->email,
+                        'phone'          => $this->phone,
+                        'identification' => $this->identification,
+                        'customer_id'    => $this->customer_id
+                    ]
+                ]
+            ]);
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
         }
@@ -182,18 +175,21 @@ class MobbexSubscriber extends \Mobbex\Model
     }
 
     /**
-     * Save/update data to db creating subscriber from Mobbex API.
+     * Save data to db and sync with Mobbex (optional).
+     * 
+     * @param bool $sync Synchronize with Mobbex.
      * 
      * @return bool True if saved correctly.
      */
-    public function save($data = null)
+    public function save($sync = true)
     {
-        $this->result = $this->create();
+        if ($sync) {
+            $this->result = $this->sync();
 
-        if ($this->result) {
-            $this->uid         = $this->result['subscriber']['uid'];
-            $this->source_url  = $this->result['subscriber']['sourceUrl'];
-            $this->control_url = $this->result['subscriber']['subscriberUrl'];
+            $this->uid         = isset($this->result['uid'])           ? $this->result['uid']           : $this->uid;
+            $this->source_url  = isset($this->result['sourceUrl'])     ? $this->result['sourceUrl']     : $this->source_url;
+            $this->control_url = isset($this->result['subscriberUrl']) ? $this->result['subscriberUrl'] : $this->control_url;
+            $this->test        = isset($this->result['test'])          ? $this->result['test']          : $this->test;
         }
 
         $data = [
@@ -201,7 +197,6 @@ class MobbexSubscriber extends \Mobbex\Model
             'uid'              => $this->uid ?: '',
             'subscription_uid' => $this->subscription_uid ?: '',
             'state'            => $this->state ?: '',
-            'test'             => ($this->helper->test_mode === 'yes'),
             'name'             => $this->name ?: '',
             'email'            => $this->email ?: '',
             'phone'            => $this->phone ?: '',
@@ -215,45 +210,6 @@ class MobbexSubscriber extends \Mobbex\Model
             'next_execution'   => $this->next_execution ?: ''
         ];
         
-        return $this->uid && parent::save($data);
-    }
-
-    /**
-     * Update customer data in db.
-     */
-    public function update()
-    {
-        $this->result = $this->create(true);
-
-        if ($this->result['subscriber']) {
-            $this->uid            = $this->result['subscriber']['uid'];
-            $this->test           = $this->result['subscriber']['test'];
-            $this->name           = $this->result['subscriber']['customerData']['name'];
-            $this->email          = $this->result['subscriber']['customerData']['email'];
-            $this->phone          = $this->result['subscriber']['customerData']['phone'];
-            $this->identification = $this->result['subscriber']['customerData']['identification'];
-            $this->start_date     = $this->result['subscriber']['startDate'];
-        }
-
-        $data = [
-            'order_id'         => $this->order_id ?: '',
-            'uid'              => $this->uid ?: '',
-            'subscription_uid' => $this->subscription_uid ?: '',
-            'state'            => $this->state ?: '',
-            'test'             => ($this->helper->test_mode === 'yes'),
-            'name'             => $this->name ?: '',
-            'email'            => $this->email ?: '',
-            'phone'            => $this->phone ?: '',
-            'identification'   => $this->identification ?: '',
-            'customer_id'      => $this->customer_id ?: '',
-            'source_url'       => $this->source_url ?: '',
-            'control_url'      => $this->control_url ?: '',
-            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
-            'start_date'       => $this->start_date ?: '',
-            'last_execution'   => $this->last_execution ?: '',
-            'next_execution'   => $this->next_execution ?: ''
-        ];
-
         return $this->uid && parent::save($data);
     }
 
