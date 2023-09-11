@@ -326,7 +326,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $subscriber->next_execution = $dates['next'];
 
         //Save the subscriber with updated data
-        $subscriber->save();
+        $subscriber->save(false);
 
         // Save webhooks data in execution table
         $subscriber->saveExecution($data, $order_id, $subscriber->last_execution);
@@ -483,7 +483,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $customer_id
         );
 
-        //Save subscriber
+        // Save subscriber and sync with mobbex
         $result = $subscriber->save();
 
         if ($result)

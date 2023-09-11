@@ -459,7 +459,7 @@ class Mbbxs_Helper
                 $subscriber->control_url = isset($old_subscriber['subscriberUrl']) ? $old_subscriber['subscriberUrl'] : '';
 
                 //Save the data
-                $subscriber->update();
+                $subscriber->save(false);
 
                 //update metapost
                 update_post_meta($order->get_id(), 'mobbex_subscriber', '');
