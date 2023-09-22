@@ -71,8 +71,8 @@ class MobbexSubscription extends \Mobbex\Model {
         $this->helper = new \Mbbxs_Helper();
         $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
-        $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url', $product_id);
-        $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook', $product_id);
+        $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url');
+        $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook');
 
         parent::__construct(...func_get_args());
     }

@@ -67,17 +67,13 @@ class Mbbxs_Helper
         return $token == $this->generate_token();
     }
 
-    public function get_api_endpoint($endpoint, $product_id)
+    public function get_api_endpoint($endpoint)
     {
         $query = [
             'mobbex_token' => $this->generate_token(),
             'platform' => "woocommerce",
             "version" => MOBBEX_SUBS_VERSION,
         ];
-
-        if ($product_id) {
-            $query['mobbex_product_id'] = $product_id;
-        }
 
         $query['wc-api'] = $endpoint;
 
