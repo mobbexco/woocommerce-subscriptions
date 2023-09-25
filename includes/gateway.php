@@ -251,8 +251,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         //Compatibility with 2.x subscriptions
         if($id){
-        $order = wc_get_order($id);
-        $this->helper->maybe_migrate_subscriptions($order);
+            $order = wc_get_order($id);
+            $this->helper->maybe_migrate_subscriptions($order);
         }
 
         $subscription = \MobbexSubscription::get_by_uid($data['subscription']['uid']);
@@ -540,24 +540,16 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     public function update_state_endpoint($subscription)
     {
         try {
-            // Instance wordpress db class
-            global $wpdb;
-
             // Gets subscription status, order id and subscriber
             $status     = $subscription->get_status();
             $order_id   = $subscription->get_parent()->get_id();
-            $subscriber = $wpdb->get_results(
-                "SELECT * FROM {$wpdb->prefix}mobbex_subscriber
-                 WHERE order_id='$order_id'"
-                 );
-            
-            // Update subscriber state through the corresponding endpoint
-            $this->helper->update_subscription_status($subscriber[0]->subscription_uid, $subscriber[0]->uid, $status);
+            $subscriber = new MobbexSubscriber($order_id);
 
+            // Update subscriber state through the corresponding endpoint
+            $subscriber->update_subscription_status($status);
+            
         } catch (\Exception $e) {
-            $msg = $e->getMessage();
-            $subscription->add_order_note(__('Error al modificar el estado de subscriptor: ', 'mobbex-subs-for-woocommerce') . $msg);
+            $subscription->add_order_note(__('Error al modificar el estado de subscriptor: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
         }
     }
 }
-
