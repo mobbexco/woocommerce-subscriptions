@@ -5,8 +5,6 @@ define('MOBBEX_SUBSCRIPTION', 'https://api.mobbex.com/p/subscriptions/{id}/subsc
 define('MOBBEX_CREATE_SUBSCRIPTION', 'https://api.mobbex.com/p/subscriptions');
 define('MOBBEX_MODIFY_SUBSCRIPTION', 'https://api.mobbex.com/p/subscriptions/{id}');
 define('MOBBEX_CREATE_SUBSCRIBER', 'https://api.mobbex.com/p/subscriptions/{id}/subscriber');
-define('MOBBEX_SUSPEND_SUBSCRIBER', 'https://api.mobbex.com/p/subscriptions/{uid}/subscriber/{sid}/action/suspend');
-define('MOBBEX_ACTIVATE_SUBSCRIBER', 'https://api.mobbex.com/p/subscriptions/{uid}/subscriber/{sid}/action/activate');
 define('MOBBEX_RETRY_EXECUTION', 'https://api.mobbex.com/p/subscriptions/{id}/subscriber/{sid}/execution/{eid}/action/retry');
 
 // Coupon URL
