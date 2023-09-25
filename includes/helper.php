@@ -313,65 +313,6 @@ class Mbbxs_Helper
     }
 
     /**
-     * Update subscription state of a subscriber in Mobbex console
-     * 
-     * @param string $subscription_uid subscription identification
-     * @param string $subscriber_uid   subscriber identification
-     * @param string $status subscription order status
-     * 
-     * @return bool $response
-     * 
-     */
-    public function update_subscription_status($subscription_uid, $subscriber_uid, $status)
-    {
-        // Checks if plugin is ready
-        if (!$this->is_ready()) {
-            throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
-        }
-
-        // Checks that params aren`t empty
-        if (empty($subscription_uid) || empty($subscriber_uid) || empty($status)) {
-            throw new Exception(__(
-                'Empty Subscription UID, Subscriber UID or Subscription status',
-                'mobbex-subs-for-woocommerce'
-            ));
-        }
-
-        // Send an activate endpoint to Mobbex api.
-        // Status must have changed from any status to active
-        if ($status == 'active')
-            $response = wp_remote_post(str_replace(['{uid}', '{sid}'], 
-            [$subscription_uid, $subscriber_uid], MOBBEX_ACTIVATE_SUBSCRIBER), 
-            [
-                'headers' => [
-                    'x-api-key'      => $this->api_key,
-                    'x-access-token' => $this->access_token,
-                ]
-            ]);
-
-        // Send an suspend endpoint to Mobbex api
-        // Status must have changed from any status to on-hold
-        if ($status == 'on-hold')
-            $response = wp_remote_post(str_replace(['{uid}', '{sid}'],
-            [$subscription_uid, $subscriber_uid], MOBBEX_SUSPEND_SUBSCRIBER), 
-            [
-                'headers' => [
-                    'x-api-key'      => $this->api_key,
-                    'x-access-token' => $this->access_token,
-                ]
-            ]);
-
-            if (!is_wp_error($response)) {
-                $response = json_decode($response['body'], true);
-    
-                if (!empty($response['result']))
-                    return true;
-            }
-    
-            throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
-    }
-
-    /**
      * Update order total.
      * 
      * @param WC_Order|WC_Subscription $order
