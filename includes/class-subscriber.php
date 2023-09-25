@@ -259,4 +259,51 @@ class MobbexSubscriber extends \Mobbex\Model
 
         return !empty($result[0]);
     }
+
+    /**
+     * Update subscription state of a subscriber in Mobbex console
+     * 
+     * @param string $status subscription order status
+     * 
+     * @return bool $response
+     * 
+     */
+    public function update_subscription_status($status)
+    {
+        // Checks if plugin is ready
+        if (!$this->helper->is_ready()) {
+            throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
+        }
+
+        // Checks that params aren`t empty
+        if (empty($this->subscription_uid) || empty($this->uid) || empty($status)) {
+            throw new Exception(__(
+                'Empty Subscription UID, Subscriber UID or Subscription status',
+                'mobbex-subs-for-woocommerce'
+            ));
+        }
+
+        // Status must have changed from any status to active
+        if ($status == 'active')
+            $uri =  str_replace([
+            '{uid}', '{sid}'], 
+            [$this->subscription_uid, $this->uid],
+            'subscriptions/{uid}/subscriber/{sid}/action/activate'
+        );
+
+        // Status must have changed from any status to on-hold
+        if ($status == 'on-hold')
+            $uri =  str_replace([
+                '{uid}', '{sid}'], 
+                [$this->subscription_uid, $this->uid],
+                'subscriptions/{uid}/subscriber/{sid}/action/suspend'
+            );
+
+        // Send endpoint to Mobbex api
+        $this->api->request([
+            "method" => "POST",
+            'uri'    => $uri
+        ]);
+
+    }
 }
