@@ -546,7 +546,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $subscriber = new MobbexSubscriber($order_id);
 
             // Update subscriber state through the corresponding endpoint
-            $subscriber->update_subscription_status($status);
+            $subscriber->update_status($status);
             
         } catch (\Exception $e) {
             $subscription->add_order_note(__('Error al modificar el estado de subscriptor: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
