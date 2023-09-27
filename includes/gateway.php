@@ -249,10 +249,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         //Compatibility with 2.x subscriptions
         if($id){
             $order = wc_get_order($id);
-
-        // If there is an order, it stores the order subscriptions in the table  
-        if($order)
-            $this->helper->maybe_migrate_subscriptions($order);
+            // If there is an order, it stores the order subscriptions in the table  
+            if($order)
+                $this->helper->maybe_migrate_subscriptions($order);
         }
 
         $subscription = \MobbexSubscription::get_by_uid($data['subscription']['uid']);
