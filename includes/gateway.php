@@ -56,7 +56,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         add_action('woocommerce_scheduled_subscription_payment_' . $this->id, [$this, 'scheduled_subscription_payment'], 10, 2);
 
         // Update subscription status
-        add_action('woocommerce_subscription_status_updated', [$this, 'update_state_endpoint']);
+        add_action('woocommerce_subscription_status_updated', [$this, 'update_subscriber_state']);
 
         // Only if the plugin is enabled
         if (!$this->error && $this->helper->is_ready()) {
@@ -537,19 +537,25 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * 
      * @param WC_Subscription $subscription
      */
-    public function update_state_endpoint($subscription)
+    public function update_subscriber_state($subscription)
     {
         try {
-            // Gets subscription status, order id and subscriber
-            $status     = $subscription->get_status();
-            $order_id   = $subscription->get_parent()->get_id();
-            $subscriber = new MobbexSubscriber($order_id);
+            // Gets subscription status, order id
+            $status   = $subscription->get_status();
+            $order_id = $subscription->get_parent()->get_id();
+
+            // Checks that subscription or order id is nor null
+            if (!isset($subscription, $order_id))
+                throw new Exception(__('Mobbex error: Subscription or order id is null', 'mobbex-subs-for-woocommerce')) ;
+
+            // Get susbscriber
+            $subscriber = new \MobbexSubscriber($order_id);
 
             // Update subscriber state through the corresponding endpoint
             $subscriber->update_status($status);
             
         } catch (\Exception $e) {
-            $subscription->add_order_note(__('Error al modificar el estado de subscriptor: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
+            $subscription->add_order_note(__('Error modifying subscriber status: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
         }
     }
 }

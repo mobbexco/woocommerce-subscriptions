@@ -293,12 +293,10 @@ class MobbexSubscriber extends \Mobbex\Model
         else
             return;
 
-        $uri = "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action";
-
         // Send endpoint to Mobbex api
         $this->api->request([
             "method" => "POST",
-            'uri'    => $uri
+            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
         ]);
 
     }
