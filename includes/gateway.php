@@ -55,6 +55,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
         add_action('woocommerce_scheduled_subscription_payment_' . $this->id, [$this, 'scheduled_subscription_payment'], 10, 2);
 
+        // Update subscription status
+        add_action('woocommerce_subscription_status_updated', [$this, 'update_subscriber_state']);
+
         // Only if the plugin is enabled
         if (!$this->error && $this->helper->is_ready()) {
             add_action('woocommerce_api_mobbex_subs_return_url', [$this, 'mobbex_subs_return_url']);
@@ -249,6 +252,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         //Compatibility with 2.x subscriptions
         if($id){
             $order = wc_get_order($id);
+
             // If there is an order, it stores the order subscriptions in the table  
             if($order)
                 $this->helper->maybe_migrate_subscriptions($order);
@@ -528,5 +532,33 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         return $result;
     }
-}
 
+    /**
+     * Send the corresponding endpoint to the Mobbex API to update the subscription status
+     * 
+     * Called when the subscription status is changed.
+     * 
+     * @param WC_Subscription $subscription
+     */
+    public function update_subscriber_state($subscription)
+    {
+        try {
+            // Checks that subscription or order id is nor null
+            if (!$subscription || !$subscription->get_parent())
+                throw new \Exception(__('Mobbex error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
+
+            // Gets subscription status, order id
+            $status   = $subscription->get_status();
+            $order_id = $subscription->get_parent()->get_id();
+
+            // Get susbscriber
+            $subscriber = new \MobbexSubscriber($order_id);
+
+            // Update subscriber state through the corresponding endpoint
+            $subscriber->update_status($status);
+            
+        } catch (\Exception $e) {
+            $subscription->add_order_note(__('Error modifying subscriber status: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
+        }
+    }
+}
