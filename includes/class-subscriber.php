@@ -265,7 +265,7 @@ class MobbexSubscriber extends \Mobbex\Model
      * 
      * @param string $status subscription order status
      * 
-     * @return bool $response
+     * @return bool $response api response
      * 
      */
     public function update_status($status)
