@@ -56,7 +56,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         add_action('woocommerce_scheduled_subscription_payment_' . $this->id, [$this, 'scheduled_subscription_payment'], 10, 2);
 
         // Update subscription status
-        add_action('woocommerce_subscription_status_updated', [$this, 'update_subscriber_state']);
+        add_action('woocommerce_subscription_status_active', [$this, 'update_subscriber_state']);
+        add_action('woocommerce_subscription_status_cancelled', [$this, 'update_subscriber_state']);
 
         // Only if the plugin is enabled
         if (!$this->error && $this->helper->is_ready()) {
@@ -543,9 +544,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     public function update_subscriber_state($subscription)
     {
         try {
-            // Check that it is not a renewal process.
-            if ($_POST["wc_order_action"] == "wcs_process_renewal")
-                return;
                 
             // Checks that subscription or order id is nor null
             if (!$subscription || !$subscription->get_parent())
