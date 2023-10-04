@@ -286,7 +286,7 @@ class MobbexSubscriber extends \Mobbex\Model
         $action = '';
 
         // Status must have changed from any status to active or to on-hold
-        if ($status === 'on-hold')
+        if ($status === 'cancelled')
             $action = 'suspend';
         elseif ($status === 'active')
             $action = 'activate';
