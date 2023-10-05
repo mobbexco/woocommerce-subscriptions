@@ -56,7 +56,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         add_action('woocommerce_scheduled_subscription_payment_' . $this->id, [$this, 'scheduled_subscription_payment'], 10, 2);
 
         // Update subscription status
-        add_action('woocommerce_subscription_status_updated', [$this, 'update_subscriber_state']);
+        add_action('woocommerce_subscription_status_active', [$this, 'update_subscriber_state']);
+        add_action('woocommerce_subscription_status_cancelled', [$this, 'update_subscriber_state']);
 
         // Only if the plugin is enabled
         if (!$this->error && $this->helper->is_ready()) {
@@ -543,6 +544,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     public function update_subscriber_state($subscription)
     {
         try {
+                
             // Checks that subscription or order id is nor null
             if (!$subscription || !$subscription->get_parent())
                 throw new \Exception(__('Mobbex error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
@@ -551,7 +553,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $status   = $subscription->get_status();
             $order_id = $subscription->get_parent()->get_id();
 
-            // Get susbscriber
+                        // Get susbscriber
             $subscriber = new \MobbexSubscriber($order_id);
 
             // Update subscriber state through the corresponding endpoint
