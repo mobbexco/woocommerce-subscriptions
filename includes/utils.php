@@ -13,4 +13,4 @@ define('MOBBEX_SUBS_COUPON', 'https://mobbex.com/console/{entity.uid}/operations
 define('MOBBEX_SUBS_WC_GATEWAY', 'WC_Gateway_Mbbx_Subs');
 define('MOBBEX_SUBS_WC_GATEWAY_ID', 'mobbex_subs');
 
-define('MOBBEX_SUBS_VERSION', '3.1.0');
+define('MOBBEX_SUBS_VERSION', '3.1.1');
