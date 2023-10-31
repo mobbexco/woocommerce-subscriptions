@@ -21,7 +21,7 @@ abstract class Model
         //Wp global db connection
         $this->db = $GLOBALS['wpdb'];
         //Errors logger
-        $this->logger = new \Mbbxs_Logger();
+        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
         //Load the model
         $this->load($props);
         //Fill properties
@@ -87,7 +87,7 @@ abstract class Model
 
             if (empty($wpdb->last_error))
                 return true;
-            $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
+            $this->logger->log('debug', 'Abstract Model save error: ' . $wpdb->last_error, $data);
             return false;
 
         } else {
@@ -95,7 +95,7 @@ abstract class Model
 
             if (empty($wpdb->last_error))
                 return true;
-            $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
+            $this->logger->log('debug', 'Abstract Model save error: ' . $wpdb->last_error, $data);
             return false;
         }
     }

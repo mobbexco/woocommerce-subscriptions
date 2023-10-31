@@ -10,7 +10,7 @@
  */
 
 require_once 'includes/utils.php';
-require_once 'includes/logger.php';
+require_once  WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Logger.php';
 require_once !class_exists('Mobbex\Model') ? 'includes/lib/class-api.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/class-api.php';
 require_once !class_exists('Mobbex\Model') ? 'includes/lib/model.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/model.php';
 require_once 'includes/class-subscription.php';
