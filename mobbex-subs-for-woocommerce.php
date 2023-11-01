@@ -9,7 +9,7 @@
  * Copyright: 2021 mobbex.com
  */
 
-require_once 'includes/utils/definitions.php';
+require_once 'utils/definitions.php';
 require_once  WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Logger.php';
 require_once !class_exists('Mobbex\Model') ? 'includes/lib/class-api.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/class-api.php';
 require_once !class_exists('Mobbex\Model') ? 'includes/lib/model.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/model.php';
@@ -19,6 +19,9 @@ require_once 'includes/class-subscriber.php';
 class Mbbx_Subs_Gateway
 {
     public static $version = '3.1.1';
+
+    /** @var \Mobbex\WP\Checkout\Model\Logger */
+    public static $logger;
 
     /**
      * @var Mbbxs_Helper
@@ -48,6 +51,7 @@ class Mbbx_Subs_Gateway
 
     public function init()
     {
+        
         try {
             Mbbx_Subs_Gateway::check_dependencies();
             Mbbx_Subs_Gateway::load_textdomain();
@@ -60,15 +64,16 @@ class Mbbx_Subs_Gateway
         } catch (Exception $e) {
             Mbbx_Subs_Gateway::$errors[] = $e->getMessage();
         }
-
+        
         if (count(Mbbx_Subs_Gateway::$errors)) {
             foreach (Mbbx_Subs_Gateway::$errors as $error) {
                 self::$helper::notice('error', $error);
             }
-
+            
             return;
         }
-
+        
+        self::$logger    = new \Mobbex\WP\Checkout\Model\Logger();
         // Always
         Mbbx_Subs_Gateway::load_gateway();
         Mbbx_Subs_Gateway::add_gateway();
