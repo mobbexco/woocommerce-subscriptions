@@ -107,7 +107,11 @@ class Mbbx_Subs_Gateway
         }
 
         if (!function_exists('WC')) {
-            Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires WooCommerce to be activated', 'mobbex-subs-for-woocommerce');
+            Mbbx_Subs_Gateway::$errors[] = __('Mobbex Subscription requires WooCommerce to be activated', 'mobbex-subs-for-woocommerce');
+        }
+
+        if(!class_exists('MobbexGateway')) {
+            Mbbx_Subs_Gateway::$errors[] = __('Mobbex Subscription requires Mobbex for WooCommerce to be activated', 'mobbex-subs-for-woocommerce');
         }
 
         if (!is_ssl()) {
@@ -115,18 +119,18 @@ class Mbbx_Subs_Gateway
         }
 
         if (version_compare(WC_VERSION, '2.6', '<')) {
-            Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires WooCommerce version 2.6 or greater', 'mobbex-subs-for-woocommerce');
+            Mbbx_Subs_Gateway::$errors[] = __('Mobbex Subscription requires WooCommerce version 2.6 or greater', 'mobbex-subs-for-woocommerce');
         }
 
         if (!function_exists('curl_init')) {
-            Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires the cURL PHP extension to be installed on your server', 'mobbex-subs-for-woocommerce');
+            Mbbx_Subs_Gateway::$errors[] = __('Mobbex Subscription requires the cURL PHP extension to be installed on your server', 'mobbex-subs-for-woocommerce');
         }
 
         if (!function_exists('json_decode')) {
-            Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires the JSON PHP extension to be installed on your server', 'mobbex-subs-for-woocommerce');
+            Mbbx_Subs_Gateway::$errors[] = __('Mobbex Subscription requires the JSON PHP extension to be installed on your server', 'mobbex-subs-for-woocommerce');
         }
 
-        $openssl_warning = __('Mobbex requires OpenSSL >= 1.0.1 to be installed on your server', 'mobbex-subs-for-woocommerce');
+        $openssl_warning = __('Mobbex Subscription requires OpenSSL >= 1.0.1 to be installed on your server', 'mobbex-subs-for-woocommerce');
         if (!defined('OPENSSL_VERSION_TEXT')) {
             Mbbx_Subs_Gateway::$errors[] = $openssl_warning;
         }
@@ -294,13 +298,21 @@ class Mbbx_Subs_Gateway
 
 function install_mobbex_subs_tables()
 {
-    global $wpdb;
-    // Get install query from sql file
-    $querys = explode('/', str_replace('PREFIX_', $wpdb->prefix, file_get_contents(WP_PLUGIN_DIR . '/woocommerce-mobbex-subs/setup/install.sql'))); 
-    //Execute the querys
-    foreach ($querys as $query) {
-        $wpdb->get_results($query);
-    }
+        //Load Mobbex models in sdk
+        \Mobbex\Platform::loadModels(
+            new \Mobbex\WP\Checkout\Model\Cache(),
+            new \Mobbex\WP\Checkout\Model\Db
+        );
+        
+        foreach (['subscription', 'subscriber'] as  $tableName) {
+            // Create the table or alter table if it exists
+            $table = new \Mobbex\Model\Table($tableName);
+            // If table creation fails, return false
+            if (!$table->result)
+                return false;
+        }
+        
+        return true;
 }
 
 $mbbx_subs_gateway = new Mbbx_Subs_Gateway;
