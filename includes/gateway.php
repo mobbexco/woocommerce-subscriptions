@@ -1,5 +1,4 @@
 <?php
-require_once 'utils.php';
 
 class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 {
@@ -52,7 +51,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if (!$this->helper->is_ready()) {
             $this->error = true;
-            Mbbxs_Helper::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
+            $this->logger->notice(__('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
         }
 
         // Always Required
