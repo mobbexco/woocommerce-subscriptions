@@ -1,5 +1,5 @@
 <?php
-require_once 'utils.php';
+require_once 'utils/definitions.php';
 
 /**
  * Mirrors a few functions in WC_Cart class to work for subscriptions.
