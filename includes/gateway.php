@@ -203,7 +203,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     {
         global $woocommerce;
 
-        $this->logger->log('debug', 'gateway > process_payment | Creating payment', compact('order_id'));
+        $this->logger->log('debug', 'Mobbex Subscription gateway > process_payment | Creating payment', compact('order_id'));
 
         if ($this->error)
             return ['result' => 'error'];

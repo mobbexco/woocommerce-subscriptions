@@ -87,7 +87,7 @@ abstract class Model
 
             if (empty($wpdb->last_error))
                 return true;
-            $this->logger->log('debug', 'Abstract Model save error: ' . $wpdb->last_error, $data);
+            $this->logger->log('debug', 'Mobbex Subscription Abstract Model save error: ' . $wpdb->last_error, $data);
             return false;
 
         } else {
@@ -95,7 +95,7 @@ abstract class Model
 
             if (empty($wpdb->last_error))
                 return true;
-            $this->logger->log('debug', 'Abstract Model save error: ' . $wpdb->last_error, $data);
+            $this->logger->log('debug', 'Mobbex Subscription Abstract Model save error: ' . $wpdb->last_error, $data);
             return false;
         }
     }
