@@ -10,11 +10,13 @@
  */
 
 require_once 'utils/definitions.php';
-require_once  WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Logger.php';
-require_once !class_exists('Mobbex\Model') ? 'includes/lib/class-api.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/class-api.php';
-require_once !class_exists('Mobbex\Model') ? 'includes/lib/model.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/model.php';
+require_once 'includes/lib/class-api.php';
+require_once 'includes/lib/model.php';
 require_once 'includes/class-subscription.php';
 require_once 'includes/class-subscriber.php';
+
+// Checkout module class
+require_once  WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Logger.php';
 
 class Mbbx_Subs_Gateway
 {
