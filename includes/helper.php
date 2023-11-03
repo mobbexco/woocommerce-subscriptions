@@ -10,6 +10,9 @@ class Mbbxs_Helper
     /** @var Mobbex\Api */
     public $api;
 
+    /** @var Mobbex\Repository */
+    public $repository;
+
     public function __construct()
     {
         // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
@@ -19,7 +22,9 @@ class Mbbxs_Helper
             $key = str_replace('-', '_', $key);
             $this->$key = $value;
         }
-        $this->api = new \Mobbex\Api();
+        // Instance sdk classes
+        $this->api        = new \Mobbex\Api();
+        $this->repository = new \Mobbex\Repository();
     }
     
     public static function notice($type, $msg)
@@ -57,21 +62,11 @@ class Mbbxs_Helper
         <div id="mbbx-button"></div>
         <?php
     }
-    
-    public function generate_token()
-    {
-        return md5($this->api_key . '|' . $this->access_token);
-    }
-
-    public function valid_mobbex_token($token)
-    {
-        return $token == $this->generate_token();
-    }
 
     public function get_api_endpoint($endpoint)
     {
         $query = [
-            'mobbex_token' => $this->generate_token(),
+            'mobbex_token' => $this->repository::generateToken(),
             'platform' => "woocommerce",
             "version" => MOBBEX_SUBS_VERSION,
         ];

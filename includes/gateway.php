@@ -6,11 +6,14 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     /** @var \Mobbex\Api */
     public $api;
 
-    /** @var Mbbxs_Helper */
-    public $helper;
-
+    /** @var \Mobbex\Repository */
+    public $repository;
+    
     /** @var \Mobbex\WP\Checkout\Model\Logger */
     public $logger;
+
+    /** @var Mbbxs_Helper */
+    public $helper;
 
     public $supports = array(
         'products',
@@ -25,8 +28,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function __construct()
     {
-        $this->id = MOBBEX_SUBS_WC_GATEWAY_ID;
-        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
+        $this->id         = MOBBEX_SUBS_WC_GATEWAY_ID;
+        $this->repository = new \Mobbex\Repository();
+        $this->logger     = new \Mobbex\WP\Checkout\Model\Logger();
 
         $this->method_title = __('Mobbex Subscriptions', 'mobbex-subs-for-woocommerce');
         $this->method_description = __('Mobbex Payment Gateway redirects customers to Mobbex to enter their payment information.', 'mobbex-subs-for-woocommerce');
@@ -264,7 +268,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     {
         $status = $data['payment']['status']['code'];
 
-        if (empty($status) || empty($token) || !$type || empty($type) || !$this->helper->valid_mobbex_token($token)) {
+        if (empty($status) || empty($token) || !$type || empty($type) || !$this->repository::validateToken($token)) {
             return false;
         }
 
@@ -370,7 +374,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $error = "No se pudo validar la transacción. Contacte con el administrador de su sitio";
         }
 
-        if (!$this->helper->valid_mobbex_token($token)) {
+        if (!$this->repository::validateToken($token)) {
             $error = "Token de seguridad inválido.";
         }
 
