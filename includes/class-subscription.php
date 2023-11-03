@@ -2,7 +2,7 @@
 
 class MobbexSubscription extends \Mobbex\Model {
 
-    /** @var MobbexApi */
+    /** @var Mobbex\Api */
     public $api;
 
     public $product_id;
@@ -68,8 +68,8 @@ class MobbexSubscription extends \Mobbex\Model {
         $free_trial  = null,
         $limit       = null
     ) {
+        $this->api    = new \Mobbex\Api;
         $this->helper = new \Mbbxs_Helper();
-        $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
         $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url');
         $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook');
@@ -117,7 +117,7 @@ class MobbexSubscription extends \Mobbex\Model {
         ];
 
         try {
-            return $this->api->request($data);
+            return $this->api::request($data);
         } catch (\Exception $e) {
             $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $data);
         }

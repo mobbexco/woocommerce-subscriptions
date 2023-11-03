@@ -7,6 +7,9 @@ class Mbbxs_Helper
         'y' => 'year'
     ];
 
+    /** @var Mobbex\Api */
+    public $api;
+
     public function __construct()
     {
         // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
@@ -16,6 +19,7 @@ class Mbbxs_Helper
             $key = str_replace('-', '_', $key);
             $this->$key = $value;
         }
+        $this->api = new \Mobbex\Api();
     }
     
     public static function notice($type, $msg)
@@ -243,15 +247,15 @@ class Mbbxs_Helper
             'eid' => $execution_id,
         ];
 
-        // Retry execution
-        $response = wp_remote_get(str_replace(['{id}', '{sid}', '{eid}'], $params, MOBBEX_RETRY_EXECUTION), [
-            'headers' => [
-                'cache-control' => 'no-cache',
-                'content-type' => 'application/json',
-                'x-api-key' => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
-        ]);
+        // Request data 
+        $data = [
+            'method' => 'GET',
+            'params' => $params,
+            'uri'    => "subscriptions/{$params['id']}/subscriber/{$params['sid']}/execution/{$params['eid']}/action/retry",
+        ];
+
+        // Retry excecution
+        $response = $this->api::request($data);
 
         if (!is_wp_error($response)) {
             $response = json_decode($response['body'], true);
@@ -282,18 +286,14 @@ class Mbbxs_Helper
             throw new Exception(__('Empty Subscription UID or params', 'mobbex-subs-for-woocommerce'));
         }
 
-        // Modify Subscription
-        $response = wp_remote_post(str_replace('{id}', $subscription_uid, MOBBEX_MODIFY_SUBSCRIPTION), [
-            'headers' => [
-                'cache-control'  => 'no-cache',
-                'content-type'   => 'application/json',
-                'x-api-key'      => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
+         // Request data 
+        $data = [
+            'method' => 'POST',
+            'body'   => $params,
+            'uri'    => "subscriptions/{$subscription_uid}",
+        ];
 
-            'body'        => json_encode($params),
-            'data_format' => 'body',
-        ]);
+        $response = $this->api::request($data);
 
         if (!is_wp_error($response)) {
             $response = json_decode($response['body'], true);

@@ -63,7 +63,7 @@ class MobbexSubscriber extends \Mobbex\Model
     ) {
         $this->helper = new \Mbbxs_Helper();
         $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
-        $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
+        $this->api    = new \Mobbex\Api;
 
         parent::__construct(...func_get_args());
     }
@@ -80,7 +80,7 @@ class MobbexSubscriber extends \Mobbex\Model
         $order        = wc_get_order($this->order_id);
 
         try {
-            return $this->api->request([
+            return $this->api::request([
                 'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
                 'method' => 'POST',
                 'body'   => [
@@ -231,7 +231,7 @@ class MobbexSubscriber extends \Mobbex\Model
         ];
 
         try {
-            return $this->api->request($data);
+            return $this->api::request($data);
         } catch (\Exception $e) {
             $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), []);
 
@@ -295,7 +295,7 @@ class MobbexSubscriber extends \Mobbex\Model
             return;
 
         // Send endpoint to Mobbex api
-        $this->api->request([
+        $this->api::request([
             "method" => "POST",
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
         ]);

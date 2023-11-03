@@ -2,6 +2,10 @@
 
 class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 {
+    
+    /** @var \Mobbex\Api */
+    public $api;
+
     /** @var Mbbxs_Helper */
     public $helper;
 
@@ -40,9 +44,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         $this->test_mode = ($this->get_option('test_mode') === 'yes');
         $this->embed = ($this->get_option('embed') === 'yes');
-
-        $this->api_key = $this->get_option('api-key');
-        $this->access_token = $this->get_option('access-token');
 
         $this->send_subscriber_email = ($this->get_option('send_subscriber_email') === 'yes');
 
