@@ -5,6 +5,9 @@ class MobbexSubscriber extends \Mobbex\Model
     /** @var \Mobbex\Api */
     public $api;
 
+    /** @var \Mobbex\Repository */
+    public $repository;
+
     public $order_id;
     public $subscription_uid;
     public $uid;
@@ -122,7 +125,7 @@ class MobbexSubscriber extends \Mobbex\Model
 
             $this->addresses[] = [
                 'type'         => $type,
-                'country'      => $this->convert_country_code($object->$country()),
+                'country'      => $this->repository->convertCountryCode($object->$country()),
                 'state'        => $object->$state(),
                 'city'         => $object->$city(),
                 'zipCode'      => $object->$postcode(),
@@ -131,20 +134,6 @@ class MobbexSubscriber extends \Mobbex\Model
                 'streetNotes'  => $object->$address_2()
             ];
         }
-    }
-
-    /**
-     * Converts the WooCommerce country codes to 3-letter ISO codes.
-     * 
-     * @param string $code 2-Letter ISO code.
-     * 
-     * @return string|null
-     */
-    public function convert_country_code($code)
-    {
-        $countries = include('utils/iso-3166.php') ?: [];
-
-        return isset($countries[$code]) ? $countries[$code] : null;
     }
 
     /**
