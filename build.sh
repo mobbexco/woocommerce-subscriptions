@@ -9,6 +9,11 @@ elif type rsync > /dev/null; then
     rsync -r --exclude={'.git','.vscode','woocommerce-mobbex-subs','.gitignore','build.sh','readme.md','*.zip'} . ./woocommerce-mobbex-subs
 fi
 
+# Install dependencies
+cd woocommerce-mobbex-subs
+composer update
+cd ..
+
 # Compress
 if type 7z > /dev/null; then
     7z a -tzip "wcs-mobbex.$VER.zip" woocommerce-mobbex-subs
