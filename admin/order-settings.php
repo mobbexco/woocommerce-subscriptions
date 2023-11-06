@@ -1,14 +1,17 @@
 <?php
 
-class Mbbx_Subs_Order_Settings
+class Mbbxs_Subs_Order_Settings
 {
     /** @var Mbbxs_Helper */
     public static $helper;
+    /** @var Mbbxs_Subs_Order */
+    public static $order_helper;
 
     public static function init()
     {
         // Load helper
         self::$helper = new Mbbxs_Helper;
+        self::$order_helper = new Mbbxs_Subs_Order;
 
         // Add subscription panel to Order admin page
         add_action('add_meta_boxes', [self::class, 'add_subscription_panel']);
@@ -35,7 +38,7 @@ class Mbbx_Subs_Order_Settings
         global $post;
 
         // Only show if order has a subscription
-        if ($post->post_type == 'shop_order' && self::$helper->has_any_subscription($post->ID))
+        if ($post->post_type == 'shop_order' && self::$order_helper->has_any_subscription($post->ID))
             add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
     }
 
@@ -50,7 +53,7 @@ class Mbbx_Subs_Order_Settings
         global $post;
 
         // Only add actions if order has a subscription
-        if (is_admin() && $post && self::$helper->has_any_subscription($post->ID))
+        if (is_admin() && $post && self::$order_helper->has_any_subscription($post->ID))
             $actions['mbbxs_modify_total'] = __('Modificar monto de la suscripción', 'mobbex-subs-for-woocommerce');
 
         return $actions;
@@ -155,7 +158,7 @@ class Mbbx_Subs_Order_Settings
             $execution_id = $_REQUEST['execution_id'];
 
             // Retry execution
-            $result = self::$helper->retry_execution($order_id, $execution_id);
+            $result = self::$order_helper->retry_execution($order_id, $execution_id);
         } catch (\Exception $e) {
             $msg = $e->getMessage();
         }
@@ -186,10 +189,10 @@ class Mbbx_Subs_Order_Settings
                 $subscription     = get_post_meta($order_id, 'mobbex_subscription', true);
                 $subscription_uid = !empty($subscription['uid']) ? $subscription['uid'] : get_post_meta($order_id, 'mobbex_subscription_uid', true);
 
-                $result = self::$helper->modify_subscription($subscription_uid, ['total' => $new_total]);
+                $result = (new \MobbexSubscription)->modify_subscription($subscription_uid, ['total' => $new_total]);
 
                 if ($result) {
-                    self::$helper->update_order_total($order, $new_total);
+                    self::$order_helper->update_order_total($order, $new_total);
                     $order->add_order_note(__('Monto de suscripción modificado: $' , 'mobbex-subs-for-woocommerce') . $new_total);
                 }
             }
