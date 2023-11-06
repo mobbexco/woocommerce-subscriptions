@@ -10,13 +10,18 @@
  */
 
 require_once 'utils/definitions.php';
-require_once 'includes/lib/model.php';
-require_once 'includes/class-subscription.php';
-require_once 'includes/class-subscriber.php';
+require_once 'Models/model.php';
+require_once 'Models/class-subscription.php';
+require_once 'Models/class-subscriber.php';
+require_once 'Helper/Order.php';
 
-// Checkout module class
-require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/vendor/autoload.php';
+// Checkout module classes
 require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Logger.php';
+require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Cache.php';
+require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Db.php';
+
+// Sdk classes
+require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/vendor/autoload.php';
 
 class Mbbx_Subs_Gateway
 {
@@ -75,7 +80,7 @@ class Mbbx_Subs_Gateway
             return;
         }
         
-        self::$logger    = new \Mobbex\WP\Checkout\Model\Logger();
+        self::$logger = new \Mobbex\WP\Checkout\Model\Logger();
         // Always
         Mbbx_Subs_Gateway::load_gateway();
         Mbbx_Subs_Gateway::add_gateway();
@@ -217,7 +222,7 @@ class Mbbx_Subs_Gateway
     private static function load_order_settings()
     {
         require_once plugin_dir_path(__FILE__) . 'includes/admin/order-settings.php';
-        Mbbx_Subs_Order_Settings::init();
+        Mbbxs_Subs_Order_Settings::init();
     }
 
     public function add_action_links($links)
@@ -310,7 +315,7 @@ function install_mobbex_subs_tables()
             new \Mobbex\WP\Checkout\Model\Db
         );
         
-        foreach (['subscription', 'subscriber'] as  $tableName) {
+        foreach (['subscription', 'subscriber', 'execution'] as  $tableName) {
             // Create the table or alter table if it exists
             $table = new \Mobbex\Model\Table($tableName);
             // If table creation fails, return false
