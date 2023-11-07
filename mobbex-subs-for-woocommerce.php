@@ -10,9 +10,9 @@
  */
 
 require_once 'utils/definitions.php';
-require_once 'Models/model.php';
-require_once 'Models/class-subscription.php';
-require_once 'Models/class-subscriber.php';
+require_once 'Model/model.php';
+require_once 'Model/class-subscription.php';
+require_once 'Model/class-subscriber.php';
 require_once 'Helper/Order.php';
 
 // Checkout module classes
@@ -114,7 +114,7 @@ class Mbbx_Subs_Gateway
      */
     private static function check_dependencies()
     {
-        if (!class_exists('WooCommerce')) {
+if (!class_exists('WooCommerce')) {
             Mbbx_Subs_Gateway::$errors[] = __('WooCommerce needs to be installed and activated.', 'mobbex-subs-for-woocommerce');
         }
 

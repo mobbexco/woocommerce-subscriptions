@@ -82,6 +82,14 @@ class MobbexSubscriber extends \Mobbex\Model
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
+        \Mobbex\Modules\Subscriber(
+            $this->reference,
+            $this->uid,
+            $this->subscription_uid,
+            $dates['current'],
+            
+
+        )
         try {
             return $this->api::request([
                 'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
