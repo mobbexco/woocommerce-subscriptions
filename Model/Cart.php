@@ -8,10 +8,14 @@ class Mbbxs_Cart
     /** @var Mbbxs_Helper */
     public static $helper;
 
+    /** @var Mbbxs_Subs_Order */
+    public static $order_helper;
+
     public static function init()
     {
-        // Load helper
+        // Load helpers
         self::$helper = new Mbbxs_Helper;
+        self::$order_helper = new Mbbxs_Subs_Order;
 
         // Validate cart items
         add_filter('woocommerce_add_to_cart_validation', [self::class, 'validate_cart_items'], 10, 2);
