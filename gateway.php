@@ -39,7 +39,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $this->method_description = __('Mobbex Payment Gateway redirects customers to Mobbex to enter their payment information.', 'mobbex-subs-for-woocommerce');
 
         // Icon
-        $this->icon = apply_filters('mobbex_subs_icon', plugin_dir_url(__FILE__) . '../assets/img/icon.png');
+        $this->icon = apply_filters('mobbex_subs_icon', plugin_dir_url(__FILE__) . 'assets/img/icon.png');
 
         // Generate admin fields
         $this->init_form_fields();
@@ -243,7 +243,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if (!empty($subscriber->uid) && !empty($subscription->uid)) {
             return [
                 'result'     => 'success',
-                'redirect'   => $this->helper->embed ? false : $subscriber->source_url,
+                'redirect'   => $this->embed ? false : $subscriber->source_url,
                 'return_url' => $subscription->return_url,
                 'data'       => [
                     'id'  => $subscription->uid,

@@ -15,13 +15,14 @@ require_once 'Model/class-subscription.php';
 require_once 'Model/class-subscriber.php';
 require_once 'Helper/Order.php';
 
+// Sdk classes
+require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/vendor/autoload.php';
+
 // Checkout module classes
 require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Logger.php';
 require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Cache.php';
+require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Config.php';
 require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Db.php';
-
-// Sdk classes
-require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/vendor/autoload.php';
 
 class Mbbx_Subs_Gateway
 {
@@ -90,7 +91,7 @@ class Mbbx_Subs_Gateway
         add_filter('plugin_row_meta', [$this, 'plugin_row_meta'], 10, 2);
 
         //Product Settings
-        require_once plugin_dir_path(__FILE__) . 'includes/admin/product-settings.php';
+        require_once plugin_dir_path(__FILE__) . 'admin/product-settings.php';
         
         Mbbx_Subs_Gateway::load_product_settings();
 
@@ -114,7 +115,7 @@ class Mbbx_Subs_Gateway
      */
     private static function check_dependencies()
     {
-if (!class_exists('WooCommerce')) {
+        if (!class_exists('WooCommerce')) {
             Mbbx_Subs_Gateway::$errors[] = __('WooCommerce needs to be installed and activated.', 'mobbex-subs-for-woocommerce');
         }
 
@@ -164,7 +165,7 @@ if (!class_exists('WooCommerce')) {
 
     private static function load_helper()
     {
-        require_once plugin_dir_path(__FILE__) . 'includes/helper.php';
+        require_once plugin_dir_path(__FILE__) . 'Model/Helper.php';
         self::$helper = new Mbbxs_Helper;
     }
 
@@ -183,7 +184,7 @@ if (!class_exists('WooCommerce')) {
      */
     private static function load_subscription_product()
     {
-        require_once plugin_dir_path(__FILE__) . 'includes/subscription-product.php';
+        require_once plugin_dir_path(__FILE__) . 'Model/subscription-product.php';
     }
 
     /**
@@ -191,13 +192,13 @@ if (!class_exists('WooCommerce')) {
      */
     private static function load_cart()
     {
-        require_once plugin_dir_path(__FILE__) . 'includes/cart.php';
+        require_once plugin_dir_path(__FILE__) . 'Model/Cart.php';
         Mbbxs_Cart::init();
     }
 
     private static function load_gateway()
     {
-        require_once plugin_dir_path(__FILE__) . 'includes/gateway.php';
+        require_once plugin_dir_path(__FILE__) . 'gateway.php';
     }
 
     private static function add_gateway()
@@ -221,7 +222,7 @@ if (!class_exists('WooCommerce')) {
      */
     private static function load_order_settings()
     {
-        require_once plugin_dir_path(__FILE__) . 'includes/admin/order-settings.php';
+        require_once plugin_dir_path(__FILE__) . 'admin/order-settings.php';
         Mbbxs_Subs_Order_Settings::init();
     }
 
@@ -312,7 +313,7 @@ function install_mobbex_subs_tables()
         //Load Mobbex models in sdk
         \Mobbex\Platform::loadModels(
             new \Mobbex\WP\Checkout\Model\Cache(),
-            new \Mobbex\WP\Checkout\Model\Db
+            new \Mobbex\WP\Checkout\Model\Db()
         );
         
         foreach (['subscription', 'subscriber', 'execution'] as  $tableName) {
