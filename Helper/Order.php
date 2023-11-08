@@ -123,7 +123,7 @@ class Mbbxs_Subs_Order
      */
     public function get_post_id($product_id, $order)
     {
-        if ($order && $this->is_wcs_active()) {
+        if ($order && $this->helper->is_wcs_active()) {
             $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
             $wcs_sub = end($subscriptions);
             return \MobbexSubscription::is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
