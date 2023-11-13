@@ -2,8 +2,14 @@
 
 class MobbexSubscription extends \Mobbex\Model {
 
-    /** @var Mobbex\Api */
+    /** @var Mbbxs_Helper */
+    public $helper;
+
+    /** @var \Mobbex\Api */
     public $api;
+
+    /** @var \Mobbex\WP\Checkout\Model\Logger */
+    public $logger;
 
     public $product_id;
     public $uid;
@@ -17,6 +23,9 @@ class MobbexSubscription extends \Mobbex\Model {
     public $free_trial;
     public $setup_fee;
     public $result;
+    public $features;
+    public $return_url;
+    public $webhook_url;
 
     public $table       = 'mobbex_subscription';
     public $primary_key = 'product_id';
@@ -68,8 +77,9 @@ class MobbexSubscription extends \Mobbex\Model {
         $free_trial  = null,
         $limit       = null
     ) {
-        $this->api    = new \Mobbex\Api;
         $this->helper = new \Mbbxs_Helper();
+        $this->api    = new \Mobbex\Api();
+        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
 
         $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url');
         $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook');
@@ -83,43 +93,31 @@ class MobbexSubscription extends \Mobbex\Model {
      * @return array|null response data if created correctly.
      */
     public function create()
-    {
+    {   
         $features = [];
-        
+
         if(get_option('send_subscriber_email') === 'yes')
             array_push($features, 'no_email');
         if(!$this->free_trial)
             array_push($features, 'charge_on_first_source');
 
-        $data = [
-            'uri'    => 'subscriptions/' . $this->uid,
-            'method' => 'POST',
-            'body'   => [
-                'reference'   => $this->reference,
-                'total'       => $this->total,
-                'setupFee'    => $this->setup_fee ?: $this->total,
-                'currency'    => 'ARS',
-                'type'        => $this->type,
-                'name'        => $this->name,
-                'description' => $this->name,
-                'interval'    => $this->interval ?: '',
-                'trial'       => $this->free_trial ?: '',
-                'limit'       => $this->limit ?: 0,
-                'return_url'  => $this->return_url,
-                'webhook'     => $this->webhook_url,
-                'features'    => $features,
-                'test'        => ($this->helper->test_mode === 'yes'),
-                'options'     => [
-                    'platform' => $this->get_platform_data(),
-                    'embed'    => get_option('send_subscriber_email') === 'yes',
-                ],
-            ]
-        ];
-
         try {
-            return $this->api::request($data);
+            $subscription = new \Mobbex\Modules\Subscription(
+                $this->product_id,
+                $this->uid,
+                $this->type,
+                $this->return_url,
+                $this->webhook_url,
+                (float) $this->total,
+                $this->name,
+                $this->description,
+                $this->interval,
+                $features,
+                $this->free_trial
+            );
+            return $subscription->response;
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $data);
+            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $subscription);
         }
     }
 
