@@ -2,11 +2,10 @@
 
 class MobbexSubscriber extends \Mobbex\Model
 {
-    /** @var \Mobbex\Api */
-    public $api;
-
     /** @var \Mobbex\Repository */
     public $repository;
+    /** @var \Mobbex\Api */
+    public $api;
 
     public $order_id;
     public $subscription_uid;
@@ -25,6 +24,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public $last_execution;
     public $next_execution;
     public $result;
+    public $addresses;
 
     public $table         = 'mobbex_subscriber';
     public $primary_key   = 'order_id';
@@ -64,9 +64,10 @@ class MobbexSubscriber extends \Mobbex\Model
         $identification   = null,
         $customer_id      = null
     ) {
-        $this->helper = new \Mbbxs_Helper();
-        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
-        $this->api    = new \Mobbex\Api;
+        $this->api        = new \Mobbex\Api();
+        $this->helper     = new \Mbbxs_Helper();
+        $this->repository = new \Mobbex\Repository;
+        $this->logger     = new \Mobbex\WP\Checkout\Model\Logger();
 
         parent::__construct(...func_get_args());
     }
@@ -78,43 +79,28 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function sync()
     {
-        $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid);
+        $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid); // Aca hay que revisar
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
-        \Mobbex\Modules\Subscriber(
-            $this->reference,
-            $this->uid,
-            $this->subscription_uid,
-            $dates['current'],
-            
-
-        )
         try {
-            return $this->api::request([
-                'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
-                'method' => 'POST',
-                'body'   => [
-                    'reference' => (string) $this->reference,
-                    'test'      => ($this->helper->test_mode === 'yes'),
-                    'total'     => $order->get_total(),
-                    'addresses' => $this->get_addresses($order),
-                    'startDate' => [
-                        'day'   => date('d', strtotime($dates['current'])),
-                        'month' => date('m', strtotime($dates['current'])),
-                        'year'  => date('Y', strtotime($dates['current'])),
-                    ],
-                    'customer'  => [
-                        'name'           => $this->name,
-                        'email'          => $this->email,
-                        'phone'          => $this->phone,
-                        'identification' => $this->identification,
-                        'customer_id'    => $this->customer_id
-                    ]
-                ]
-            ]);
+            $subscriber = new \Mobbex\Modules\Subscriber(
+                $this->reference,
+                $this->uid,
+                $this->subscription_uid,
+                $dates['current'],
+                [
+                    'name'           => (string) $this->name,
+                    'email'          => (string) $this->email,
+                    'phone'          => (string) $this->phone,
+                    'identification' => (string) $this->identification
+                ],
+                $this->get_addresses($order),
+                $this->total,
+            );
+            return $subscriber->response;
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$subscription, $dates, $order]);
+            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$subscriber, $dates, $order]);
         }
     }
 
