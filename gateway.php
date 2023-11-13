@@ -2,10 +2,6 @@
 
 class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 {
-    
-    /** @var \Mobbex\Api */
-    public $api;
-
     /** @var \Mobbex\Repository */
     public $repository;
     
@@ -296,7 +292,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             // Get a WCS subscription if possible
             $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub       = end($subscriptions);
-        } else if ($this->helper->has_subscription($order_id)) {
+        } else if (\Mbbxs_Cart::has_subscription($order_id)) {
             // If has a mobbex subscription set standalone
             $standalone = true;
         } else {
@@ -468,7 +464,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                     $sub_options['setup_fee'] = Mbbx_Subs_Product::get_signup_fee($product_id);
             }
 
-            if ($this->helper->is_wcs_active() && !\WC_Subscriptions_Product::is_subscription($product) && !$this->helper->has_subscription($order_id)) {
+            if ($this->helper->is_wcs_active() && !\WC_Subscriptions_Product::is_subscription($product) && !\Mbbxs_Cart::has_subscription($order_id)) {
                 apply_filters('simple_history_log', __METHOD__ . ": Order #$order_id does not contain a any Subscription", null, 'error');
                 return;
             }

@@ -25,7 +25,7 @@ class Mbbxs_Subs_Order
      */
     public function has_any_subscription($order_id)
     {
-        return $this->has_subscription($order_id) || $this->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
+        return \Mbbxs_Cart::has_subscription($order_id) || $this->helper->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
     }
 
     /**
@@ -147,7 +147,7 @@ class Mbbxs_Subs_Order
             //Migrate data if there are an old subscription
             if($old_subscription){
                 //get type
-                $type = $this->is_wcs_active() ? 'manual' : 'dynamic';
+                $type = $this->helper->is_wcs_active() ? 'manual' : 'dynamic';
 
                 //Load subscription
                 $subscription = new \MobbexSubscription(

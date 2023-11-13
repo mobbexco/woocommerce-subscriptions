@@ -4,9 +4,6 @@ class Mbbxs_Helper
     /** @var Mobbex\Api */
     public $api;
 
-    /** @var Mobbex\Repository */
-    public $repository;
-
     public function __construct()
     {
         // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
@@ -17,8 +14,7 @@ class Mbbxs_Helper
             $this->$key = $value;
         }
         // Instance sdk classes
-        $this->api        = new \Mobbex\Api();
-        $this->repository = new \Mobbex\Repository();
+        $this->api = new \Mobbex\Api();
     }
     
     public static function notice($type, $msg)
@@ -52,7 +48,7 @@ class Mbbxs_Helper
     public function get_api_endpoint($endpoint)
     {
         $query = [
-            'mobbex_token' => $this->repository::generateToken(),
+            'mobbex_token' => \Mobbex\Repository::generateToken(),
             'platform' => "woocommerce",
             "version" => MOBBEX_SUBS_VERSION,
         ];
