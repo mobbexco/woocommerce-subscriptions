@@ -204,9 +204,6 @@ class Mbbx_Subs_Product_Settings
         //get product
         $product = wc_get_product($post_id);
 
-        //get sign up fee
-        $setup_fee = isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0;
-
         //sub options
         $sub_options = [
             'type'      => 'manual',
@@ -215,7 +212,7 @@ class Mbbx_Subs_Product_Settings
             'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
             'post_id'   => $post_id,
             'reference' => "wc_order_{$post_id}",
-            'price'     => $product->get_price(),
+            'price'     => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : 0,
             'name'      => $product->get_name(),
         ];
 
