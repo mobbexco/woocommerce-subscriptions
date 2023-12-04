@@ -11,7 +11,7 @@ class Mbbx_Subs_Product_Settings
         self::$helper = new Mbbxs_Helper;
 
         if(self::$helper->is_wcs_active()){
-            add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_sub_integration_wcs']);
+            add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
             return;
         }
 
