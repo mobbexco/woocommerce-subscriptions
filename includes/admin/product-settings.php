@@ -201,11 +201,12 @@ class Mbbx_Subs_Product_Settings
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
-        //get product
-        $product = wc_get_product($post_id);
+        // Checks if there is a subscription product
+        if(!WC_Subscriptions_Product::is_subscription( $post_id ))
+            return;
 
-        //get sign up fee
-        $setup_fee = isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0;
+        // get product
+        $product = wc_get_product($post_id);
 
         //sub options
         $sub_options = [
@@ -220,10 +221,7 @@ class Mbbx_Subs_Product_Settings
         ];
 
         //Create/update subscription.
-        if(self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription( $post_id ));
-            $subscription = self::$helper->create_mobbex_subscription($sub_options);
-        if($subscription)
-            $subscription->save();
+        self::$helper->create_mobbex_subscription($sub_options);
     }
 
     /**
