@@ -202,7 +202,7 @@ class Mbbx_Subs_Product_Settings
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
         // Checks if there is a subscription product
-        if(!WC_Subscriptions_Product::is_subscription( $post_id ))
+        if(self::$helper->is_wcs_active() && !WC_Subscriptions_Product::is_subscription($post_id));
             return;
 
         // get product
