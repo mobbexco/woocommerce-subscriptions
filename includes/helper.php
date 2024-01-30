@@ -1,6 +1,4 @@
 <?php
-require_once 'utils.php';
-
 class Mbbxs_Helper
 {
     public static $periods = [
@@ -19,7 +17,7 @@ class Mbbxs_Helper
             $this->$key = $value;
         }
     }
-
+    
     public static function notice($type, $msg)
     {
         add_action('admin_notices', function () use ($type, $msg) {
@@ -40,7 +38,6 @@ class Mbbxs_Helper
             echo ob_get_clean();
         });
     }
-
     public static function _redirect_to_cart_with_error($error_msg)
     {
         wc_add_notice($error_msg, 'error');

@@ -62,7 +62,7 @@ class MobbexSubscriber extends \Mobbex\Model
         $customer_id      = null
     ) {
         $this->helper = new \Mbbxs_Helper();
-        $this->logger = new \Mbbxs_Logger;
+        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
         $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
         parent::__construct(...func_get_args());
@@ -103,7 +103,7 @@ class MobbexSubscriber extends \Mobbex\Model
                 ]
             ]);
         } catch (\Exception $e) {
-            $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
+            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$subscription, $dates, $order]);
         }
     }
 
@@ -142,7 +142,7 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function convert_country_code($code)
     {
-        $countries = include ('iso-3166.php') ?: [];
+        $countries = include('utils/iso-3166.php') ?: [];
 
         return isset($countries[$code]) ? $countries[$code] : null;
     }
@@ -233,7 +233,8 @@ class MobbexSubscriber extends \Mobbex\Model
         try {
             return $this->api->request($data);
         } catch (\Exception $e) {
-            $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
+            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), []);
+
         }
     }
 

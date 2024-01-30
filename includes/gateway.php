@@ -1,10 +1,12 @@
 <?php
-require_once 'utils.php';
 
 class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 {
     /** @var Mbbxs_Helper */
     public $helper;
+
+    /** @var \Mobbex\WP\Checkout\Model\Logger */
+    public $logger;
 
     public $supports = array(
         'products',
@@ -20,6 +22,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     public function __construct()
     {
         $this->id = MOBBEX_SUBS_WC_GATEWAY_ID;
+        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
 
         $this->method_title = __('Mobbex Subscriptions', 'mobbex-subs-for-woocommerce');
         $this->method_description = __('Mobbex Payment Gateway redirects customers to Mobbex to enter their payment information.', 'mobbex-subs-for-woocommerce');
@@ -48,7 +51,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if (!$this->helper->is_ready()) {
             $this->error = true;
-            Mbbxs_Helper::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
+            $this->logger->notice(__('You need to specify an API Key and an Access Token.', 'mobbex-subs-for-woocommerce'));
         }
 
         // Always Required
@@ -68,6 +71,10 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     }
 
+    /**
+     * Define form fields of setting page
+     * 
+     */
     public function init_form_fields()
     {
 
@@ -184,16 +191,26 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         return $saved;
     }
 
+    /**
+     * Process payment & return the checkout data
+     * 
+     * @param string $order_id
+     * 
+     * @return array
+     * 
+     */
     public function process_payment($order_id)
     {
         global $woocommerce;
-        if ($this->error) {
+
+        $this->logger->log('debug', 'Mobbex Subscription gateway > process_payment | Creating payment', compact('order_id'));
+
+        if ($this->error)
             return ['result' => 'error'];
-        }
 
         $order = wc_get_order($order_id);
 
-        //Save order id in session
+        // Save order id in session
         WC()->session->set('order_id', $order_id);
 
         //Check if it's a payment method change, a manual renewal or new payment
