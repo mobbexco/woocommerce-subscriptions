@@ -9,20 +9,15 @@
  * Copyright: 2021 mobbex.com
  */
 
+// Sdk classes
+require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/vendor/autoload.php';
+
+// Mobbex Subscriptions classes
 require_once 'utils/definitions.php';
 require_once 'Model/model.php';
 require_once 'Model/class-subscription.php';
 require_once 'Model/class-subscriber.php';
 require_once 'Helper/Order.php';
-
-// Sdk classes
-require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/vendor/autoload.php';
-
-// Checkout module classes
-require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Logger.php';
-require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Cache.php';
-require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Config.php';
-require_once WP_PLUGIN_DIR . '/woocommerce-mobbex/Model/Db.php';
 
 class Mbbx_Subs_Gateway
 {
