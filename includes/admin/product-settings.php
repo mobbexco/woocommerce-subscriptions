@@ -197,7 +197,7 @@ class Mbbx_Subs_Product_Settings
 
     /**
      * Create/Update Mobbex Subscription in wcs integration mode.
-          * @param int|string $post_id
+     * @param int|string $post_id
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
