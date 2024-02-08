@@ -197,17 +197,16 @@ class Mbbx_Subs_Product_Settings
 
     /**
      * Create/Update Mobbex Subscription in wcs integration mode.
-     * @param int|string $post_id
+          * @param int|string $post_id
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
-        // Checks if there is a subscription product
-        if(!self::$helper->is_wcs_active() || !WC_Subscriptions_Product::is_subscription($post_id));
-            return;
-
         // get product
         $product = wc_get_product($post_id);
-
+        // Checks if there is a subscription product
+        if(!$product->is_type('subscription'))
+            return;
+        
         //sub options
         $sub_options = [
             'type'      => 'manual',
