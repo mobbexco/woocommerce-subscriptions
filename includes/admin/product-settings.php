@@ -11,7 +11,7 @@ class Mbbx_Subs_Product_Settings
         self::$helper = new Mbbxs_Helper;
 
         if(self::$helper->is_wcs_active()){
-            add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_sub_integration_wcs']);
+            add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
             return;
         }
 
@@ -201,12 +201,12 @@ class Mbbx_Subs_Product_Settings
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
-        //get product
+        // get product
         $product = wc_get_product($post_id);
-
-        //get sign up fee
-        $setup_fee = isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0;
-
+        // Checks if there is a subscription product
+        if(!WC_Subscriptions_Product::is_subscription($post_id))
+            return;
+        
         //sub options
         $sub_options = [
             'type'      => 'manual',
@@ -220,10 +220,7 @@ class Mbbx_Subs_Product_Settings
         ];
 
         //Create/update subscription.
-        if(self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription( $post_id ));
-            $subscription = self::$helper->create_mobbex_subscription($sub_options);
-        if($subscription)
-            $subscription->save();
+        self::$helper->create_mobbex_subscription($sub_options);
     }
 
     /**
