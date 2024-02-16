@@ -204,7 +204,7 @@ class Mbbx_Subs_Product_Settings
         // get product
         $product = wc_get_product($post_id);
         // Checks if there is a subscription product
-        if(!$product->is_type('subscription'))
+        if(!WC_Subscriptions_Product::is_subscription($post_id))
             return;
         
         //sub options
