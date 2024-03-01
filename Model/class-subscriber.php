@@ -7,6 +7,9 @@ class MobbexSubscriber extends \Mobbex\Model
     /** @var \Mobbex\Api */
     public $api;
 
+    /** @var \Mobbex\WP\Checkout\Model\Logger */
+    public $logger;
+
     public $order_id;
     public $subscription_uid;
     public $uid;
@@ -100,7 +103,7 @@ class MobbexSubscriber extends \Mobbex\Model
             );
             return $subscriber->response;
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$subscriber, $dates, $order]);
+            $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$this, $dates, $order]);
         }
     }
 

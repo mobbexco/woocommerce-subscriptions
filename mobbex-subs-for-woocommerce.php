@@ -310,7 +310,7 @@ function install_mobbex_subs_tables()
             new \Mobbex\WP\Checkout\Model\Cache(),
             new \Mobbex\WP\Checkout\Model\Db()
         );
-        
+
         foreach (['subscription', 'subscriber', 'execution'] as  $tableName) {
             // Create the table or alter table if it exists
             $table = new \Mobbex\Model\Table($tableName);

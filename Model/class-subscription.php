@@ -117,7 +117,7 @@ class MobbexSubscription extends \Mobbex\Model {
             );
             return $subscription->response;
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $subscription);
+            $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $this);
         }
     }
 
