@@ -2,8 +2,13 @@
 
 class MobbexSubscriber extends \Mobbex\Model
 {
+    /** @var \Mobbex\Repository */
+    public $repository;
     /** @var \Mobbex\Api */
     public $api;
+
+    /** @var \Mobbex\WP\Checkout\Model\Logger */
+    public $logger;
 
     public $order_id;
     public $subscription_uid;
@@ -22,6 +27,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public $last_execution;
     public $next_execution;
     public $result;
+    public $addresses;
 
     public $table         = 'mobbex_subscriber';
     public $primary_key   = 'order_id';
@@ -61,9 +67,10 @@ class MobbexSubscriber extends \Mobbex\Model
         $identification   = null,
         $customer_id      = null
     ) {
-        $this->helper = new \Mbbxs_Helper();
-        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
-        $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
+        $this->api        = new \Mobbex\Api();
+        $this->helper     = new \Mbbxs_Helper();
+        $this->repository = new \Mobbex\Repository;
+        $this->logger     = new \Mobbex\WP\Checkout\Model\Logger();
 
         parent::__construct(...func_get_args());
     }
@@ -75,35 +82,28 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function sync()
     {
-        $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid);
+        $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid); // Aca hay que revisar
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
         try {
-            return $this->api->request([
-                'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
-                'method' => 'POST',
-                'body'   => [
-                    'reference' => (string) $this->reference,
-                    'test'      => ($this->helper->test_mode === 'yes'),
-                    'total'     => $order->get_total(),
-                    'addresses' => $this->get_addresses($order),
-                    'startDate' => [
-                        'day'   => date('d', strtotime($dates['current'])),
-                        'month' => date('m', strtotime($dates['current'])),
-                        'year'  => date('Y', strtotime($dates['current'])),
-                    ],
-                    'customer'  => [
-                        'name'           => $this->name,
-                        'email'          => $this->email,
-                        'phone'          => $this->phone,
-                        'identification' => $this->identification,
-                        'customer_id'    => $this->customer_id
-                    ]
-                ]
-            ]);
+            $subscriber = new \Mobbex\Modules\Subscriber(
+                $this->reference,
+                $this->uid,
+                $this->subscription_uid,
+                $dates['current'],
+                [
+                    'name'           => (string) $this->name,
+                    'email'          => (string) $this->email,
+                    'phone'          => (string) $this->phone,
+                    'identification' => (string) $this->identification
+                ],
+                $this->get_addresses($order),
+                $this->total,
+            );
+            return $subscriber->response;
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$subscription, $dates, $order]);
+            $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$this, $dates, $order]);
         }
     }
 
@@ -122,7 +122,7 @@ class MobbexSubscriber extends \Mobbex\Model
 
             $this->addresses[] = [
                 'type'         => $type,
-                'country'      => $this->convert_country_code($object->$country()),
+                'country'      => $this->repository->convertCountryCode($object->$country()),
                 'state'        => $object->$state(),
                 'city'         => $object->$city(),
                 'zipCode'      => $object->$postcode(),
@@ -131,20 +131,6 @@ class MobbexSubscriber extends \Mobbex\Model
                 'streetNotes'  => $object->$address_2()
             ];
         }
-    }
-
-    /**
-     * Converts the WooCommerce country codes to 3-letter ISO codes.
-     * 
-     * @param string $code 2-Letter ISO code.
-     * 
-     * @return string|null
-     */
-    public function convert_country_code($code)
-    {
-        $countries = include('utils/iso-3166.php') ?: [];
-
-        return isset($countries[$code]) ? $countries[$code] : null;
     }
 
     /**
@@ -231,7 +217,7 @@ class MobbexSubscriber extends \Mobbex\Model
         ];
 
         try {
-            return $this->api->request($data);
+            return $this->api::request($data);
         } catch (\Exception $e) {
             $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), []);
 
@@ -295,7 +281,7 @@ class MobbexSubscriber extends \Mobbex\Model
             return;
 
         // Send endpoint to Mobbex api
-        $this->api->request([
+        $this->api::request([
             "method" => "POST",
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
         ]);

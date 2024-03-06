@@ -180,7 +180,7 @@ class Mbbx_Subs_Product_Settings
 
         //Create/update subscription.
         if(Mbbx_Subs_Product::is_subscription($post_id))
-            $subscription = $sub_options['type'] === 'dynamic' ? self::$helper->create_mobbex_subscription($sub_options) : self::$helper->create_mobbex_subscription($sub_options);
+            $subscription = $sub_options['type'] === 'dynamic' ? \MobbexSubscription::create_mobbex_subscription($sub_options) : \MobbexSubscription::create_mobbex_subscription($sub_options);
 
         // Save data
         update_post_meta($post_id, 'mbbxs_subscription_mode', $subscription_mode);
@@ -203,6 +203,7 @@ class Mbbx_Subs_Product_Settings
     {
         // get product
         $product = wc_get_product($post_id);
+
         // Checks if there is a subscription product
         if(!WC_Subscriptions_Product::is_subscription($post_id))
             return;
@@ -215,7 +216,7 @@ class Mbbx_Subs_Product_Settings
             'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
             'post_id'   => $post_id,
             'reference' => "wc_order_{$post_id}",
-            'price'     => $product->get_price(),
+            'price'     => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : 0,
             'name'      => $product->get_name(),
         ];
 

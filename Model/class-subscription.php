@@ -2,8 +2,14 @@
 
 class MobbexSubscription extends \Mobbex\Model {
 
-    /** @var MobbexApi */
+    /** @var Mbbxs_Helper */
+    public $helper;
+
+    /** @var \Mobbex\Api */
     public $api;
+
+    /** @var \Mobbex\WP\Checkout\Model\Logger */
+    public $logger;
 
     public $product_id;
     public $uid;
@@ -17,6 +23,9 @@ class MobbexSubscription extends \Mobbex\Model {
     public $free_trial;
     public $setup_fee;
     public $result;
+    public $features;
+    public $return_url;
+    public $webhook_url;
 
     public $table       = 'mobbex_subscription';
     public $primary_key = 'product_id';
@@ -69,7 +78,8 @@ class MobbexSubscription extends \Mobbex\Model {
         $limit       = null
     ) {
         $this->helper = new \Mbbxs_Helper();
-        $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
+        $this->api    = new \Mobbex\Api();
+        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
 
         $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url');
         $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook');
@@ -83,43 +93,31 @@ class MobbexSubscription extends \Mobbex\Model {
      * @return array|null response data if created correctly.
      */
     public function create()
-    {
+    {   
         $features = [];
-        
+
         if(get_option('send_subscriber_email') === 'yes')
             array_push($features, 'no_email');
         if(!$this->free_trial)
             array_push($features, 'charge_on_first_source');
 
-        $data = [
-            'uri'    => 'subscriptions/' . $this->uid,
-            'method' => 'POST',
-            'body'   => [
-                'reference'   => $this->reference,
-                'total'       => $this->total,
-                'setupFee'    => $this->setup_fee ?: $this->total,
-                'currency'    => 'ARS',
-                'type'        => $this->type,
-                'name'        => $this->name,
-                'description' => $this->name,
-                'interval'    => $this->interval ?: '',
-                'trial'       => $this->free_trial ?: '',
-                'limit'       => $this->limit ?: 0,
-                'return_url'  => $this->return_url,
-                'webhook'     => $this->webhook_url,
-                'features'    => $features,
-                'test'        => ($this->helper->test_mode === 'yes'),
-                'options'     => [
-                    'platform' => $this->get_platform_data(),
-                    'embed'    => get_option('send_subscriber_email') === 'yes',
-                ],
-            ]
-        ];
-
         try {
-            return $this->api->request($data);
+            $subscription = new \Mobbex\Modules\Subscription(
+                $this->product_id,
+                $this->uid,
+                $this->type,
+                $this->return_url,
+                $this->webhook_url,
+                (float) $this->total,
+                $this->name,
+                $this->description,
+                $this->interval,
+                $features,
+                $this->free_trial
+            );
+            return $subscription->response;
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $data);
+            $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $this);
         }
     }
 
@@ -221,5 +219,73 @@ class MobbexSubscription extends \Mobbex\Model {
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
 
         return !empty($result[0]);
+    }
+    
+    /**
+     * Modify Subscription parameters using Mobbex API.
+     * 
+     * @param string|int $subscription_uid
+     * @param array $params Parameters to modify
+     * 
+     * @return bool $result
+     */
+    public function modify_subscription($subscription_uid, $params)
+    {
+        if (!$this->helper->is_ready()) {
+            throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
+        }
+
+        if (empty($subscription_uid) || empty($params)) {
+            throw new Exception(__('Empty Subscription UID or params', 'mobbex-subs-for-woocommerce'));
+        }
+
+         // Request data 
+        $data = [
+            'method' => 'POST',
+            'body'   => $params,
+            'uri'    => "subscriptions/{$subscription_uid}",
+        ];
+
+        $response = $this->api::request($data);
+
+        if (!is_wp_error($response)) {
+            $response = json_decode($response['body'], true);
+
+            if (!empty($response['result']))
+                return true;
+        }
+
+        throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
+    }
+
+    /**
+     * Creates/Update a Mobbex Subscription & return Subscription class
+     * 
+     * @param array $sub_options
+     * 
+     * @return \MobbexSubscription|null
+     */
+    public static function create_mobbex_subscription($sub_options)
+    {
+        $subscription = new \MobbexSubscription(
+            $sub_options['post_id'],
+            $sub_options['reference'],
+            $sub_options['price'],
+            $sub_options['setup_fee'],
+            $sub_options['type'],
+            $sub_options['name'],
+            $sub_options['name'],
+            $sub_options['interval'],
+            $sub_options['trial'],
+            0,
+        );
+
+        if(!empty($subscription)){
+            //Save Subscription 
+            $subscription->save();
+            return $subscription;
+        }
+
+        return null;
     }
 }
