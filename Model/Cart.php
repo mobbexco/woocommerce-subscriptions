@@ -163,7 +163,8 @@ class Mbbxs_Cart
             // Remove all payment gateways except mobbex
             $available_gateways = array_intersect_key($available_gateways, $mobbex_gateway);
         } else if (self::has_wcs_subscription()) {
-            // Nothing
+            if(isset($available_gateways['mobbex']))
+                unset($available_gateways['mobbex']);
         } else {
             // By default, remove mobbex from available gateways
             $available_gateways = array_diff_key($available_gateways, $mobbex_gateway);
