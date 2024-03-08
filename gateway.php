@@ -348,8 +348,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             }
         }
 
-
-            
         // Update execution dates
         $subscriber->last_execution = $dates['current'];
         $subscriber->next_execution = $dates['next'];
@@ -439,7 +437,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'type'     => $this->helper->is_wcs_active() ? 'manual' : 'dynamic',
             'interval' => '',
             'trial'    => '',
-            'interval' => '',
         ];
 
         // Get subscription product name
@@ -470,7 +467,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             }
         }
 
-        $subscription = $sub_options['type'] === 'dynamic' ? \MobbexSubscription::create_mobbex_subscription($sub_options) : \MobbexSubscription::create_mobbex_subscription($sub_options);
+        $subscription = \MobbexSubscription::create_mobbex_subscription($sub_options);
 
         if (!empty($subscription->uid))
             return $subscription;
@@ -566,7 +563,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     public function update_subscriber_state($subscription)
     {
         try {
-                
             // Checks that subscription or order id is nor null
             if (!$subscription || !$subscription->get_parent())
                 throw new \Exception(__('Mobbex error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
@@ -575,7 +571,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $status   = $subscription->get_status();
             $order_id = $subscription->get_parent()->get_id();
 
-                        // Get susbscriber
+            // Get susbscriber
             $subscriber = new \MobbexSubscriber($order_id);
 
             // Update subscriber state through the corresponding endpoint
