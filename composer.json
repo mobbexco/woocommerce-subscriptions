@@ -19,7 +19,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "Mobbex\\WP\\Subscriptions\\": "src/"
+            "Mobbex\\WP\\Subscriptions\\": ["admin/", "Helper/", "Model/" ]
         }
     },
     "require": {
