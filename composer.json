@@ -1,0 +1,29 @@
+{
+    "name": "mobbexco/woocommerce-subscriptions",
+    "type": "library",
+    "description": "Mobbex Checkout Subscriptions dependency",
+    "license": "MIT",
+    "authors": [
+            {
+                "email": "javier.lopez@mobbex.com",
+                "name": "Javier Lopez"
+            },
+            {
+                "email": "e.munoz.chedel@mobbex.com",
+                "name": "Emiliano Matias Muñoz Chedel"
+            },
+            {
+                "email": "luis.scarrone@mobbex.com",
+                "name": "Luis Scarrone"
+            }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Mobbex\\WP\\Subscriptions\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=8.2",
+        "another-vendor/package": "1.*"
+    }
+}
