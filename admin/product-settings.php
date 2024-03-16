@@ -221,7 +221,7 @@ class Mbbx_Subs_Product_Settings
         ];
 
         //Create/update subscription.
-        self::$helper->create_mobbex_subscription($sub_options);
+        \MobbexSubscription::create_mobbex_subscription($sub_options);
     }
 
     /**
