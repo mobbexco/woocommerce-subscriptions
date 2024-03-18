@@ -19,11 +19,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "Mobbex\\WP\\Subscriptions\\": ["admin/", "Helper/", "Model/" ]
+            "Mobbex\\WP\\Subscriptions\\": "wooocommerce-subscriptions/"
         }
-    },
-    "require": {
-        "php": ">=8.2",
-        "another-vendor/package": "1.*"
     }
 }
