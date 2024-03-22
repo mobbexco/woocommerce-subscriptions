@@ -25,6 +25,13 @@ class Mbbxs_Cart
         add_filter('woocommerce_product_add_to_cart_text', [self::class, 'display_signup_button'], 10, 2);
         add_filter('woocommerce_product_single_add_to_cart_text', [self::class, 'display_signup_button'], 10, 2);
 
+        // Change price to show sign up fee on it
+        add_filter('woocommerce_get_price_html', [self::class, 'display_sign_up_fee_on_price'], 10, 2);
+        add_filter('woocommerce_cart_item_price', [self::class, 'display_sign_up_fee_on_price'], 10, 2);
+
+        // Maybe add sign-up to totals to mobbex subscription product
+        add_filter('woocommerce_cart_calculate_fees', [self::class, 'maybe_add_mobbex_subscription_fee'], 10, 2);
+
         // Disable the rest of payment gateways when there is a mobbex subscription
         add_filter('woocommerce_available_payment_gateways', [self::class, 'filter_checkout_payment_gateways']);
     }
@@ -43,6 +50,45 @@ class Mbbxs_Cart
             $text = __('Sign Up', 'mobbex-subs-for-woocommerce');
 
         return $text;
+    }
+
+    /**
+     * Display sign up fee on product price
+     * 
+     * @param string $price_html
+     * @param WC_Product $product
+     * 
+     * @return string $sign_up_fee
+     */
+    public static function display_sign_up_fee_on_price($price_html, $product)
+    {
+        // Sometimes the hook gets an array type product 
+        if (!is_object($product))
+            return;
+
+        // Avoid non-mobbex subscription products
+        if (self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product->get_id()))
+            return $price_html;
+
+        if (!Mbbx_Subs_Product::is_subscription($product->get_id()))
+            return $price_html;
+
+        // Set sign up price
+        $sign_up_price = Mbbx_Subs_Product::get_signup_fee($product->get_id());
+
+        return $sign_up_price ? $price_html .= __(" /month and a $$sign_up_price sign-up fee") : $price_html;
+    }
+
+    /**
+     * Add mobbex subscription fee to cart and checkout if it exists in the product
+     * 
+     * @param WC_Cart $cart
+     */
+    public static function maybe_add_mobbex_subscription_fee($cart){
+        foreach ( $cart->get_cart() as $item )
+            $sign_up_price=  Mbbx_Subs_Product::get_signup_fee($item['product_id']);
+
+        $sign_up_price ? $cart->add_fee( __('Sign-up Fee', 'woocommerce') , $sign_up_price, false ) : '';
     }
 
     /**
