@@ -227,8 +227,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $result = $this->scheduled_subscription_payment($order->get_total(), $order);
     
             return [
-                'result'   => $result ? 'success' : 'error',
-                'redirect' => $result ? $order->get_checkout_order_received_url() : Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción'),
+                'result'   => $result === false || is_wp_error($result) ? 'error' : 'success',
+                'redirect' => $result === false || is_wp_error($result) ? Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción') : $order->get_checkout_order_received_url(),
             ];
         } else {
             $subscription = $this->get_subscription($order);
