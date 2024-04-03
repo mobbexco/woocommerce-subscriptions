@@ -15,7 +15,7 @@ class MobbexSubscription extends \Mobbex\Model {
     public $total;
     public $limit;
     public $free_trial;
-    public $setup_fee;
+    public $signup_fee;
     public $result;
 
     public $table       = 'mobbex_subscription';
@@ -31,7 +31,7 @@ class MobbexSubscription extends \Mobbex\Model {
         'product_id',
         'reference',
         'total',
-        'setup_fee',
+        'signup_fee',
         'type',
         'name',
         'description',
@@ -60,7 +60,7 @@ class MobbexSubscription extends \Mobbex\Model {
         $product_id  = null,
         $reference   = null,
         $total       = null,
-        $setup_fee   = null,
+        $signup_fee   = null,
         $type        = null,
         $name        = null,
         $description = null,
@@ -97,7 +97,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'body'   => [
                 'reference'   => $this->reference,
                 'total'       => $this->total,
-                'setupFee'    => $this->setup_fee ?: $this->total,
+                'setupFee'    => $this->signup_fee ?: $this->total,
                 'currency'    => 'ARS',
                 'type'        => $this->type,
                 'name'        => $this->name,
@@ -147,7 +147,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'total'       => $this->total ?: '',
             'limit'       => $this->limit ?: '',
             'free_trial'  => $this->free_trial ?: '',
-            'signup_fee'  => $this->setup_fee ?: '',
+            'signup_fee'  => $this->signup_fee ?: '',
         ];
 
         return $this->uid && parent::save($data);

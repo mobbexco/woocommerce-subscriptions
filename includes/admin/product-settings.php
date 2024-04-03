@@ -168,14 +168,14 @@ class Mbbx_Subs_Product_Settings
         
         //sub options
         $sub_options = [
-            'type'      => 'dynamic',
-            'interval'  => $charge_interval . $charge_period,
-            'trial'     => $free_trial_interval,
-            'setup_fee' => $signup_fee,
-            'post_id'   => $post_id,
-            'reference' => "wc_order_{$post_id}",
-            'price'     => $product->get_price(),
-            'name'      => $product->get_name(),
+            'post_id'    => $post_id,
+            'type'       => 'dynamic',
+            'signup_fee' => $signup_fee,
+            'trial'      => $free_trial_interval,
+            'reference'  => "wc_order_{$post_id}",
+            'name'       => $product->get_name(),
+            'price'      => $product->get_price(),
+            'interval'   => $charge_interval . $charge_period,
         ];
 
         //Create/update subscription.
@@ -204,19 +204,16 @@ class Mbbx_Subs_Product_Settings
         //get product
         $product = wc_get_product($post_id);
 
-        //get sign up fee
-        $setup_fee = isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0;
-
         //sub options
         $sub_options = [
-            'type'      => 'manual',
-            'interval'  => '',
-            'trial'     => '',
-            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
-            'post_id'   => $post_id,
-            'reference' => "wc_order_{$post_id}",
-            'price'     => $product->get_price(),
-            'name'      => $product->get_name(),
+            'interval'   => '',
+            'trial'      => '',
+            'type'       => 'manual',
+            'post_id'    => $post_id,
+            'name'       => $product->get_name(),
+            'reference'  => "wc_order_{$post_id}",
+            'price'      => $product->get_price(),
+            'signup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
         ];
 
         //Create/update subscription.
