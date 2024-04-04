@@ -86,7 +86,7 @@ class MobbexSubscriber extends \Mobbex\Model
                 'body'   => [
                     'reference' => (string) $this->reference,
                     'test'      => ($this->helper->test_mode === 'yes'),
-                    'total'     => $order->get_total(),
+                    'total'     => $subscription->total,
                     'addresses' => $this->get_addresses($order),
                     'startDate' => [
                         'day'   => date('d', strtotime($dates['current'])),
