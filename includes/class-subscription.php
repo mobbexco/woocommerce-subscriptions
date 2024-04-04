@@ -60,7 +60,7 @@ class MobbexSubscription extends \Mobbex\Model {
         $product_id  = null,
         $reference   = null,
         $total       = null,
-        $signup_fee   = null,
+        $signup_fee  = null,
         $type        = null,
         $name        = null,
         $description = null,
@@ -97,7 +97,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'body'   => [
                 'reference'   => $this->reference,
                 'total'       => $this->total,
-                'setupFee'    => $this->signup_fee ?: $this->total,
+                'setupFee'    => $this->get_signup_fee(),
                 'currency'    => 'ARS',
                 'type'        => $this->type,
                 'name'        => $this->name,
@@ -198,6 +198,22 @@ class MobbexSubscription extends \Mobbex\Model {
         }
 
         return $platform;
+    }
+
+    /**
+     * Get the correct signup value according the case
+     * 
+     * @return int signup_fee value
+     */
+    public function get_signup_fee()
+    {
+        if ($this->signup_fee != 0)
+            return $this->signup_fee;
+
+        if ($this->type == 'manual')
+            return $this->total;
+
+        return 0;
     }
 
     /**
