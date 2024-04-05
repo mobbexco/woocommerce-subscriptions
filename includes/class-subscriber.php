@@ -86,7 +86,7 @@ class MobbexSubscriber extends \Mobbex\Model
                 'body'   => [
                     'reference' => (string) $this->reference,
                     'test'      => ($this->helper->test_mode === 'yes'),
-                    'total'     => $subscription->total,
+                    'total'     => $this->get_subscription_total($order, $subscription),
                     'addresses' => $this->get_addresses($order),
                     'startDate' => [
                         'day'   => date('d', strtotime($dates['current'])),
@@ -299,5 +299,17 @@ class MobbexSubscriber extends \Mobbex\Model
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
         ]);
 
+    }
+
+    /**
+     * Get correct subscriptions total
+     * 
+     * @return total
+     */
+    public function get_subscription_total($order, $subscription)
+    {
+        $total = $subscription->signup_fee ? $order->get_total() - $subscription->signup_fee: $order->get_total();
+        // Just to avoid charging a duplicate sign up fee
+        return $total;
     }
 }
