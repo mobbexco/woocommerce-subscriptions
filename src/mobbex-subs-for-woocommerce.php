@@ -1,8 +1,6 @@
 <?php
 namespace Mobbex\WP\Subscriptions;
 
-require_once 'includes/utils.php';
-
 class Gateway
 {
     public static $version = '3.1.1';
@@ -33,7 +31,7 @@ class Gateway
     public static $github_url = "https://github.com/mobbexco/woocommerce-subscriptions";
     public static $github_issues_url = "https://github.com/mobbexco/woocommerce-subscriptions/issues";
 
-    public function init()
+    public static function init()
     {
         try {
             Gateway::load_update_checker();
