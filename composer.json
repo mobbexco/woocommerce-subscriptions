@@ -21,8 +21,5 @@
         "psr-4": {
             "Mobbex\\WP\\Subscriptions\\": "src/"
         }
-    },
-    "require": {
-        "php": ">=8.2"
     }
 }
