@@ -1,6 +1,5 @@
 <?php
 namespace Mobbex\WP\Subscriptions\Model;
-require_once 'utils.php';
 use \Mobbex\WP\Subscriptions\Model\SubscriptionProduct as SubscriptionProduct;
 
 /**
@@ -77,7 +76,7 @@ class Cart
             return;
 
         // Avoid non-mobbex subscription products
-        if (self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product->get_id()))
+        if (self::$helper->is_wcs_active() && SubscriptionProduct::is_subscription($product->get_id()))
             return $price_html;
 
         if (!SubscriptionProduct::is_subscription($product->get_id()))

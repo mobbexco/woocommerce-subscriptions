@@ -44,7 +44,7 @@ class Cart
      */
     public function cart_has_wcs_subscription()
     {
-        if (!$this->is_wcs_active())
+        if (!$this->helper->is_wcs_active())
             return;
 
         // Try to get pending order (for manual renewals)

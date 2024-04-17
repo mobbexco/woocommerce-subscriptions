@@ -1,11 +1,13 @@
 <?php
 namespace Mobbex\WP\Subscriptions\Model;
-require_once 'utils.php';
 
 class Helper
 {
     /** @var Mobbex\Api */
     public $api;
+
+    /** @var Mobbex\WP\Checkout\Model\Config */
+    public $config;
 
     public function __construct()
     {
@@ -16,8 +18,9 @@ class Helper
             $key = str_replace('-', '_', $key);
             $this->$key = $value;
         }
-        // Instance SDK classes
-        $this->api = new \Mobbex\Api();
+        // Instance SDK and Checkout classes
+        $this->api    = new \Mobbex\Api();
+        $this->config = new \Mobbex\WP\Checkout\Model\Config;
 
     }
     
@@ -62,9 +65,9 @@ class Helper
     public function get_api_endpoint($endpoint)
     {
         $query = [
+            'platform'     => "woocommerce",
+            "version"      => MOBBEX_SUBS_VERSION,
             'mobbex_token' => \Mobbex\Repository::generateToken(),
-            'platform' => "woocommerce",
-            "version" => MOBBEX_SUBS_VERSION,
         ];
 
         $query['wc-api'] = $endpoint;
@@ -74,12 +77,12 @@ class Helper
 
     public function is_ready()
     {
-        return (!empty($this->enabled) && !empty($this->api_key) && !empty($this->access_token) && $this->enabled === 'yes');
+        return (!empty($this->config->enabled) && !empty($this->config->api_key) && !empty($this->config->access_token) && $this->config->enabled === 'yes');
     }
 
     public function is_wcs_active()
     {
-        return (!empty($this->integration) && $this->integration === 'wcs' && get_option('woocommerce_subscriptions_is_active'));
+        return (!empty($this->config->integration) && $this->config->integration === 'wcs' && get_option('woocommerce_subscriptions_is_active'));
     }
 
     /**
@@ -126,6 +129,18 @@ class Helper
             'subscription_date_changes',
             'subscription_payment_method_change_customer'
         ];
-        return array_push($supports, $subs_support);
+        return array_merge($supports, $subs_support);
+    }
+
+    /**
+     * Add subscriptions settings options to checkout
+     * 
+     * @param array $options checkout settings options
+     * 
+     * @return array
+     */
+    public static function add_subscription_options($options)
+    {
+        return array_merge($options, include(plugin_dir_path(__DIR__) . 'admin/config-options.php'));
     }
 } 
