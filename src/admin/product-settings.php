@@ -1,20 +1,17 @@
 <?php
 
 namespace Mobbex\WP\Subscriptions\Admin;
+use \Mobbex\WP\Subscriptions\Model\SubscriptionProduct as SubscriptionProduct;
 
 class ProductSettings
 {
     /** @var Mobbex\WP\Subscriptions\Model\Helper */
     public static $helper;
 
-    /**@var Mobbex\WP\Subscriptions\Model\SubscriptionProduct */
-    public static $subscription_product;
-
     public static function init()
     {
         // Load helper
-        self::$helper               = new \Mobbex\WP\Subscriptions\Model\Helper;
-        self::$subscription_product = new \Mobbex\WP\Subscriptions\Model\SubscriptionProduct;
+        self::$helper = new \Mobbex\WP\Subscriptions\Model\Helper;
 
         if(self::$helper->is_wcs_active()){
             add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
@@ -51,7 +48,7 @@ class ProductSettings
     {
         $field = [
             'id'          => 'mbbxs_subscription_mode',
-            'value'       => self::$subscription_product::is_subscription(),
+            'value'       => SubscriptionProduct::is_subscription(),
             'cbvalue'     => true,
             'label'       => __('Subscription Mode', 'mobbex-subs-for-woocommerce'), // Modo suscripcion / Modalidad de suscripción
             'description' => __('Mobbex process this product as a subscription', 'mobbex-subs-for-woocommerce'), // Mobbex procesará este producto a modo de suscripción
@@ -66,7 +63,7 @@ class ProductSettings
      */
     public static function charge_interval_field()
     {
-        $charge_interval = self::$subscription_product::get_charge_interval();
+        $charge_interval = SubscriptionProduct::get_charge_interval();
         $sub_type = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
 
         ?>
@@ -107,7 +104,7 @@ class ProductSettings
      */
     public static function free_trial_field()
     {
-        $free_trial = self::$subscription_product::get_free_trial();
+        $free_trial = SubscriptionProduct::get_free_trial();
         $sub_type   = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
 
         ?>
@@ -140,7 +137,7 @@ class ProductSettings
     {
         $field = [
             'id'            => 'mbbxs_signup_fee',
-            'value'         => self::$subscription_product::get_signup_fee(),
+            'value'         => SubscriptionProduct::get_signup_fee(),
             'label'         => __('Sign-up fee', 'mobbex-subs-for-woocommerce'), // Tarifa de registro
             'description'   => __('Fee charged at subscription start', 'mobbex-subs-for-woocommerce'), // Tarifa cobrada al iniciar la suscripción
             'desc_tip'      => true,
@@ -185,8 +182,8 @@ class ProductSettings
         ];
 
         //Create/update subscription.
-        if(self::$subscription_product::is_subscription($post_id))
-            \Mobbex\WP\Subscriptions\Model\Subscription::create_mobbex_subscription($sub_options);
+        if(SubscriptionProduct::is_subscription($post_id))
+            $subscription = \Mobbex\WP\Subscriptions\Model\Subscription::create_mobbex_subscription($sub_options);
 
         // Save data
         update_post_meta($post_id, 'mbbxs_subscription_mode', $subscription_mode);
@@ -224,7 +221,7 @@ class ProductSettings
         ];
 
         //Create/update subscription.
-        if(self::$helper->is_wcs_active() && self::$subscription_product::is_subscription($post_id));
+        if(self::$helper->is_wcs_active() && SubscriptionProduct::is_subscription($post_id));
             $subscription = \Mobbex\WP\Subscriptions\Model\Subscription::create_mobbex_subscription($sub_options);
         if($subscription)
             $subscription->save();
@@ -237,9 +234,11 @@ class ProductSettings
     {
         global $post;
 
+        $dir_url = str_replace('admin', 'assets', plugin_dir_url(__FILE__));
+
         if (($hook == 'post-new.php' || $hook == 'post.php') && $post->post_type == 'product') {
-            wp_enqueue_style('mbbxs-product-style', plugin_dir_url(__FILE__) . '../../assets/css/product-admin.css');
-            wp_enqueue_script('mbbxs-product', plugin_dir_url(__FILE__) . '../../assets/js/product-admin.js');
+            wp_enqueue_style('mbbxs-product-style', $dir_url . 'css/product-admin.css');
+            wp_enqueue_script('mbbxs-product', $dir_url . 'js/product-admin.js');
         }
     }
 }

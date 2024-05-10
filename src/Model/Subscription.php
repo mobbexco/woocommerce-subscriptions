@@ -23,7 +23,7 @@ class Subscription extends \Mobbex\WP\Subscriptions\Model\Model
     public $total;
     public $limit;
     public $free_trial;
-    public $setup_fee;
+    public $signup_fee;
     public $result;
     public $features;
     public $return_url;
@@ -42,7 +42,7 @@ class Subscription extends \Mobbex\WP\Subscriptions\Model\Model
         'product_id',
         'reference',
         'total',
-        'setup_fee',
+        'signup_fee',
         'type',
         'name',
         'description',
@@ -71,7 +71,7 @@ class Subscription extends \Mobbex\WP\Subscriptions\Model\Model
         $product_id  = null,
         $reference   = null,
         $total       = null,
-        $setup_fee   = null,
+        $signup_fee   = null,
         $type        = null,
         $name        = null,
         $description = null,
@@ -116,7 +116,9 @@ class Subscription extends \Mobbex\WP\Subscriptions\Model\Model
                 $this->description,
                 $this->interval,
                 $features,
-                $this->free_trial
+                $this->limit,
+                $this->free_trial,
+                $this->signup_fee
             );
             return $subscription->response;
         } catch (\Exception $e) {
@@ -131,7 +133,7 @@ class Subscription extends \Mobbex\WP\Subscriptions\Model\Model
      */
     public function save($arg = null)
     {
-        $response = $this->create();
+        // $response = $this->create();
 
         // Try to save uid
         if (!empty($response['uid']))
@@ -148,7 +150,7 @@ class Subscription extends \Mobbex\WP\Subscriptions\Model\Model
             'total'       => $this->total ?: '',
             'limit'       => $this->limit ?: '',
             'free_trial'  => $this->free_trial ?: '',
-            'signup_fee'  => $this->setup_fee ?: '',
+            'signup_fee'  => $this->signup_fee ?: '',
         ];
 
         return $this->uid && parent::save($data);
@@ -274,7 +276,7 @@ class Subscription extends \Mobbex\WP\Subscriptions\Model\Model
             $sub_options['post_id'],
             $sub_options['reference'],
             $sub_options['price'],
-            $sub_options['setup_fee'],
+            $sub_options['signup_fee'],
             $sub_options['type'],
             $sub_options['name'],
             $sub_options['name'],

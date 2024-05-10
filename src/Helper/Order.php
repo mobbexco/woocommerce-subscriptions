@@ -30,7 +30,7 @@ class Order
      */
     public function has_any_subscription($order_id)
     {
-        return Cart::has_subscription($order_id) || $this->helper->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
+        return self::order_has_subscription($order_id) || $this->helper->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
     }
 
     /**

@@ -130,9 +130,11 @@ class OrderSettings
     {
         global $post;
 
+        $dir_url = str_replace('admin', 'assets', plugin_dir_url(__FILE__));
+
         if (($hook == 'post-new.php' || $hook == 'post.php') && ($post->post_type == 'shop_order' || $post->post_type == 'shop_subscription')) {
-            wp_enqueue_style('mbbxs-order-style', plugin_dir_url(__FILE__) . '../../assets/css/order-admin.css');
-            wp_enqueue_script('mbbxs-order', plugin_dir_url(__FILE__) . '../../assets/js/order-admin.js');
+            wp_enqueue_style('mbbxs-order-style', $dir_url . 'css/order-admin.css');
+            wp_enqueue_script('mbbxs-order', $dir_url . 'js/order-admin.js');
 
             // Add retry endpoint URL to script
             $mobbex_data = [

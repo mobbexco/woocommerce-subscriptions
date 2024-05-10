@@ -42,7 +42,8 @@ class Cart
         add_filter('woocommerce_cart_calculate_fees', [self::class, 'maybe_add_mobbex_subscription_fee'], 10, 2);
 
         // Disable the rest of payment gateways when there is a mobbex subscription
-        add_filter('woocommerce_available_payment_gateways', [self::class, 'filter_checkout_payment_gateways']);
+        if (self::has_subscription())
+            add_filter('woocommerce_available_payment_gateways', [self::class, 'filter_checkout_payment_gateways']);
     }
 
     /**
@@ -208,18 +209,15 @@ class Cart
             return;
 
         // Get gateway id formatted
-        $mobbex_gateway = [MOBBEX_SUBS_WC_GATEWAY_ID => true];
+        $mobbex_gateway = [MOBBEX_WC_GATEWAY_ID => true];
 
         // If cart has a mobbex subscription
-        if (self::has_subscription() || self::$order_helper::order_has_subscription()) {
+        if (self::has_subscription() || 
+            self::$order_helper::order_has_subscription() || 
+            self::$cart_helper->cart_has_wcs_subscription() )
+            {
             // Remove all payment gateways except mobbex
             $available_gateways = array_intersect_key($available_gateways, $mobbex_gateway);
-        } else if (self::$cart_helper->cart_has_wcs_subscription()) {
-            if(isset($available_gateways['mobbex']))
-            unset($available_gateways['mobbex']);
-        } else {
-            // By default, remove mobbex from available gateways
-            $available_gateways = array_diff_key($available_gateways, $mobbex_gateway);
         }
 
         return $available_gateways;

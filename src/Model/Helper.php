@@ -24,26 +24,6 @@ class Helper
 
     }
     
-    public static function notice($type, $msg)
-    {
-        add_action('admin_notices', function () use ($type, $msg) {
-            $class = esc_attr("notice notice-$type");
-            $msg = esc_html($msg);
-
-            ob_start();
-
-            ?>
-
-            <div class="<?=$class?>">
-                <h2>Mobbex for Woocommerce Subscriptions</h2>
-                <p><?=$msg?></p>
-            </div>
-
-            <?php
-
-            echo ob_get_clean();
-        });
-    }
     public static function _redirect_to_cart_with_error($error_msg)
     {
         wc_add_notice($error_msg, 'error');
