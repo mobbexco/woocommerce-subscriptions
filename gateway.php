@@ -385,7 +385,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         if ($status == 0 || $status >= 400) {
             // Try to restore the cart here
-            $redirect = $order->get_cancel_order_url_raw();
+            $error = __("Payment failed. Please try updating your payment method and retry the transaction.");
+            Mbbxs_Helper::_redirect_to_cart_with_error($error);
         } else if ($status == 2 || $status == 3 || $status == 4 || $status >= 200 && $status < 400) {
             // Redirect
             $redirect = $order->get_checkout_order_received_url();
