@@ -3,7 +3,7 @@ Plugin that integrates Mobbex Subscriptions functionality to WooCommerce and Woo
 ## Requirements
 - Wordpress >= 5.0
 - WooCommerce >= 3.5.2
-- WooCommerce Subscriptions >= 2.0 *(only for WooCommerce Subscriptions integration mode)*
+- WooCommerce Subscriptions >= 2.0 - 6.3.2 *(only for WooCommerce Subscriptions integration mode)*
 ## Installation
 1) Get the latest version of the plugin
 2) Get into Plugins -> Add New
