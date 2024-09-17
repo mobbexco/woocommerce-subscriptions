@@ -399,15 +399,33 @@ class Mbbxs_Helper
      */
     public function maybe_migrate_subscriptions($order)
     {
-        foreach ($order->get_items() as $item) {
+        mbbxs_log('debug', "Trying to migrate subscriptions. Order ID " . $order->get_id());
 
+        foreach ($order->get_items() as $item) {
             $old_subscription = get_post_meta($order->get_id(), 'mobbex_subscription', true);
             $old_subscriber   = get_post_meta($order->get_id(), 'mobbex_subscriber', true);
 
             //Migrate data if there are an old subscription
             if($old_subscription){
-                //get type
+                $order->add_order_note("Old Subscription detected. Making migration");
+
+                mbbxs_log('warning', "Old Subscription detected. Making migration. Order ID " . $order->get_id(), [isset($old_subscription['uid']) ? $old_subscription['uid'] : '']);
                 $type = $this->is_wcs_active() ? 'manual' : 'dynamic';
+                mbbxs_log('debug', "Migrating subscription. Obtaining data. Order ID " . $order->get_id(), [
+                    $order->get_id(),
+                    "wc_order_{$order->get_id()}", 
+                    isset($old_subscription['total']) ? $old_subscription['total'] : '',
+                    isset($old_subscription['setupFee']) ? $old_subscription['setupFee'] : '',
+                    $type,
+                    isset($old_subscription['name']) ? $old_subscription['name'] : '',
+                    isset($old_subscription['description']) ? $old_subscription['description'] : '',
+                    isset($old_subscription['interval']) ? $old_subscription['interval'] : '',
+                    isset($old_subscription['trial']) ? $old_subscription['trial'] : '',
+                    isset($old_subscription['limit']) ? $old_subscription['limit'] : '',
+                    isset($old_subscription['uid']) ? $old_subscription['uid'] : '',
+                    isset($old_subscription['return_url']) ? $old_subscription['return_url'] : '',
+                    isset($old_subscription['webhook']) ? $old_subscription['webhook'] : ''
+                ]);
 
                 //Load subscription
                 $subscription = new \MobbexSubscription(
@@ -420,7 +438,7 @@ class Mbbxs_Helper
                     isset($old_subscription['description']) ? $old_subscription['description'] : '',
                     isset($old_subscription['interval']) ? $old_subscription['interval'] : '',
                     isset($old_subscription['trial']) ? $old_subscription['trial'] : '',
-                    isset($old_subscription['limit']) ? $old_subscription['limit'] : '',
+                    isset($old_subscription['limit']) ? $old_subscription['limit'] : ''
                 );
 
                 //Set uid
@@ -428,8 +446,12 @@ class Mbbxs_Helper
                 $subscription->return_url = isset($old_subscription['return_url']) ? $old_subscription['return_url'] : '';
                 $subscription->webhook    = isset($old_subscription['webhook']) ? $old_subscription['webhook'] : '';
 
+                mbbxs_log('debug', "Migrating subscription. Before save. Order ID " . $order->get_id());
                 //Save the data
                 $subscription->save();
+                mbbxs_log('debug', "Migrating subscription. Save succesfully. Order ID " . $order->get_id());
+
+                $order->add_order_note("Old Subscription detected. Migration done");
 
                 //update metapost
                 update_post_meta($order->get_id(), 'mobbex_subscription', '');
@@ -437,6 +459,23 @@ class Mbbxs_Helper
 
             //Migrate data if there are an old subscriber
             if($old_subscriber){
+                $order->add_order_note("Old Subscriber detected. Making migration");
+
+                mbbxs_log('warning', "Old Subscriber detected. Making migration. Order ID " . $order->get_id());
+                mbbxs_log('warning', "Old Subscribre detected. Obtaining data. Order ID " . $order->get_id(), [
+                    $order->get_id(),
+                    isset($old_subscription['uid']) ? $old_subscription['uid'] : '',
+                    isset($old_subscriber['reference']) ? $old_subscriber['reference'] : '',
+                    $order->get_billing_first_name(),
+                    $order->get_billing_email(),
+                    $order->get_billing_phone(),
+                    get_post_meta($order->get_id(), !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni', true),
+                    $order->get_customer_id(),
+                    isset($old_subscriber['uid']) ? $old_subscriber['uid'] : '',
+                    isset($old_subscriber['sourceUrl']) ? $old_subscriber['sourceUrl'] : '',
+                    isset($old_subscriber['subscriberUrl']) ? $old_subscriber['subscriberUrl'] : ''
+                ]);
+
                 //load Subscriber
                 $subscriber = new \MobbexSubscriber(
                     $order->get_id(),
@@ -446,7 +485,7 @@ class Mbbxs_Helper
                     $order->get_billing_email(),
                     $order->get_billing_phone(),
                     get_post_meta($order->get_id(), !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni', true),
-                    $order->get_customer_id(),
+                    $order->get_customer_id()
                 );
 
                 //set other data
@@ -454,12 +493,18 @@ class Mbbxs_Helper
                 $subscriber->source_url  = isset($old_subscriber['sourceUrl']) ? $old_subscriber['sourceUrl'] : '';
                 $subscriber->control_url = isset($old_subscriber['subscriberUrl']) ? $old_subscriber['subscriberUrl'] : '';
 
+                mbbxs_log('debug', "Migrating subscriber. Before save. Order ID " . $order->get_id());
                 //Save the data
                 $subscriber->save(false);
+                mbbxs_log('debug', "Migrating subscriber. Save succesfully. Order ID " . $order->get_id());
+
+                $order->add_order_note("Old Subscriber detected. Migration done");
 
                 //update metapost
                 update_post_meta($order->get_id(), 'mobbex_subscriber', '');
             }
         }
+
+        mbbxs_log('debug', "Finish subscriptions migration try. Order ID " . $order->get_id());
     }
 }

@@ -221,6 +221,8 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function execute_charge($total)
     {
+        mbbxs_log('debug', "Execute Charge. Init. Total $total. $this->subscription_uid $this->uid");
+
         $data = [
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
             'method' => 'GET',
@@ -233,6 +235,8 @@ class MobbexSubscriber extends \Mobbex\Model
         try {
             return $this->api->request($data);
         } catch (\Exception $e) {
+            mbbxs_log('error', "Execute Charge Error. " . $e->getMessage(), $data);
+            
             $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
         }
     }

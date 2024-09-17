@@ -14,3 +14,12 @@ define('MOBBEX_SUBS_WC_GATEWAY', 'WC_Gateway_Mbbx_Subs');
 define('MOBBEX_SUBS_WC_GATEWAY_ID', 'mobbex_subs');
 
 define('MOBBEX_SUBS_VERSION', '3.1.1');
+
+function mbbxs_log($level = 'debug', $msg, $data = []) {
+    apply_filters(
+        'simple_history_log',
+        '[Mobbex Subscriptions] ' . $msg,
+        $data,
+        $level
+    );
+}
