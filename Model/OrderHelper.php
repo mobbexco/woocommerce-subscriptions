@@ -1,19 +1,19 @@
 <?php
-
+namespace MobbexSubscription;
 /**
  * Mobbex Subscription Order Helper
  */
-class Mbbxs_Subs_Order
+class OrderHelper
 {
     /** @var Mobbex\Api */
     public $api;
 
-    /** @var Mbbxs_Helper */
+    /** @var \Model\Helper */
     public $helper;
 
     public function __construct() {
-        $this->api = new \Mobbex\Api();
-        $this->helper = new Mbbxs_Helper();
+        $this->api    = new \Mobbex\Api();
+        $this->helper = new \Model\Helper();
     }
 
      /**
@@ -23,10 +23,32 @@ class Mbbxs_Subs_Order
      * 
      * @return bool
      */
-    public function has_any_subscription($order_id)
+    public static function has_any_subscription($order_id)
     {
-        return \Mbbxs_Cart::has_subscription($order_id) || $this->helper->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
+        return \MobbexSubscription\Cart::has_subscription($order_id) || \Model\Helper::is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
     }
+
+    /**
+	 * Check if Order has a Mobbex Subscription product.
+	 *
+	 * @param integer $order_id
+     * 
+     * @return bool
+	 */
+    public static function has_subscription($order_id)
+    {
+        // Search subscription products in Order
+        $order = wc_get_order($order_id);
+
+		foreach ($order->get_items() as $item) {
+            $product_id = $item->get_product()->get_id();
+
+            if (\SubscriptionProduct::is_subscription($product_id))
+                return true;
+        }
+
+        return false;
+	}
 
     /**
      * Check if the current Order has a Mobbex Subscription product.
@@ -41,7 +63,7 @@ class Mbbxs_Subs_Order
         $order = wc_get_order(get_query_var('order-pay'));
 
         foreach ($order->get_items() as $item) {
-            if (Mbbx_Subs_Product::is_subscription($item->get_product()->get_id()))
+            if (SubscriptionProduct::is_subscription($item->get_product()->get_id()))
                 return true;
         }
 
@@ -123,7 +145,7 @@ class Mbbxs_Subs_Order
      */
     public function get_post_id($product_id, $order)
     {
-        if ($order && $this->helper->is_wcs_active()) {
+        if ($order && \Model\Helper::is_wcs_active()) {
             $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
             $wcs_sub = end($subscriptions);
             return \MobbexSubscription::is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
@@ -147,7 +169,7 @@ class Mbbxs_Subs_Order
             //Migrate data if there are an old subscription
             if($old_subscription){
                 //get type
-                $type = $this->helper->is_wcs_active() ? 'manual' : 'dynamic';
+                $type = \Model\Helper::is_wcs_active() ? 'manual' : 'dynamic';
 
                 //Load subscription
                 $subscription = new \MobbexSubscription(

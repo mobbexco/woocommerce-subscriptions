@@ -1,6 +1,7 @@
 <?php
+namespace MobbexSubscription;
 
-class MobbexSubscriber extends \Mobbex\Model
+class Subscriber extends \MobbexSubscription\Model
 {
     /** @var \Mobbex\Repository */
     public $repository;
@@ -13,6 +14,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public $order_id;
     public $subscription_uid;
     public $uid;
+    public $reference;
     public $state;
     public $test;
     public $name;
@@ -28,6 +30,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public $next_execution;
     public $result;
     public $addresses;
+    public $helper;
 
     public $table         = 'mobbex_subscriber';
     public $primary_key   = 'order_id';
@@ -68,7 +71,7 @@ class MobbexSubscriber extends \Mobbex\Model
         $customer_id      = null
     ) {
         $this->api        = new \Mobbex\Api();
-        $this->helper     = new \Mbbxs_Helper();
+        $this->helper     = new \Model\Helper();
         $this->repository = new \Mobbex\Repository;
         $this->logger     = new \Mobbex\WP\Checkout\Model\Logger();
 
@@ -82,7 +85,7 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function sync()
     {
-        $subscription = \MobbexSubscription::get_by_uid($this->subscription_uid); // Aca hay que revisar
+        $subscription = \MobbexSubscription\Subscription::get_by_uid($this->subscription_uid); // Aca hay que revisar
         $dates        = $subscription->calculateDates();
         $order        = wc_get_order($this->order_id);
 
@@ -99,8 +102,9 @@ class MobbexSubscriber extends \Mobbex\Model
                     'identification' => (string) $this->identification
                 ],
                 $this->get_addresses($order),
-                $this->total,
+                $subscription->total,
             );
+            $this->logger->log('debug', 'Mobbex Subscriber Created. UID:' . $subscriber->uid , $subscriber);
             return $subscriber->response;
         } catch (\Exception $e) {
             $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$this, $dates, $order]);
@@ -212,7 +216,7 @@ class MobbexSubscriber extends \Mobbex\Model
             'method' => 'POST',
             'body'   => [
                 'total' => (float) $total,
-                'test' => ($this->helper->test_mode === 'yes'),
+                'test'  => ($this->helper->test_mode === 'yes'),
             ]
         ];
 
@@ -236,7 +240,7 @@ class MobbexSubscriber extends \Mobbex\Model
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$uid'", 'ARRAY_A');
 
-        return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
+        return !empty($result[0]) ? new \MobbexSubscriptions\Subscriber($result[0]['order_id']) : null;
     }
 
     public static function is_stored($id)
@@ -286,5 +290,16 @@ class MobbexSubscriber extends \Mobbex\Model
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
         ]);
 
+    }
+
+    /**
+     * Get correct subscriptions total
+     * 
+     * @return total
+     */
+    public function get_subscription_total($order, $subscription)
+    {
+        // Just to avoid charging a duplicate sign up fee
+        return $subscription->signup_fee ? $order->get_total() - $subscription->signup_fee : $order->get_total();
     }
 }

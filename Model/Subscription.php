@@ -1,8 +1,9 @@
 <?php
+namespace MobbexSubscription;
 
-class MobbexSubscription extends \Mobbex\Model {
+class Subscription extends \MobbexSubscription\Model {
 
-    /** @var Mbbxs_Helper */
+    /** @var \Model\Helper */
     public $helper;
 
     /** @var \Mobbex\Api */
@@ -21,11 +22,12 @@ class MobbexSubscription extends \Mobbex\Model {
     public $total;
     public $limit;
     public $free_trial;
-    public $setup_fee;
+    public $signup_fee;
     public $result;
     public $features;
     public $return_url;
     public $webhook_url;
+    public $checkout_helper;
 
     public $table       = 'mobbex_subscription';
     public $primary_key = 'product_id';
@@ -40,7 +42,7 @@ class MobbexSubscription extends \Mobbex\Model {
         'product_id',
         'reference',
         'total',
-        'setup_fee',
+        'signup_fee',
         'type',
         'name',
         'description',
@@ -69,7 +71,7 @@ class MobbexSubscription extends \Mobbex\Model {
         $product_id  = null,
         $reference   = null,
         $total       = null,
-        $setup_fee   = null,
+        $signup_fee  = null,
         $type        = null,
         $name        = null,
         $description = null,
@@ -77,12 +79,14 @@ class MobbexSubscription extends \Mobbex\Model {
         $free_trial  = null,
         $limit       = null
     ) {
-        $this->helper = new \Mbbxs_Helper();
-        $this->api    = new \Mobbex\Api();
-        $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
+        $this->api             = new \Mobbex\Api();
+        $this->helper          = new \Model\Helper();
+        $this->logger          = new \Mobbex\WP\Checkout\Model\Logger();
+        $this->checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
-        $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url');
-        $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook');
+
+        $this->return_url  =  $this->checkout_helper->get_api_endpoint('mobbex_subs_return_url');
+        $this->webhook_url =  $this->checkout_helper->get_api_endpoint('mobbex_subs_webhook');
 
         parent::__construct(...func_get_args());
     }
@@ -115,6 +119,7 @@ class MobbexSubscription extends \Mobbex\Model {
                 $features,
                 $this->free_trial
             );
+            error_log('Subscription: ' . "\n" . json_encode($subscription, JSON_PRETTY_PRINT) . "\n", 3, 'log.log');
             return $subscription->response;
         } catch (\Exception $e) {
             $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $this);
@@ -145,7 +150,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'total'       => $this->total ?: '',
             'limit'       => $this->limit ?: '',
             'free_trial'  => $this->free_trial ?: '',
-            'signup_fee'  => $this->setup_fee ?: '',
+            'signup_fee'  => $this->signup_fee ?: '',
         ];
 
         return $this->uid && parent::save($data);
@@ -199,18 +204,49 @@ class MobbexSubscription extends \Mobbex\Model {
     }
 
     /**
+     * Get the correct signup value according the case
+     * 
+     * @return int signup_fee value
+     */
+    public function get_signup_fee()
+    {
+        if ($this->signup_fee != 0)
+            return $this->signup_fee;
+
+        if ($this->type == 'manual')
+            return $this->total;
+
+        return 0;
+    }
+
+    /**
      * Get a Subscription using UID.
      * 
      * @param string $uid
      * 
-     * @return \MobbexSubscription|null
+     * @return \Mobbex\Subscription|null
      */
     public static function get_by_uid($uid)
     {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE uid='$uid'", 'ARRAY_A');
 
-        return !empty($result[0]) ? new \MobbexSubscription($result[0]['product_id']) : null;
+        return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
+    }
+
+    /**
+     * Get a Subscription using product id.
+     * 
+     * @param string $id
+     * 
+     * @return \Mobbex\Subscription|null
+     */
+    public static function get_by_id($id)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
+
+        return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
     public static function is_stored($id)
@@ -231,15 +267,11 @@ class MobbexSubscription extends \Mobbex\Model {
      */
     public function modify_subscription($subscription_uid, $params)
     {
-        if (!$this->helper->is_ready()) {
-            throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
-        }
-
         if (empty($subscription_uid) || empty($params)) {
             throw new Exception(__('Empty Subscription UID or params', 'mobbex-subs-for-woocommerce'));
         }
 
-         // Request data 
+        // Request data 
         $data = [
             'method' => 'POST',
             'body'   => $params,
@@ -263,11 +295,11 @@ class MobbexSubscription extends \Mobbex\Model {
      * 
      * @param array $sub_options
      * 
-     * @return \MobbexSubscription|null
+     * @return \Mobbex\Subscription|null
      */
     public static function create_mobbex_subscription($sub_options)
     {
-        $subscription = new \MobbexSubscription(
+        $subscription = new \MobbexSubscription\Subscription(
             $sub_options['post_id'],
             $sub_options['reference'],
             $sub_options['price'],
@@ -287,5 +319,26 @@ class MobbexSubscription extends \Mobbex\Model {
         }
 
         return null;
+    }
+
+    public static function is_subscription($product_id)
+    {
+        $subscription = self::get_by_id($product_id);
+        return isset($subscription);
+    }
+
+        /**
+     * Maybe add product subscriptions sign-up fee 
+     * 
+     * @param object $checkout used to get items and total
+     * 
+     * @return int|string total cleared
+     */
+    public function maybe_add_signup_fee($subscription, $checkout)
+    {
+        $subscription       = \Mobbex\Repository::getProductSubscription($item['reference'], true);
+        $signup_fee_totals += $subscription['setupFee'];
+
+        $checkout->total = $checkout->total - $signup_fee_totals;
     }
 }

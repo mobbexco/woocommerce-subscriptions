@@ -1,9 +1,8 @@
 <?php
-
 /**
  * For use in Standalone mode.
  */
-class Mbbx_Subs_Product
+class SubscriptionProduct
 {
     /**
      * Mobbex meta fields saved.
