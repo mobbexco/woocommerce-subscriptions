@@ -209,9 +209,9 @@ class MobbexSubscriber extends \Mobbex\Model
     {
         $data = [
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
-            'method' => 'GET',
+            'method' => 'POST',
             'body'   => [
-                'total' => $total,
+                'total' => (float) $total,
                 'test' => ($this->helper->test_mode === 'yes'),
             ]
         ];
