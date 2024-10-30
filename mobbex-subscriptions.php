@@ -29,7 +29,7 @@ class MobbexSubscriptions
     public static $config;
 
     /**
-     * @var \Model\Helper
+     * @var \MobbexSubscription\Helper
      */
     public static $helper;
 
@@ -94,6 +94,7 @@ class MobbexSubscriptions
         // Always
         add_filter('mobbex_checkout_custom_data', [$this, 'modify_checkout_data'], 10, 2);
         add_filter('mobbex_subs_options', [$this, 'add_subscription_options'], 10, 2);
+        add_filter('mobbex_subs_support', [$this, 'add_subscription_support'], 10, 2);
 
         // Always Required
         add_action('woocommerce_scheduled_subscription_payment_' . self::$id, [$this, 'scheduled_subscription_payment'], 10, 2);
@@ -115,7 +116,7 @@ class MobbexSubscriptions
     private static function load_helper()
     {
         require_once plugin_dir_path(__FILE__) . 'Model/Helper.php';
-        self::$helper = new \Model\Helper;
+        self::$helper = new \MobbexSubscription\Helper;
     }
 
     private static function load_subs_order_helper()
@@ -147,7 +148,7 @@ class MobbexSubscriptions
      */
     private static function load_subscription_product()
     {
-        require_once plugin_dir_path(__FILE__) . 'Model/SubscriptionProduct.php';
+        require_once plugin_dir_path(__FILE__) . 'Model/Product.php';
     }
 
     /**
@@ -218,6 +219,27 @@ class MobbexSubscriptions
     }
 
     /**
+     * Add subscriptions supports to checkout
+     * 
+     * @param array $support checkout supports
+     * 
+     * @return array filteres supports
+     */
+    public static function add_subscription_support($supports)
+    {
+        return array_merge($supports, [
+            'subscriptions',
+            'subscription_cancellation',
+            'subscription_suspension',
+            'subscription_reactivation',
+            'subscription_amount_changes',
+            'subscription_date_changes',
+            'subscription_payment_method_change_customer',
+            ]
+        );
+    }
+
+    /**
      * Add subscriptions settings options to checkout
      * 
      * @param array $options checkout settings options
@@ -243,35 +265,48 @@ class MobbexSubscriptions
      * @param string $checkout
      * @return array
      */
-    public function modify_checkout_data($checkout, $id)
+    public function modify_checkout_data($checkout)
     {
-        self::$logger->log('debug', 'gateway > process_payment | Creating payment', compact('order_id'));
-        self::$logger->log('debug', 'gateway > process_payment | Checkout response', $checkout);
+        self::$logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Checkout to modify', $checkout);
         $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
-
-        // añadir comprobaciones?
-        $subscription = \MobbexSubscription\Cart::get_subscription($checkout['items'][0]['entity']);
 
         if (!$checkout)
             return ['result' => 'error'];
 
-        $order_id = WC()->session->get('order_awaiting_payment');
+        $subscription = \MobbexSubscription\Cart::get_subscription($checkout['items'][0]['entity']);
+
+        if (!$subscription){
+            self::$logger->log(
+                'debug', 'MobbexSubscriptions > modify_checkout_data | Subscription is null/not found',
+                ['product id' => $checkout['items'][0]['entity']]
+            );
+            return ['result' => 'error'];
+        }
 
         // Modify checkout
-        unset($checkout['merchants']);
-        // $checkout['total']    = (float) self::$helper->calculate_checkout_total($checkout['total'], $subscription);
-        $checkout['webhook']  = self::$helper->get_api_endpoint('mobbex_subs_webhook');
+        $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook');
         $checkout['items'][0] = [
             'type'      => 'subscription',
             'reference' => $subscription->uid,
-            'total'     => (float) $subscription->total
         ];
-        
-        // $checkout['items'] = array_push($checkout['items'], self::$helper->maybe_add_signup_fee($checkout['items']));
+
+        // Maybe add sign up fee 
+        if ($subscription->signup_fee){
+            $checkout['items'][] = [
+                'total'        => (float) $subscription->signup_fee,
+                'description'  => $subscription->name . ' - costo de instalación',
+                'quantity'     => 1,
+            ];
+        }
+
+        // Remove merchants node
+        unset($checkout['merchants']);
 
         // Make sure to use json in pay for order page
         if (isset($_GET['pay_for_order']))
             wp_send_json($checkout) && exit;
+
+        self::$logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Modified Checkout', $checkout);
 
         return $checkout;
     }
@@ -346,7 +381,7 @@ class MobbexSubscriptions
             return false;
         }
 
-        $state = \Model\Helper::get_state($status);
+        $state = \MobbexSubscription\Helper::get_state($status);
         $dates = $subscription->calculateDates();
 
         // Recognize kind of subscription

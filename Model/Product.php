@@ -2,7 +2,9 @@
 /**
  * For use in Standalone mode.
  */
-class SubscriptionProduct
+namespace MobbexSubscription;
+
+class Product
 {
     /**
      * Mobbex meta fields saved.

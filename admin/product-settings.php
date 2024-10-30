@@ -2,13 +2,16 @@
 namespace MobbexSubscription;
 class ProductSettings
 {
-    /** @var \Model\Helper */
+    /** @var \MobbexSubscription\Helper */
     public static $helper;
+
+    public static $checkout_helper;
 
     public static function init()
     {
         // Load helper
-        self::$helper = new \Model\Helper;
+        self::$helper          = new \MobbexSubscription\Helper;
+        self::$checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
         if(self::$helper->is_wcs_active() && !self::$helper->config->integration == ""){
             add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
@@ -45,7 +48,7 @@ class ProductSettings
     {
         $field = [
             'id'          => 'mbbxs_subscription_mode',
-            'value'       => \SubscriptionProduct::is_subscription(),
+            'value'       => \MobbexSubscription\Product::is_subscription(),
             'cbvalue'     => true,
             'label'       => __('Subscription Mode', 'mobbex-subs-for-woocommerce'), // Modo suscripcion / Modalidad de suscripción
             'description' => __('Mobbex process this product as a subscription', 'mobbex-subs-for-woocommerce'), // Mobbex procesará este producto a modo de suscripción
@@ -60,7 +63,7 @@ class ProductSettings
      */
     public static function charge_interval_field()
     {
-        $charge_interval = \SubscriptionProduct::get_charge_interval();
+        $charge_interval = \MobbexSubscription\Product::get_charge_interval();
         $sub_type = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
 
         ?>
@@ -101,7 +104,7 @@ class ProductSettings
      */
     public static function free_trial_field()
     {
-        $free_trial = \SubscriptionProduct::get_free_trial();
+        $free_trial = \MobbexSubscription\Product::get_free_trial();
         $sub_type   = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
 
         ?>
@@ -134,7 +137,7 @@ class ProductSettings
     {
         $field = [
             'id'            => 'mbbxs_signup_fee',
-            'value'         => \SubscriptionProduct::get_signup_fee(),
+            'value'         => \MobbexSubscription\Product::get_signup_fee(),
             'label'         => __('Sign-up fee', 'mobbex-subs-for-woocommerce'), // Tarifa de registro
             'description'   => __('Fee charged at subscription start', 'mobbex-subs-for-woocommerce'), // Tarifa cobrada al iniciar la suscripción
             'desc_tip'      => true,
@@ -179,7 +182,7 @@ class ProductSettings
         ];
 
         //Create/update subscription.
-        if(\SubscriptionProduct::is_subscription($post_id))
+        if(\MobbexSubscription\Product::is_subscription($post_id))
             $sub_options['type'] === 'dynamic' 
             ? \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options) 
             : \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options);

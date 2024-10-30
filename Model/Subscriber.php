@@ -71,8 +71,8 @@ class Subscriber extends \MobbexSubscription\Model
         $customer_id      = null
     ) {
         $this->api        = new \Mobbex\Api();
-        $this->helper     = new \Model\Helper();
         $this->repository = new \Mobbex\Repository;
+        $this->helper     = new \MobbexSubscription\Helper();
         $this->logger     = new \Mobbex\WP\Checkout\Model\Logger();
 
         parent::__construct(...func_get_args());

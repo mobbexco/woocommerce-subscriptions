@@ -8,12 +8,12 @@ class OrderHelper
     /** @var Mobbex\Api */
     public $api;
 
-    /** @var \Model\Helper */
+    /** @var \MobbexSubscription\Helper */
     public $helper;
 
     public function __construct() {
         $this->api    = new \Mobbex\Api();
-        $this->helper = new \Model\Helper();
+        $this->helper = new \MobbexSubscription\Helper();
     }
 
      /**
@@ -25,7 +25,7 @@ class OrderHelper
      */
     public static function has_any_subscription($order_id)
     {
-        return \MobbexSubscription\Cart::has_subscription($order_id) || \Model\Helper::is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
+        return \MobbexSubscription\Cart::has_subscription($order_id) || \MobbexSubscription\Helper::is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
     }
 
     /**
@@ -43,7 +43,7 @@ class OrderHelper
 		foreach ($order->get_items() as $item) {
             $product_id = $item->get_product()->get_id();
 
-            if (\SubscriptionProduct::is_subscription($product_id))
+            if (\MobbexSubscription\Product::is_subscription($product_id))
                 return true;
         }
 
@@ -63,7 +63,7 @@ class OrderHelper
         $order = wc_get_order(get_query_var('order-pay'));
 
         foreach ($order->get_items() as $item) {
-            if (SubscriptionProduct::is_subscription($item->get_product()->get_id()))
+            if (\MobbexSubscription\Product::is_subscription($item->get_product()->get_id()))
                 return true;
         }
 
@@ -145,7 +145,7 @@ class OrderHelper
      */
     public function get_post_id($product_id, $order)
     {
-        if ($order && \Model\Helper::is_wcs_active()) {
+        if ($order && \MobbexSubscription\Helper::is_wcs_active()) {
             $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
             $wcs_sub = end($subscriptions);
             return \MobbexSubscription::is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
@@ -169,7 +169,7 @@ class OrderHelper
             //Migrate data if there are an old subscription
             if($old_subscription){
                 //get type
-                $type = \Model\Helper::is_wcs_active() ? 'manual' : 'dynamic';
+                $type = \MobbexSubscription\Helper::is_wcs_active() ? 'manual' : 'dynamic';
 
                 //Load subscription
                 $subscription = new \MobbexSubscription(

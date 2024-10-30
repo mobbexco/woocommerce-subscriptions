@@ -3,7 +3,7 @@ namespace MobbexSubscription;
 
 class Subscription extends \MobbexSubscription\Model {
 
-    /** @var \Model\Helper */
+    /** @var \MobbexSubscription\Helper */
     public $helper;
 
     /** @var \Mobbex\Api */
@@ -80,7 +80,7 @@ class Subscription extends \MobbexSubscription\Model {
         $limit       = null
     ) {
         $this->api             = new \Mobbex\Api();
-        $this->helper          = new \Model\Helper();
+        $this->helper          = new \MobbexSubscription\Helper();
         $this->logger          = new \Mobbex\WP\Checkout\Model\Logger();
         $this->checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
@@ -327,7 +327,7 @@ class Subscription extends \MobbexSubscription\Model {
         return isset($subscription);
     }
 
-        /**
+    /**
      * Maybe add product subscriptions sign-up fee 
      * 
      * @param object $checkout used to get items and total

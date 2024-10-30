@@ -15,6 +15,7 @@ return [
         'title'       => __('Integrate with', 'mobbex-for-woocommerce'),
         'class'       => 'mbbx-into-subscription',
         'type'        => 'select',
+        'default'     => 'standalone',
         'description' => __('Integrate this plugin with other subscriptions plugins. Detected integrations are displayed', 'mobbex-for-woocommerce'),
         'desc_tip'    => true,
         'options'     => [

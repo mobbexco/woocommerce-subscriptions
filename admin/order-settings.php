@@ -3,7 +3,7 @@ namespace MobbexSubscription;
 
 class Order_Settings
 {
-    /** @var \Model\Helper */
+    /** @var \MobbexSubscription\Helper */
     public static $helper;
     /** @var \MobbexSubscription\OrderHelper */
     public static $order_helper;
@@ -11,7 +11,7 @@ class Order_Settings
     public static function init()
     {
         // Load helper
-        self::$helper = new \Model\Helper;
+        self::$helper       = new \MobbexSubscription\Helper;
         self::$order_helper = new \MobbexSubscription\OrderHelper;
 
         // Add subscription panel to Order admin page
