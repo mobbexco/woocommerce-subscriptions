@@ -535,6 +535,11 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function scheduled_subscription_payment($total, $order)
     {
+        // Check if is a mobbex subscriber
+        $order_id = $order->get_id();
+        if (!\MobbexSubscriber::is_stored($order_id))
+            return;
+        
         // Get subscription from order id
         $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']); 
         $wcs_sub = end($subscriptions);
