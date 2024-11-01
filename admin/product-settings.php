@@ -1,16 +1,19 @@
 <?php
-
-class Mbbx_Subs_Product_Settings
+namespace MobbexSubscription;
+class ProductSettings
 {
-    /** @var Mbbxs_Helper */
+    /** @var \MobbexSubscription\Helper */
     public static $helper;
+
+    public static $checkout_helper;
 
     public static function init()
     {
         // Load helper
-        self::$helper = new Mbbxs_Helper;
+        self::$helper          = new \MobbexSubscription\Helper;
+        self::$checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
-        if(self::$helper->is_wcs_active()){
+        if(self::$helper->is_wcs_active() && !self::$helper->config->integration == ""){
             add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
             return;
         }
@@ -19,8 +22,8 @@ class Mbbx_Subs_Product_Settings
 		add_action('woocommerce_product_options_general_product_data', [self::class, 'add_subscription_fields']);
 		add_action('woocommerce_process_product_meta', [self::class, 'save_subscription_fields']);
 
-        // Add some scripts
-        add_action('admin_enqueue_scripts', [self::class, 'load_scripts']);
+        // Add admin scripts
+        add_action('add_subscription_admin_scripts', [self::class, 'load_scripts']);
     }
 
     /**
@@ -45,7 +48,7 @@ class Mbbx_Subs_Product_Settings
     {
         $field = [
             'id'          => 'mbbxs_subscription_mode',
-            'value'       => Mbbx_Subs_Product::is_subscription(),
+            'value'       => \MobbexSubscription\Product::is_subscription(),
             'cbvalue'     => true,
             'label'       => __('Subscription Mode', 'mobbex-subs-for-woocommerce'), // Modo suscripcion / Modalidad de suscripción
             'description' => __('Mobbex process this product as a subscription', 'mobbex-subs-for-woocommerce'), // Mobbex procesará este producto a modo de suscripción
@@ -60,7 +63,7 @@ class Mbbx_Subs_Product_Settings
      */
     public static function charge_interval_field()
     {
-        $charge_interval = Mbbx_Subs_Product::get_charge_interval();
+        $charge_interval = \MobbexSubscription\Product::get_charge_interval();
         $sub_type = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
 
         ?>
@@ -101,7 +104,7 @@ class Mbbx_Subs_Product_Settings
      */
     public static function free_trial_field()
     {
-        $free_trial = Mbbx_Subs_Product::get_free_trial();
+        $free_trial = \MobbexSubscription\Product::get_free_trial();
         $sub_type   = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
 
         ?>
@@ -134,7 +137,7 @@ class Mbbx_Subs_Product_Settings
     {
         $field = [
             'id'            => 'mbbxs_signup_fee',
-            'value'         => Mbbx_Subs_Product::get_signup_fee(),
+            'value'         => \MobbexSubscription\Product::get_signup_fee(),
             'label'         => __('Sign-up fee', 'mobbex-subs-for-woocommerce'), // Tarifa de registro
             'description'   => __('Fee charged at subscription start', 'mobbex-subs-for-woocommerce'), // Tarifa cobrada al iniciar la suscripción
             'desc_tip'      => true,
@@ -179,8 +182,10 @@ class Mbbx_Subs_Product_Settings
         ];
 
         //Create/update subscription.
-        if(Mbbx_Subs_Product::is_subscription($post_id))
-            $subscription = $sub_options['type'] === 'dynamic' ? \MobbexSubscription::create_mobbex_subscription($sub_options) : \MobbexSubscription::create_mobbex_subscription($sub_options);
+        if(\MobbexSubscription\Product::is_subscription($post_id))
+            $sub_options['type'] === 'dynamic' 
+            ? \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options) 
+            : \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options);
 
         // Save data
         update_post_meta($post_id, 'mbbxs_subscription_mode', $subscription_mode);
@@ -205,7 +210,7 @@ class Mbbx_Subs_Product_Settings
         $product = wc_get_product($post_id);
 
         // Checks if there is a subscription product
-        if(!WC_Subscriptions_Product::is_subscription($post_id))
+        if(!\WC_Subscriptions_Product::is_subscription($post_id))
             return;
         
         //sub options
@@ -221,19 +226,15 @@ class Mbbx_Subs_Product_Settings
         ];
 
         //Create/update subscription.
-        \MobbexSubscription::create_mobbex_subscription($sub_options);
+        \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options);
     }
 
     /**
      * Load styles and scripts for dynamic options.
      */
-    public static function load_scripts($hook)
+    public static function load_scripts()
     {
-        global $post;
-
-        if (($hook == 'post-new.php' || $hook == 'post.php') && $post->post_type == 'product') {
-            wp_enqueue_style('mbbxs-product-style', plugin_dir_url(__FILE__) . '../../assets/css/product-admin.css');
-            wp_enqueue_script('mbbxs-product', plugin_dir_url(__FILE__) . '../../assets/js/product-admin.js');
-        }
+        wp_enqueue_style('mbbxs-product-style', MOBBEX_SUBS_URL . 'assets/css/subs-product-admin.css', null, MOBBEX_VERSION);
+        wp_enqueue_script('mbbxs-product-js', MOBBEX_SUBS_URL . 'assets/js/subs-product-admin.js', null, MOBBEX_VERSION);
     }
 }

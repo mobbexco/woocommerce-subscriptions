@@ -1,13 +1,17 @@
 <?php
 
-namespace Mobbex;
+namespace MobbexSubscription;
 
 abstract class Model
 {
     /** @var wpdb */
     public $db;
 
+    public $data;
     public $table;
+    public $logger;
+    public $update;
+    public $fillable;
     public $primary_key;
     public $array_columns = [];
 
