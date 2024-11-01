@@ -234,8 +234,7 @@ class ProductSettings
      */
     public static function load_scripts()
     {
-        $dir = MOBBEX_SUBS_DIRECTORY . 'assets/css/subs-product-admin.css';
-        wp_enqueue_style('mbbxs-product-style', MOBBEX_SUBS_DIRECTORY . 'assets/css/subs-product-admin.css', null, MOBBEX_VERSION);
-        wp_enqueue_script('mbbxs-product-js', MOBBEX_SUBS_DIRECTORY . 'assets/js/subs-product-admin.js', null, MOBBEX_VERSION);
+        wp_enqueue_style('mbbxs-product-style', MOBBEX_SUBS_URL . 'assets/css/subs-product-admin.css', null, MOBBEX_VERSION);
+        wp_enqueue_script('mbbxs-product-js', MOBBEX_SUBS_URL . 'assets/js/subs-product-admin.js', null, MOBBEX_VERSION);
     }
 }
