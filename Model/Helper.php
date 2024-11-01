@@ -78,6 +78,8 @@ class Helper
     { 
         try {
             $subscription = \MobbexSubscription\Subscription::get_by_id($id);
+            if (!$subscription)
+                return null;
             return isset($subscription->signup_fee) != '0.00' ? $subscription->signup_fee : null;
         } catch (\Exception $e) {
             self::$logger->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), $subscription);
