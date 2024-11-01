@@ -93,7 +93,6 @@ class MobbexSubscriptions
         }
         // Always
         add_filter('mobbex_checkout_custom_data', [$this, 'modify_checkout_data'], 10, 2);
-        add_filter('mobbex_subs_options', [$this, 'add_subscription_options'], 10, 2);
         add_filter('mobbex_subs_support', [$this, 'add_subscription_support'], 10, 2);
 
         // Always Required
@@ -240,18 +239,6 @@ class MobbexSubscriptions
     }
 
     /**
-     * Add subscriptions settings options to checkout
-     * 
-     * @param array $options checkout settings options
-     * 
-     * @return array
-     */
-    public static function add_subscription_options($options)
-    {
-        return array_merge($options, include( MOBBEX_SUBS_DIR . 'admin/config-options.php'));
-    }
-
-    /**
 	 * Checks if page is pay for order and change subs payment page.
 	 */
     public static function is_subs_change_method()
@@ -284,6 +271,7 @@ class MobbexSubscriptions
         }
 
         // Modify checkout
+        $checkout['total']   -= self::$helper->calculate_checkout_total($subscription);
         $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook');
         $checkout['items'][0] = [
             'type'      => 'subscription',
@@ -291,7 +279,7 @@ class MobbexSubscriptions
         ];
 
         // Maybe add sign up fee 
-        if ($subscription->signup_fee){
+        if (!empty((float) $subscription->signup_fee)){
             $checkout['items'][] = [
                 'total'        => (float) $subscription->signup_fee,
                 'description'  => $subscription->name . ' - costo de instalación',
@@ -377,7 +365,7 @@ class MobbexSubscriptions
         $subscriber   = \MobbexSubscription\Subscriber::get_by_uid($data['subscriptions'][0]['subscriber']);
 
         if (!isset($subscription, $subscriber)){
-            self::$logger->log('error', 'Subscription or subscriber cannot be loaded on webhook', $data);
+            self::$logger->log('error', 'Subscription or Subscriber cannot be loaded on webhook', $data);
             return false;
         }
 
@@ -385,7 +373,7 @@ class MobbexSubscriptions
         $dates = $subscription->calculateDates();
 
         // Recognize kind of subscription
-        if (\Model\Helper::is_wcs_active() && wcs_order_contains_subscription($order_id)) {
+        if (\MobbexSubscription\Helper::is_wcs_active() && wcs_order_contains_subscription($order_id)) {
             // Get a WCS subscription if possible
             $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub       = end($subscriptions);
