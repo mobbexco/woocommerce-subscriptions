@@ -3,6 +3,7 @@ namespace MobbexSubscription;
 class Helper
 {
     public static $config;
+    public static $logger;
 
     public static $periods = [
         'd' => 'day',
@@ -13,6 +14,7 @@ class Helper
     public function __construct()
     {
         self::$config = new \Mobbex\WP\Checkout\Model\Config;
+        self::$logger = new \Mobbex\WP\Checkout\Model\Logger;
     }
 
     public static function is_wcs_active()
@@ -40,9 +42,9 @@ class Helper
         }
 	}
 
-    public static function calculate_checkout_total($checkout_total, $subscription)
+    public static function calculate_checkout_total($subscription)
     {
-        return $checkout_total - $subscription->total - ($subscription->signup_fee ?? 0);
+        return $subscription->total - ($subscription->signup_fee ?? 0);
     }
 
     /**
@@ -66,20 +68,19 @@ class Helper
     }
 
     /*
-     * Get product subscription sign-up fee from cache or API
+     * Get product subscription sign-up fee from db
      * 
      * @param int|string $id
      * 
-     * @return int|string product subscription sign-up fee
+     * @return int|null product subscription sign-up fee
      */
     public static function get_product_subscription_signup_fee($id)
     { 
         try {
-            // Try to get subscription data from cache; otherwise it get it from API
             $subscription = \MobbexSubscription\Subscription::get_by_id($id);
-            return isset($subscription['setupFee']) ? $subscription['setupFee'] : '';
+            return isset($subscription->signup_fee) != '0.00' ? $subscription->signup_fee : null;
         } catch (\Exception $e) {
-            (new \Mobbex\WP\Checkout\Model\Logger)->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), $subscription);
+            self::$logger->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), $subscription);
         }
     }
 }

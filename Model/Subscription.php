@@ -235,7 +235,7 @@ class Subscription extends \MobbexSubscription\Model {
     }
 
     /**
-     * Get a Subscription using product id.
+     * Get a Subscription from db using product id.
      * 
      * @param string $id
      * 
@@ -252,11 +252,11 @@ class Subscription extends \MobbexSubscription\Model {
     public static function is_stored($id)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'");
 
-        return !empty($result[0]);
+        return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
-    
+
     /**
      * Modify Subscription parameters using Mobbex API.
      * 
@@ -336,6 +336,7 @@ class Subscription extends \MobbexSubscription\Model {
      */
     public function maybe_add_signup_fee($subscription, $checkout)
     {
+        $signup_fee_totals = 0;
         $subscription       = \Mobbex\Repository::getProductSubscription($item['reference'], true);
         $signup_fee_totals += $subscription['setupFee'];
 
