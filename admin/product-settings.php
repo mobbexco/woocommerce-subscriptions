@@ -13,7 +13,7 @@ class ProductSettings
         self::$helper          = new \MobbexSubscription\Helper;
         self::$checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
-        if(self::$helper->is_wcs_active() && !self::$helper->config->integration == ""){
+        if(self::$helper->is_wcs_active() && isset(self::$helper->config->integration) == "wcs"){
             add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
             return;
         }
