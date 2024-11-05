@@ -53,16 +53,19 @@ class Helper
      * @param string $price_html
      * @param WC_Product $product
      * 
-     * @return string $sign_up_fee
+     * @return string $sign_up_fee || $price_html
      */
     public static function display_sign_up_fee_on_price($price_html, $product)
     {
-        // Sometimes the hook gets an array type product and avoid non subscription products
-        if (!is_object($product) || !\MobbexSubscription\Product::is_subscription($product->get_id()) )
+        // Sometimes the hook gets an array type product
+        $product_id = is_object($product)? $product->get_id() : $product['product_id'];
+
+        // Avoid non subscription products
+        if (!\MobbexSubscription\Product::is_subscription($product_id))
             return $price_html;
 
         // Set sign up price
-        $sign_up_price = self::get_product_subscription_signup_fee($product->get_id());
+        $sign_up_price = self::get_product_subscription_signup_fee($product_id);
 
         return $sign_up_price ? $price_html .= __(" /month and a $$sign_up_price sign-up fee") : $price_html;
     }
@@ -72,7 +75,7 @@ class Helper
      * 
      * @param int|string $id
      * 
-     * @return int|null product subscription sign-up fee
+     * @return string|null product subscription sign-up fee
      */
     public static function get_product_subscription_signup_fee($id)
     { 
@@ -80,7 +83,8 @@ class Helper
             $subscription = \MobbexSubscription\Subscription::get_by_id($id);
             if (!$subscription)
                 return null;
-            return isset($subscription->signup_fee) != '0.00' ? $subscription->signup_fee : null;
+
+            return isset($subscription->signup_fee) !== '0.00' ? $subscription->signup_fee : null;
         } catch (\Exception $e) {
             self::$logger->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), $subscription);
         }
