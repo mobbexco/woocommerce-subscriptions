@@ -173,34 +173,6 @@ class Cart
             }
         }
     }
-    
-    /**
-     * Check if current cart (or pending order) has a wcs subscription.
-     * 
-     * @return bool|null Null if wcs is inactive.
-     */
-    public static function cart_has_wcs_subscription()
-    {
-        if (!self::$helper->is_wcs_active())
-            return;
-
-        // Try to get pending order (for manual renewals)
-        $pending_order = wc_get_order(get_query_var('order-pay'));
-
-        // If cart has a mobbex subscription
-        if (self::has_subscription() || self::$order_helper::order_has_subscription()) {
-            // Remove all payment gateways except mobbex
-            $available_gateways = array_intersect_key($available_gateways, $mobbex_gateway);
-        } else if (self::has_wcs_subscription()) {
-            // Nothing
-        } else {
-            // By default, remove mobbex from available gateways
-            $available_gateways = array_diff_key($available_gateways, $mobbex_gateway);
-        return \WC_Subscriptions_Cart::cart_contains_subscription()
-            || wcs_cart_contains_renewal()
-            || ($pending_order && wcs_order_contains_subscription($pending_order));
-        }
-    }
 
     /**
 	 * Check if the current Cart has a Mobbex Subscription product.
