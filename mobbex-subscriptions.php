@@ -254,47 +254,49 @@ class MobbexSubscriptions
      */
     public function modify_checkout_data($checkout)
     {
-        self::$logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Checkout to modify', $checkout);
-        $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
-
         if (!$checkout)
             return ['result' => 'error'];
 
+        // TODO foreach items searching another subs
         $subscription = \MobbexSubscription\Cart::get_subscription($checkout['items'][0]['entity']);
 
-        if (!$subscription){
+        if ($subscription){
+
+            self::$logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Checkout to modify', $checkout);
+            $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
+
+            // Modify checkout
+            $checkout['total']   -= $subscription->calculate_checkout_total($checkout['total']);
+            $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook');
+            $checkout['items'][0] = [
+                'type'      => 'subscription',
+                'reference' => $subscription->uid,
+            ];
+
+            // Maybe add sign up fee 
+            if ((float) $subscription->signup_fee > 0){
+                $checkout['items'][] = [
+                    'total'        => (float) $subscription->signup_fee,
+                    'description'  => $subscription->name . ' - costo de instalación',
+                    'quantity'     => 1,
+                ];
+            }
+
+            // Remove merchants node
+            unset($checkout['merchants']);
+
+            // Make sure to use json in pay for order page
+            if (isset($_GET['pay_for_order']))
+                wp_send_json($checkout) && exit;
+
+            self::$logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Modified Checkout', $checkout);
+        }
+        
+        if (!$subscription)
             self::$logger->log(
                 'debug', 'MobbexSubscriptions > modify_checkout_data | Subscription is null/not found',
                 ['product id' => $checkout['items'][0]['entity']]
             );
-            return ['result' => 'error'];
-        }
-
-        // Modify checkout
-        $checkout['total']   -= $subscription->calculate_checkout_total($checkout['total']);
-        $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook');
-        $checkout['items'][0] = [
-            'type'      => 'subscription',
-            'reference' => $subscription->uid,
-        ];
-
-        // Maybe add sign up fee 
-        if ((float) $subscription->signup_fee > 0){
-            $checkout['items'][] = [
-                'total'        => (float) $subscription->signup_fee,
-                'description'  => $subscription->name . ' - costo de instalación',
-                'quantity'     => 1,
-            ];
-        }
-
-        // Remove merchants node
-        unset($checkout['merchants']);
-
-        // Make sure to use json in pay for order page
-        if (isset($_GET['pay_for_order']))
-            wp_send_json($checkout) && exit;
-
-        self::$logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Modified Checkout', $checkout);
 
         return $checkout;
     }
