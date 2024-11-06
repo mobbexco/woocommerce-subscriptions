@@ -271,7 +271,7 @@ class MobbexSubscriptions
         }
 
         // Modify checkout
-        $checkout['total']   -= self::$helper->calculate_checkout_total($subscription);
+        $checkout['total']   -= $subscription->calculate_checkout_total($checkout['total']);
         $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook');
         $checkout['items'][0] = [
             'type'      => 'subscription',
@@ -279,7 +279,7 @@ class MobbexSubscriptions
         ];
 
         // Maybe add sign up fee 
-        if (!empty((float) $subscription->signup_fee)){
+        if ((float) $subscription->signup_fee > 0){
             $checkout['items'][] = [
                 'total'        => (float) $subscription->signup_fee,
                 'description'  => $subscription->name . ' - costo de instalación',
