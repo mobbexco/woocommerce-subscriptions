@@ -42,11 +42,6 @@ class Helper
         }
 	}
 
-    public static function calculate_checkout_total($subscription)
-    {
-        return $subscription->total - ($subscription->signup_fee ?? 0);
-    }
-
     /**
      * Display sign up fee on product price
      * 
@@ -81,10 +76,11 @@ class Helper
     { 
         try {
             $subscription = \MobbexSubscription\Subscription::get_by_id($id);
+
             if (!$subscription)
                 return null;
 
-            return isset($subscription->signup_fee) !== '0.00' ? $subscription->signup_fee : null;
+            return ((float) $subscription->signup_fee > 0) ? $subscription->signup_fee : null;
         } catch (\Exception $e) {
             self::$logger->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), $subscription);
         }

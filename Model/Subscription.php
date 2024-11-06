@@ -119,7 +119,6 @@ class Subscription extends \MobbexSubscription\Model {
                 $features,
                 $this->free_trial
             );
-            error_log('Subscription: ' . "\n" . json_encode($subscription, JSON_PRETTY_PRINT) . "\n", 3, 'log.log');
             return $subscription->response;
         } catch (\Exception $e) {
             $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $this);
@@ -195,7 +194,7 @@ class Subscription extends \MobbexSubscription\Model {
         ];
 
         //If integrated with woocommerces subs add plugin version to body
-        if ($this->helper->integration === 'wcs') {
+        if ($this->helper->config->integration === 'wcs') {
             $wcs_data = get_plugin_data(WP_PLUGIN_DIR . '/woocommerce-subscriptions/woocommerce-subscriptions.php');
             $body['options']['platform'][] = ['name' => 'Woocommerce Subscriptions', 'version' => $wcs_data['Version']];
         }
@@ -336,10 +335,25 @@ class Subscription extends \MobbexSubscription\Model {
      */
     public function maybe_add_signup_fee($subscription, $checkout)
     {
-        $signup_fee_totals = 0;
+        $signup_fee_totals  = 0;
         $subscription       = \Mobbex\Repository::getProductSubscription($item['reference'], true);
         $signup_fee_totals += $subscription['setupFee'];
 
         $checkout->total = $checkout->total - $signup_fee_totals;
+    }
+
+    /**
+     * Calculate the appropriate total to build checkout according to subscription type
+     * 
+     * @param float|string $total checkout total
+     * 
+     * @return string $total
+     */
+    public function calculate_checkout_total($total)
+    {
+        if (str_contains($this->type, "dynamic"))
+            return ((float) $this->signup_fee) > 0 ? $total - $this->signup_fee : $total;
+        else
+            return 0;
     }
 }
