@@ -5,6 +5,7 @@ class ProductSettings
     /** @var \MobbexSubscription\Helper */
     public static $helper;
 
+     /** @var \Mobbex\WP\Checkout\Model\Helper; */
     public static $checkout_helper;
 
     public static function init()
@@ -13,17 +14,18 @@ class ProductSettings
         self::$helper          = new \MobbexSubscription\Helper;
         self::$checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
-        if(self::$helper->is_wcs_active() && isset(self::$helper->config->integration) == "wcs"){
-            add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
-            return;
+        if (self::$helper::is_extension_ready()){
+            if (self::$helper->is_wcs_active() && isset(self::$helper->config->integration) == "wcs"){
+                add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
+                return;
+            }
+            // Add/save subscription fields
+            add_action('woocommerce_product_options_general_product_data', [self::class, 'add_subscription_fields']);
+            add_action('woocommerce_process_product_meta', [self::class, 'save_subscription_fields']);
+
+            // Add admin scripts
+            add_action('add_subscription_admin_scripts', [self::class, 'load_scripts']);
         }
-
-        // Add/save subscription fields
-		add_action('woocommerce_product_options_general_product_data', [self::class, 'add_subscription_fields']);
-		add_action('woocommerce_process_product_meta', [self::class, 'save_subscription_fields']);
-
-        // Add admin scripts
-        add_action('add_subscription_admin_scripts', [self::class, 'load_scripts']);
     }
 
     /**
@@ -183,9 +185,7 @@ class ProductSettings
 
         //Create/update subscription.
         if(\MobbexSubscription\Product::is_subscription($post_id))
-            $sub_options['type'] === 'dynamic' 
-            ? \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options) 
-            : \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options);
+            \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options);
 
         // Save data
         update_post_meta($post_id, 'mbbxs_subscription_mode', $subscription_mode);
