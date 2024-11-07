@@ -17,6 +17,16 @@ class Helper
         self::$logger = new \Mobbex\WP\Checkout\Model\Logger;
     }
 
+    /**
+     * Checks if Mobbex Subscription Extension is ready
+     * 
+     * @return bool
+     */
+    public static function is_extension_ready()
+    {
+        return self::$config->enable_subscription == 'yes';
+    }
+
     public static function is_wcs_active()
     {
         return (!empty(self::$config->integration) && self::$config->integration === 'wcs' && get_option('woocommerce_subscriptions_is_active'));
