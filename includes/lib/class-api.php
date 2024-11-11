@@ -77,6 +77,10 @@ class MobbexApi
         if (!$result)
             throw new \Exception('Mobbex request error: Invalid response format. Data: '. json_encode($data), 0);
 
+        // Return raw response if requested
+        if (!empty($data['raw']))
+            return $result;
+
         if (!$result['result'])
             throw new \Exception(sprintf(
                 'Mobbex request error #%s: %s %s. Data: %s',

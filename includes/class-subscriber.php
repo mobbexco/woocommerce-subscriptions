@@ -2,8 +2,14 @@
 
 class MobbexSubscriber extends \Mobbex\Model
 {
-    /** @var \Mobbex\Api */
+    /** @var \MobbexApi */
     public $api;
+
+    /** @var \Mbbxs_Helper */
+    public $helper;
+
+    /** @var \Mbbxs_Logger */
+    public $logger;
 
     public $order_id;
     public $subscription_uid;
@@ -216,29 +222,27 @@ class MobbexSubscriber extends \Mobbex\Model
     /**
      * Execute subscription charge manually using Mobbex API.
      * 
-     * @param integer $total
+     * @param string $reference
+     * @param int|float $total
+     * 
      * @return array|null $response_result
      */
-    public function execute_charge($total)
+    public function execute_charge($reference, $total)
     {
         mbbxs_log('debug', "Execute Charge. Init. Total $total. $this->subscription_uid $this->uid");
 
         $data = [
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
-            'method' => 'GET',
+            'method' => 'POST',
+            'raw'    => true,
             'body'   => [
-                'total' => $total,
+                'total' => (float) $total,
+                'reference' => $reference,
                 'test' => ($this->helper->test_mode === 'yes'),
             ]
         ];
 
-        try {
-            return $this->api->request($data);
-        } catch (\Exception $e) {
-            mbbxs_log('error', "Execute Charge Error. " . $e->getMessage(), $data);
-            
-            $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
-        }
+        return $this->api->request($data);
     }
 
     /**

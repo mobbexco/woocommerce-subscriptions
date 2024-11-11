@@ -636,19 +636,55 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         mbbxs_log('debug', "Scheduled Payment. Subscriber obtained succesfuly. Order ID " . $order->get_id(), [!empty($subscriber->uid) ? $subscriber->uid : null, $total]);
 
         // if subscription is registered and is not empty
-        if (!empty($subscription->uid) && !empty($subscriber->uid) && !empty($total)) {
-            $order->add_order_note("Executing charge for Mobbex Subscription $subscription->uid and Mobbex Subscriber $subscriber->uid");
-
-            // Execute charge manually
-            $result = $subscriber->execute_charge($total);
-            $order->add_order_note("Charge execution result: " . $result ? 'success' : 'unknown');
-            mbbxs_log('debug', "Scheduled Payment. Execute Charge Result $subscription->uid $subscriber->uid. Order ID " . $order->get_id(), $result);
+        if (empty($subscription->uid) || empty($subscriber->uid) || empty($total)) {
+            $order->add_order_note("Error executing subscription. Empty subscription data or total" . $total);
+            return false;
         }
 
-        if (!isset($result) || is_wp_error($result) || $result === false)
-            $wcs_sub->payment_failed(); //check this in 400 status
+        try {
+            $order->add_order_note("Executing charge for Mobbex Subscription $subscription->uid and Mobbex Subscriber $subscriber->uid");
+            $result = $subscriber->execute_charge(
+                implode('_', [$subscription->uid, $subscriber->uid, $order->get_id()]),
+                $total
+            );
 
-        return $result;
+            $order->add_order_note("Charge execution raw result: " . (empty($result['result']) ? 'unknown' : 'success'));
+
+            // Throw exception if result is invalid
+            if (!isset($result['result']))
+                throw new \Exception(sprintf(
+                    'Mobbex request error #%s: %s %s',
+                    isset($result['code']) ? $result['code'] : 'NOCODE',
+                    isset($result['error']) ? $result['error'] : 'NOERROR',
+                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
+                ), 0);
+
+            // Return true if is in progress
+            if (isset($result['code']) && $result['code'] === 'SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS') {
+                $order->add_order_note("Charge execution result: Already in progress");
+
+                return true;
+            }
+
+            // Throw exception on any other false status
+            if (!$result['result'])
+                throw new \Exception(sprintf(
+                    'Mobbex request error #%s: %s %s',
+                    isset($result['code']) ? $result['code'] : 'NOCODE',
+                    isset($result['error']) ? $result['error'] : 'NOERROR',
+                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
+                ), 0);
+
+            mbbxs_log('debug', "Scheduled Payment. Execute Charge Result $subscription->uid $subscriber->uid. Order ID " . $order->get_id(), $result);
+
+            return true;
+        } catch (\Exception $e) {
+            $order->add_order_note("Charge execution error: " . $e->getMessage());
+            $wcs_sub->payment_failed();
+            mbbxs_log('error', "Charge execution error: " . $e->getMessage());
+
+            return false;
+        }
     }
 
     /**
