@@ -17,6 +17,7 @@ class MobbexSubscription extends \Mobbex\Model {
     public $free_trial;
     public $setup_fee;
     public $result;
+    public $helper;
 
     public $table       = 'mobbex_subscription';
     public $primary_key = 'product_id';
@@ -108,7 +109,7 @@ class MobbexSubscription extends \Mobbex\Model {
                 'return_url'  => $this->return_url,
                 'webhook'     => $this->webhook_url,
                 'features'    => $features,
-                'test'        => ($this->helper->test_mode === 'yes'),
+                'test'        => $this->is_test_subscription(),
                 'options'     => [
                     'platform' => $this->get_platform_data(),
                     'embed'    => get_option('send_subscriber_email') === 'yes',
@@ -192,7 +193,7 @@ class MobbexSubscription extends \Mobbex\Model {
         ];
 
         //If integrated with woocommerces subs add plugin version to body
-        if ($this->helper->integration === 'wcs') {
+        if (isset($this->helper->integration) &&  $this->helper->integration === "wcs") {
             $wcs_data = get_plugin_data(WP_PLUGIN_DIR . '/woocommerce-subscriptions/woocommerce-subscriptions.php');
             $body['options']['platform'][] = ['name' => 'Woocommerce Subscriptions', 'version' => $wcs_data['Version']];
         }
@@ -221,5 +222,18 @@ class MobbexSubscription extends \Mobbex\Model {
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
 
         return !empty($result[0]);
+    }
+
+    /**
+     * Check if the subscription was configured in test mode
+     * 
+     * @return bool is test
+     */
+    public function is_test_subscription()
+    {
+        if (isset($this->helper->integration) && $this->helper->integration === "wcs")
+            return (get_post_meta($this->product_id, 'mobbex_subscription_test_mode', true) == 'yes');
+        else
+            return (get_post_meta($this->product_id, 'mbbxs_test_mode', true) == 'yes');
     }
 }
