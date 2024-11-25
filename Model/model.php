@@ -78,7 +78,8 @@ abstract class Model
             "SELECT * FROM " . $this->db->prefix . $this->table . " WHERE $this->primary_key=$key LIMIT 1;",
             ARRAY_A
         );
-
+        
+        $this->logger->debug('MobbexSubscription\Model get_data error: ' . $this->db->last_error, [], true);
         return isset($result[0]) ? $result[0] : null;
     }
 
@@ -91,7 +92,7 @@ abstract class Model
 
             if (empty($wpdb->last_error))
                 return true;
-            $this->logger->log('debug', 'Mobbex Subscription Abstract Model save error: ' . $wpdb->last_error, $data);
+            $this->logger->log('debug', 'MobbexSubscription\Model save error: ' . $wpdb->last_error, $data);
             return false;
 
         } else {
@@ -99,7 +100,7 @@ abstract class Model
 
             if (empty($wpdb->last_error))
                 return true;
-            $this->logger->log('debug', 'Mobbex Subscription Abstract Model save error: ' . $wpdb->last_error, $data);
+            $this->logger->log('debug', 'MobbexSubscription\Model save error: ' . $wpdb->last_error, $data);
             return false;
         }
     }

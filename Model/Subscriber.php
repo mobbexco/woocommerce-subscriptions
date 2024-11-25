@@ -104,10 +104,10 @@ class Subscriber extends \MobbexSubscription\Model
                 $this->get_addresses($order),
                 $subscription->total,
             );
-            $this->logger->log('debug', 'Mobbex Subscriber Created. UID:' . $subscriber->uid , $subscriber);
+            $this->logger->log('debug', 'MobbexSubscriber\Subscriber Created. subscriber_uid: ' . $subscriber->uid , []);
             return $subscriber->response;
         } catch (\Exception $e) {
-            $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [$this, $dates, $order]);
+            $this->logger->log('error', 'MobbexSubscriber\Subscriber Create/Update Error: ' . $e->getMessage(), [$this, $dates, $order]);
         }
     }
 
@@ -200,6 +200,7 @@ class Subscriber extends \MobbexSubscription\Model
             'next_execution'   => $this->next_execution ?: ''
         ];
         
+        $this->logger->log('debug', 'MobbexSubscriber\Subscriber > save - data: ', ['data' => $data]);
         return $this->uid && parent::save($data);
     }
 
@@ -219,12 +220,12 @@ class Subscriber extends \MobbexSubscription\Model
                 'test'  => ($this->helper->test_mode === 'yes'),
             ]
         ];
+        $this->logger->log('debug', 'MobbexSubscriber\Subscriber > execute_charge - data: ', ['data' => $data]);
 
         try {
             return $this->api::request($data);
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), []);
-
+            $this->logger->log('debug', 'MobbexSubscriber\Subscriber > execute_charge Error: ' . $e->getMessage(), []);
         }
     }
 
@@ -240,6 +241,7 @@ class Subscriber extends \MobbexSubscription\Model
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$uid'", 'ARRAY_A');
 
+        self::$logger->log('debug', 'MobbexSubscriber\Subscriber > get_by_uid - error: ' . $wpdb->last_error, []);
         return !empty($result[0]) ? new \MobbexSubscriptions\Subscriber($result[0]['order_id']) : null;
     }
 
@@ -248,6 +250,7 @@ class Subscriber extends \MobbexSubscription\Model
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE order_id='$id'", 'ARRAY_A');
 
+        self::$logger->log('debug', 'MobbexSubscriber\Subscriber > is_stored - error: ' . $wpdb->last_error, []);
         return !empty($result[0]);
     }
 
@@ -285,11 +288,14 @@ class Subscriber extends \MobbexSubscription\Model
             return;
 
         // Send endpoint to Mobbex api
-        $this->api::request([
-            "method" => "POST",
-            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
-        ]);
-
+        try {
+            $this->api::request([
+                "method" => "POST",
+                'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), []);
+        }
     }
 
     /**

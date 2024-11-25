@@ -119,9 +119,10 @@ class Subscription extends \MobbexSubscription\Model {
                 $features,
                 $this->free_trial
             );
+            $this->logger->log('debug', 'MobbexSubscription\Subsciption > create() subscription data', ['product_id' => $subscription->id, 'response' => $subscription->response]);
             return $subscription->response;
         } catch (\Exception $e) {
-            $this->logger->log('error', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), $this);
+            $this->logger->log('error', 'MobbexSubscription\Subsciption > create() - Create/Update Error: ' . $e->getMessage(), $this);
         }
     }
 
@@ -152,6 +153,7 @@ class Subscription extends \MobbexSubscription\Model {
             'signup_fee'  => $this->signup_fee ?: '',
         ];
 
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > save() - data', ['subscription data' => $data]);
         return $this->uid && parent::save($data);
     }
 
@@ -230,6 +232,7 @@ class Subscription extends \MobbexSubscription\Model {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE uid='$uid'", 'ARRAY_A');
 
+        self::$logger->log('debug', 'MobbexSubscription\Subscription > get_by_uid error: ' . $wpdb->last_error, []);
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
@@ -245,6 +248,7 @@ class Subscription extends \MobbexSubscription\Model {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
 
+        self::$logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, []);
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
@@ -253,6 +257,7 @@ class Subscription extends \MobbexSubscription\Model {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'");
 
+        self::$logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, []);
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
@@ -266,9 +271,10 @@ class Subscription extends \MobbexSubscription\Model {
      */
     public function modify_subscription($subscription_uid, $params)
     {
-        if (empty($subscription_uid) || empty($params)) {
-            throw new Exception(__('Empty Subscription UID or params', 'mobbex-subs-for-woocommerce'));
-        }
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > modify_subscription subscription_uid: ' . $subscription_uid, []);
+
+        if (empty($subscription_uid) || empty($params))
+            throw new Exception(__('MobbexSubscription\Subscription > modify_subscription - Empty Subscription UID or params', 'mobbex-subs-for-woocommerce'));
 
         // Request data 
         $data = [
@@ -278,6 +284,7 @@ class Subscription extends \MobbexSubscription\Model {
         ];
 
         $response = $this->api::request($data);
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > modify_subscription - response', ['response' => $response]);
 
         if (!is_wp_error($response)) {
             $response = json_decode($response['body'], true);
@@ -286,7 +293,7 @@ class Subscription extends \MobbexSubscription\Model {
                 return true;
         }
 
-        throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
+        throw new Exception(__('MobbexSubscription\Subscription > modify_subscription - An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
     }
 
     /**
@@ -298,6 +305,8 @@ class Subscription extends \MobbexSubscription\Model {
      */
     public static function create_mobbex_subscription($sub_options)
     {
+        self::$logger->log('debug', 'MobbexSubscription\Subscription > create_mobbex_subscription', ['sub_options' => $sub_options]);
+
         $subscription = new \MobbexSubscription\Subscription(
             $sub_options['post_id'],
             $sub_options['reference'],
