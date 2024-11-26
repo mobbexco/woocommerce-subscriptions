@@ -300,36 +300,6 @@ class MobbexSubscriptions
 
         return $checkout;
     }
-
-    /**
-     * Send the corresponding endpoint to the Mobbex API to update the subscription status
-     * 
-     * Called when the subscription status is changed.
-     * 
-     * @param WC_Subscription $subscription
-     */
-    public function update_subscriber_state($subscription)
-    {
-        // Añadir comprobacion para ver si nos corresponder cambiar el estado
-        try {
-            // Checks that subscription or order id is nor null
-            if (!$subscription || !$subscription->get_parent())
-                throw new \Exception(__('MobbexSubscription > update_subscriber_state -  error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
-
-            // Gets subscription status, order id
-            $status   = $subscription->get_status();
-            $order_id = $subscription->get_parent()->get_id();
-
-            // Get susbscriber
-            $subscriber = new MobbexSubscription\Subscriber($order_id);
-
-            // Update subscriber state through the corresponding endpoint
-            $subscriber->update_status($status);
-            
-        } catch (\Exception $e) {
-            $subscription->add_order_note(__('MobbexSubscription > update_subscriber_state - Error modifying subscriber status: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
-        }
-    }
     
     public function mobbex_subs_webhook()
     {
@@ -471,5 +441,136 @@ class MobbexSubscriptions
         $subscriber->saveExecution($data, $order_id, $subscriber->last_execution);
 
         return true;
+    }
+
+    /**
+     * Executed by WooCommerce Subscriptions in each billing period.
+     * 
+     * @param integer $total
+     * @param WC_Order|WC_Abstract_Order $order
+     * 
+     * @return bool Result of charge execution.
+     */
+    public function scheduled_subscription_payment($total, $order)
+    {
+        $this->logger->log('debug', 'MobbexSubscription > scheduled_subscription_payment - payment method: ' . $order->get_payment_method(), []);
+        // Return if payment method is not Mobbex
+        if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()){
+            $this->logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Payment method is not Mobbex.", ['payment_method' => $order->get_payment_method()]);
+            return;
+        }
+
+        $this->logger->log('debug', 'MobbexSubscription > scheduled_subscription_payment - Init for $' . $total . ' - Order ID ' . $order->get_id());
+
+        $order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Processing scheduled payment for $ $total");
+
+        // Get subscription from order id
+        $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']); 
+
+        $this->logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Getting subscriptions. Order ID " . $order->get_id(), $subscriptions);
+        $wcs_sub = end($subscriptions);
+        $this->logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Subscription extract. Order ID " . $order->get_id(), [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]);
+
+        //Migrate subscriptions
+        $this->subs_order_helper->maybe_migrate_subscriptions($wcs_sub->order);
+        
+        //get mobbex subscriber & subscription
+        $subscription = $this->helper->get_subscription($order, $wcs_sub->order->get_id());
+        $this->logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Subscription obtained succesfuly. Order ID " . $order->get_id(), $subscription->uid);
+
+
+        if(!empty($subscription->uid))
+            $subscriber = new \MobbexSubscription\Subscriber($wcs_sub->order->get_id());
+
+        $this->logger->log(
+            'debug',
+            "MobbexSubscription > scheduled_subscription_payment - Subscriber obtained succesfuly. Order ID " . $order->get_id(),
+            [!empty($subscriber->uid) ? $subscriber->uid : null, $total]
+        );
+
+        // if subscription is registered and is not empty
+        if (empty($subscription->uid) || empty($subscriber->uid) || empty($total)) {
+            $order->add_order_note("Error executing subscription. Empty subscription data or total" . $total);
+            return false;
+        }
+
+        try {
+            $order->add_order_note("Executing charge for Mobbex Subscription $subscription->uid and Mobbex Subscriber $subscriber->uid");
+            $result = $subscriber->execute_charge(
+                implode('_', [$subscription->uid, $subscriber->uid, $order->get_id()]),
+                $total
+            );
+
+            $order->add_order_note("Charge execution raw result: " . (empty($result['result']) ? 'unknown' : 'success'));
+
+            // Throw exception if result is invalid
+            if (!isset($result['result']))
+                throw new \Exception(sprintf(
+                    'Mobbex request error #%s: %s %s',
+                    isset($result['code']) ? $result['code'] : 'NOCODE',
+                    isset($result['error']) ? $result['error'] : 'NOERROR',
+                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
+                ), 0);
+
+            // Return true if is in progress
+            if (isset($result['code']) && $result['code'] === 'SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS') {
+                $order->add_order_note("Charge execution result: Already in progress");
+
+                return true;
+            }
+
+            // Throw exception on any other false status
+            if (!$result['result'])
+                throw new \Exception(sprintf(
+                    'Mobbex request error #%s: %s %s',
+                    isset($result['code']) ? $result['code'] : 'NOCODE',
+                    isset($result['error']) ? $result['error'] : 'NOERROR',
+                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
+                ), 0);
+
+            $this->logger->log(
+                'debug',
+                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscription->uid $subscriber->uid. Order ID " . $order->get_id(),
+                $result
+            );
+
+            return true;
+        } catch (\Exception $e) {
+            $order->add_order_note("Charge execution error: " . $e->getMessage());
+            $wcs_sub->payment_failed();
+            $this->logger->log('debug', 'MobbexSubscription > scheduled_subscription_payment - Charge execution error: ' . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Send the corresponding endpoint to the Mobbex API to update the subscription status
+     * 
+     * Called when the subscription status is changed.
+     * 
+     * @param WC_Subscription $subscription
+     */
+    public function update_subscriber_state($subscription)
+    {
+        // Añadir comprobacion para ver si nos corresponder cambiar el estado
+        try {
+            // Checks that subscription or order id is nor null
+            if (!$subscription || !$subscription->get_parent())
+                throw new \Exception(__('MobbexSubscription > update_subscriber_state -  error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
+
+            // Gets subscription status, order id
+            $status   = $subscription->get_status();
+            $order_id = $subscription->get_parent()->get_id();
+
+            // Get susbscriber
+            $subscriber = new MobbexSubscription\Subscriber($order_id);
+
+            // Update subscriber state through the corresponding endpoint
+            $subscriber->update_status($status);
+            
+        } catch (\Exception $e) {
+            $subscription->add_order_note(__('MobbexSubscription > update_subscriber_state - Error modifying subscriber status: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
+        }
     }
 }
