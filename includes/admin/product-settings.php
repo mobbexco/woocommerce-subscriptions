@@ -201,22 +201,26 @@ class Mbbx_Subs_Product_Settings
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
-        //get product
+        global $post;
+
+        // Gets product
         $product = wc_get_product($post_id);
+        mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - product_id: ' . $product->get_id() , []);
 
         //sub options
         $sub_options = [
-            'interval'   => '',
-            'trial'      => '',
-            'type'       => 'manual',
-            'post_id'    => $post_id,
-            'name'       => $product->get_name(),
-            'reference'  => "wc_order_{$post_id}",
-            'price'      => $product->get_price(),
-            'signup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'type'      => 'manual',
+            'interval'  => '',
+            'trial'     => '',
+            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'post_id'   => $post_id,
+            'reference' => "wc_order_{$post_id}",
+            'price'     => $post->post_status == "publish" ?  $_POST["_subscription_price"] : $product->get_price(),
+            'name'      => $product->get_name(),
         ];
-
-        //Create/update subscription.
+        mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - post_id: ' . $post_id , ['sub_options' => $sub_options]);
+        
+        // Create/update subscription.
         if(self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription( $post_id ));
             $subscription = self::$helper->create_mobbex_subscription($sub_options);
         if($subscription)
