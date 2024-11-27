@@ -363,6 +363,7 @@ class Mbbxs_Helper
             $sub_options['trial'],
             0,
         );
+        mbbxs_log('debug', 'helper > create_mobbex_subscription - subscription: ' . $subscription->product_id , ['subscription' => $subscription]);
 
         if(!empty($subscription)){
             //Save Subscription 
