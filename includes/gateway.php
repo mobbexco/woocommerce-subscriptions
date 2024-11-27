@@ -186,8 +186,11 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function process_payment($order_id)
     {
-        global $woocommerce;
+        mbbxs_log('debug', "Process Payment. Init. Order ID: $order_id");
+
         if ($this->error) {
+            mbbxs_log('error', "Process Payment. Error. Order ID: $order_id", $this->error);
+
             return ['result' => 'error'];
         }
 
@@ -195,23 +198,48 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         //Save order id in session
         WC()->session->set('order_id', $order_id);
+        mbbxs_log('debug', "Process Payment. Order instanced and session updated. Order ID: $order_id", [$order->get_id()]);
 
         //Check if it's a payment method change, a manual renewal or new payment
         if ($this->helper->is_subs_change_method()) {
+            mbbxs_log('debug', "Process Payment for order id $order_id. is_subs_change_method");
+            $order->add_order_note("Payment method change detected. Redirecting to Mobbex");
+
             $this->helper->maybe_migrate_subscriptions($order);
             $subscription = $this->get_subscription($order);
             $subscriber   = $this->get_subscriber($order, $subscription->uid);
         } else if ($this->helper->is_wcs_active() && wcs_order_contains_renewal($order)) {
+            mbbxs_log('debug', "Process Payment for order id $order_id. order_contains_renewal. Scheduled Payment");
+            $order->add_order_note("Manual order renewal detected. Executing scheduled payment");
+
             $result = $this->scheduled_subscription_payment($order->get_total(), $order);
+
+            mbbxs_log('debug', "Process Payment for order id $order_id. order_contains_renewal result. Scheduled Payment", [
+                'result'   => $result ? 'success' : 'error',
+                'redirect' => $result ? $order->get_checkout_order_received_url() : Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción'),
+            ]);
     
             return [
                 'result'   => $result === false || is_wp_error($result) ? 'error' : 'success',
                 'redirect' => $result === false || is_wp_error($result) ? Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción') : $order->get_checkout_order_received_url(),
             ];
         } else {
+            mbbxs_log('debug', "Process Payment for order id $order_id. else");
+
             $subscription = $this->get_subscription($order);
             $subscriber   = $this->get_subscriber($order, $subscription->uid);
         }
+
+        mbbxs_log('debug', "Process Payment for order id $order_id. common result", [
+            'result'     => 'success',
+            'redirect'   => $this->helper->embed ? false : $subscriber->source_url,
+            'return_url' => $subscription->return_url,
+            'data'       => [
+                'id'  => $subscription->uid,
+                'sid' => $subscriber->uid,
+                'url' => $subscriber->source_url
+            ],
+        ]);
 
         // If data looks fine
         if (!empty($subscriber->uid) && !empty($subscription->uid)) {
@@ -235,6 +263,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $token    = $_REQUEST['mobbex_token'];
         $id       = isset($_REQUEST['mobbex_order_id']) ? $_REQUEST['mobbex_order_id'] : null;
         $postData = isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'application/json' ? json_decode(file_get_contents('php://input'), true) : $_POST;
+        mbbxs_log('debug', "Process Webhook. Init. Order ID $id");
 
         $this->process_webhook($token, $postData['data'], $postData['type'], $id);
 
@@ -247,6 +276,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $status = $data['payment']['status']['code'];
 
         if (empty($status) || empty($token) || !$type || empty($type) || !$this->helper->valid_mobbex_token($token)) {
+            mbbxs_log('error', "Process Webhook. Invalid webhook. Order ID $id", [$status, $token, $type, $this->helper->valid_mobbex_token($token)]);
+
             return false;
         }
 
@@ -259,6 +290,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 $this->helper->maybe_migrate_subscriptions($order);
         }
 
+        mbbxs_log('debug', "Process Webhook. Maybe migrated subscriptions. Order ID $id", [$order]);
+
         $subscription = \MobbexSubscription::get_by_uid($data['subscription']['uid']);
         $subscriber   = \MobbexSubscriber::get_by_uid($data['subscriber']['uid']);
         $order_id     = $subscriber->order_id;
@@ -266,21 +299,41 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $state        = $this->helper->get_state($status);
         $dates        = $subscription->calculateDates();
 
+        mbbxs_log('debug', "Process Webhook. Obtained data. Order ID $id", [
+            $subscription ? $subscription->uid: null,
+            $subscriber ? $subscriber->uid : null,
+            $order_id,
+            $order->get_id(),
+            $state,
+            $dates
+        ]);
+
+        $order->add_order_note("Received data to process Mobbex webhook");
+
         if ($this->helper->is_wcs_active() && wcs_order_contains_subscription($order_id)) {
+            mbbxs_log('debug', "Process Webhook. Order Contains Sub. Order ID $id");
+
             // Get a WCS subscription if possible
             $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub       = end($subscriptions);
         } else if ($this->helper->has_subscription($order_id)) {
+            mbbxs_log('debug', "Process Webhook. Standalone mode detected. Order ID $id");
+
             // If has a mobbex subscription set standalone
             $standalone = true;
         } else {
+            mbbxs_log('error', "Process Webhook. No subscriptions detected. Order ID $id");
+
             // No subscriptions
             return false;
         }
 
         if($type === 'subscription:registration' || $type === 'subscription:execution'){
+            $order->add_order_note("Processing webhook with payment information. Type of webhook $type");
 
             if($type === 'subscription:registration'){
+                mbbxs_log('debug', "Process Webhook. Registration start. Order ID $id");
+
                 // Get registration result from context status
                 $result = !empty($data['context']['status']) && $data['context']['status'] === 'success';
     
@@ -295,16 +348,24 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     
                 // Standalone mode
                 if (isset($standalone)) {
+                    $order->add_order_note("Standalone mode detected. Updating order status. Status " . !empty($data['context']['status']) ? $data['context']['status'] : '');
+                    mbbxs_log('debug', "Process Webhook. Standalone mode detected. Updating order status. Status " . (!empty($data['context']['status']) ? $data['context']['status'] : '') . ". Order ID $id");
+
                     if ($result) {
                         $order->payment_complete($order_id);
                     } else {
                         $order->update_status('failed', __('Validation failed', 'mobbex-subs-for-woocommerce'));
                     }
                 } else if (isset($wcs_sub)) {
+                    $order->add_order_note("WCS mode detected. Updating order status. Status " . !empty($data['context']['status']) ? $data['context']['status'] : '');
+                    mbbxs_log('debug', "Process Webhook. WCS mode detected. Updating order status. Status " . (!empty($data['context']['status']) ? $data['context']['status'] : '') . ". Order ID $id");
+
                     // Enable subscription
                     if ($result)
                         $wcs_sub->payment_complete();
                 }
+
+                mbbxs_log('debug', "Process Webhook. Order status updated ok. Order ID $id");
             }
         
             //Add order status
@@ -312,18 +373,32 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             if ($state == 'approved' || $state == 'on-hold') {
                 // Mark as payment complete
                 if (isset($standalone)) {
+                    $order->add_order_note("Standalone mode detected. Updating order status. State $state");
+                    mbbxs_log('debug', "Standalone mode detected. Updating order status. State $state");
+
                     $order->payment_complete();
                 } else if (isset($wcs_sub)) {
+                    $order->add_order_note("WCS mode detected. Updating order status. State $state");
+                    mbbxs_log('debug', "WCS mode detected. Updating order status. State $state");
+
                     $wcs_sub->payment_complete();
                 }
             } else {
                 // Mark as payment failed
                 if (isset($standalone)) {
+                    $order->add_order_note("Standalone mode detected. Updating order status to failed. State $state");
+                    mbbxs_log('debug', "Standalone mode detected. Updating order status to failed. State $state");
+
                     $order->update_status('failed', __('Execution failed', 'mobbex-subs-for-woocommerce'));
                 } else if (isset($wcs_sub)) {
+                    $order->add_order_note("WCS mode detected. Updating order status to failed. State $state");
+                    mbbxs_log('debug', "WCS mode detected. Updating order status to failed. State $state");
+
                     $wcs_sub->payment_failed();
                 }
             }
+
+            mbbxs_log('debug', "Process Webhook. Order state updated ok. Order ID $id");
         }
 
 
@@ -332,11 +407,16 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $subscriber->last_execution = $dates['current'];
         $subscriber->next_execution = $dates['next'];
 
+        mbbxs_log('debug', "Process Webhook. Before save subscriber. Order ID $id");
+
         //Save the subscriber with updated data
         $subscriber->save(false);
+        mbbxs_log('debug', "Process Webhook. Before save execution. Order ID $id");
 
         // Save webhooks data in execution table
         $subscriber->saveExecution($data, $order_id, $subscriber->last_execution);
+
+        mbbxs_log('debug', "Process Webhook. Result ok. Order ID $id");
 
         return true;
     }
@@ -412,6 +492,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function get_subscription($order)
     {
+        mbbxs_log('debug', "Get subscription. Order ID: " . $order->get_id());
+
         $order_id    = $order->get_id();
         $sub_options = [
             'type'     => $this->helper->is_wcs_active() ? 'manual' : 'dynamic',
@@ -443,12 +525,16 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             }
 
             if ($this->helper->is_wcs_active() && !\WC_Subscriptions_Product::is_subscription($product) && !$this->helper->has_subscription($order_id)) {
-                apply_filters('simple_history_log', __METHOD__ . ": Order #$order_id does not contain a any Subscription", null, 'error');
+                mbbxs_log('error', "Subscription not found in product. Order ID: " . $order->get_id(), [$product_id, $this->helper->is_wcs_active(), \WC_Subscriptions_Product::is_subscription($product), $this->helper->has_subscription($order_id)]);
+
+                apply_filters('simple_history_log', __METHOD__ . ": Order #$order_id does not contain any Subscription", null, 'error');
                 return;
             }
         }
 
-        $subscription = $sub_options['type'] === 'dynamic' ? $this->helper->create_mobbex_subscription($sub_options) : $this->helper->create_mobbex_subscription($sub_options);
+        mbbxs_log('debug', "Get subscription. Before creation. Order ID: " . $order->get_id(), $sub_options);
+        $subscription = $this->helper->create_mobbex_subscription($sub_options);
+        mbbxs_log('debug', "Get subscription. After creation. Order ID: " . $order->get_id(), !empty($subscription->uid) ? $subscription->uid : null);
 
         if (!empty($subscription->uid))
             return $subscription;
@@ -466,6 +552,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function get_subscriber($order, $mbbx_subscription_uid)
     {
+        mbbxs_log('debug', "Get subscriber. Init. Order ID: " . $order->get_id() . ". Subscription UID: $mbbx_subscription_uid");
+
         $order_id     = $order->get_id();
         $current_user = wp_get_current_user();
 
@@ -477,6 +565,17 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $phone       = get_user_meta($current_user->ID, 'phone_number', true) ?: $order->get_billing_phone();
         $dni         = get_post_meta($order_id, $dni_key, true);
         $customer_id = $current_user->ID ?: null;
+
+        mbbxs_log('debug', "Get subscriber. Before creation. Order ID: " . $order->get_id() . ". Subscription UID: $mbbx_subscription_uid", [
+            $order_id,
+            $mbbx_subscription_uid,
+            $reference,
+            $name,
+            $email,
+            $phone,
+            $dni,
+            $customer_id
+        ]);
 
         // Create subscriber
         $subscriber = new \MobbexSubscriber(
@@ -490,8 +589,12 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $customer_id
         );
 
+        mbbxs_log('debug', "Get subscriber. After creation. Order ID: " . $order->get_id() . '. Subscription UID: ' .  $mbbx_subscription_uid);
+
         // Save subscriber and sync with mobbex
         $result = $subscriber->save();
+
+        mbbxs_log('debug', "Get subscriber. After save. Order ID: " . $order->get_id() . '. Subscription UID: ' .  $mbbx_subscription_uid, [$result, $subscriber]);
 
         if ($result)
             return $subscriber;
@@ -509,29 +612,79 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function scheduled_subscription_payment($total, $order)
     {
+        mbbxs_log('debug', "Scheduled Payment. Init for $ $total. Order ID " . $order->get_id());
+        $order->add_order_note("Processing scheduled payment for $ $total");
+
         // Get subscription from order id
         $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']); 
+
+        mbbxs_log('debug', "Scheduled Payment. Getting subscriptions. Order ID " . $order->get_id(), $subscriptions);
         $wcs_sub = end($subscriptions);
-        
+        mbbxs_log('debug', "Scheduled Payment. Subscription extract. Order ID " . $order->get_id(), [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]);
+
         //Migrate subscriptions
         $this->helper->maybe_migrate_subscriptions($wcs_sub->order);
         
         //get mobbex subscriber & subscription
         $subscription = $this->get_subscription($order, $wcs_sub->order->get_id());
+        mbbxs_log('debug', "Scheduled Payment. Subscription obtained succesfuly. Order ID " . $order->get_id(), $subscription->uid);
+
 
         if(!empty($subscription->uid))
             $subscriber = new \MobbexSubscriber($wcs_sub->order->get_id());
 
+        mbbxs_log('debug', "Scheduled Payment. Subscriber obtained succesfuly. Order ID " . $order->get_id(), [!empty($subscriber->uid) ? $subscriber->uid : null, $total]);
+
         // if subscription is registered and is not empty
-        if (!empty($subscription->uid) && !empty($subscriber->uid) && !empty($total)) {
-            // Execute charge manually
-            $result = $subscriber->execute_charge($total);
+        if (empty($subscription->uid) || empty($subscriber->uid) || empty($total)) {
+            $order->add_order_note("Error executing subscription. Empty subscription data or total" . $total);
+            return false;
         }
 
-        if (!isset($result) || is_wp_error($result) || $result === false)
-            $wcs_sub->payment_failed(); //check this in 400 status
+        try {
+            $order->add_order_note("Executing charge for Mobbex Subscription $subscription->uid and Mobbex Subscriber $subscriber->uid");
+            $result = $subscriber->execute_charge(
+                implode('_', [$subscription->uid, $subscriber->uid, $order->get_id()]),
+                $total
+            );
 
-        return $result;
+            $order->add_order_note("Charge execution raw result: " . (empty($result['result']) ? 'unknown' : 'success'));
+
+            // Throw exception if result is invalid
+            if (!isset($result['result']))
+                throw new \Exception(sprintf(
+                    'Mobbex request error #%s: %s %s',
+                    isset($result['code']) ? $result['code'] : 'NOCODE',
+                    isset($result['error']) ? $result['error'] : 'NOERROR',
+                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
+                ), 0);
+
+            // Return true if is in progress
+            if (isset($result['code']) && $result['code'] === 'SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS') {
+                $order->add_order_note("Charge execution result: Already in progress");
+
+                return true;
+            }
+
+            // Throw exception on any other false status
+            if (!$result['result'])
+                throw new \Exception(sprintf(
+                    'Mobbex request error #%s: %s %s',
+                    isset($result['code']) ? $result['code'] : 'NOCODE',
+                    isset($result['error']) ? $result['error'] : 'NOERROR',
+                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
+                ), 0);
+
+            mbbxs_log('debug', "Scheduled Payment. Execute Charge Result $subscription->uid $subscriber->uid. Order ID " . $order->get_id(), $result);
+
+            return true;
+        } catch (\Exception $e) {
+            $order->add_order_note("Charge execution error: " . $e->getMessage());
+            $wcs_sub->payment_failed();
+            mbbxs_log('error', "Charge execution error: " . $e->getMessage());
+
+            return false;
+        }
     }
 
     /**
