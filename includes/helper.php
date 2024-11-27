@@ -355,7 +355,7 @@ class Mbbxs_Helper
             $sub_options['post_id'],
             $sub_options['reference'],
             $sub_options['price'],
-            $sub_options['setup_fee'],
+            $sub_options['signup_fee'],
             $sub_options['type'],
             $sub_options['name'],
             $sub_options['name'],

@@ -220,8 +220,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             ]);
     
             return [
-                'result'   => $result ? 'success' : 'error',
-                'redirect' => $result ? $order->get_checkout_order_received_url() : Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción'),
+                'result'   => $result === false || is_wp_error($result) ? 'error' : 'success',
+                'redirect' => $result === false || is_wp_error($result) ? Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción') : $order->get_checkout_order_received_url(),
             ];
         } else {
             mbbxs_log('debug', "Process Payment for order id $order_id. else");
@@ -516,7 +516,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             
 
             if ($this->helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product))
-                $sub_options['setup_fee'] = WC_Subscriptions_Product::get_sign_up_fee($product) ?: 0;
+                $sub_options['signup_fee'] = WC_Subscriptions_Product::get_sign_up_fee($product) ?: 0;
 
             if (Mbbx_Subs_Product::is_subscription($product_id)) {
                     $sub_options['interval']  = implode(Mbbx_Subs_Product::get_charge_interval($product_id));
