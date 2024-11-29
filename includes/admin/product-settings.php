@@ -207,16 +207,16 @@ class Mbbx_Subs_Product_Settings
         $product = wc_get_product($post_id);
         mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - product_id: ' . $product->get_id() , []);
 
-        //sub options
+        // Subscription options
         $sub_options = [
-            'type'      => 'manual',
-            'interval'  => '',
             'trial'     => '',
-            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'interval'  => '',
+            'type'      => 'manual',
             'post_id'   => $post_id,
-            'reference' => "wc_order_{$post_id}",
-            'price'     => $post->post_status == "publish" ?  $_POST["_subscription_price"] : $product->get_price(),
             'name'      => $product->get_name(),
+            'reference' => "wc_order_{$post_id}",
+            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'price'     => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : $product->get_price(),
         ];
         mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - post_id: ' . $post_id , ['sub_options' => $sub_options]);
         
