@@ -201,8 +201,6 @@ class Mbbx_Subs_Product_Settings
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
-        global $post;
-
         // Gets product
         $product = wc_get_product($post_id);
         mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - product_id: ' . $product->get_id() , []);
