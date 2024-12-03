@@ -622,13 +622,19 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $wcs_sub = end($subscriptions);
         mbbxs_log('debug', "Scheduled Payment. Subscription extract. Order ID " . $order->get_id(), [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]);
 
-        //Migrate subscriptions
+        // Migrate subscriptions
         $this->helper->maybe_migrate_subscriptions($wcs_sub->order);
         
-        //get mobbex subscriber & subscription
+        // Get mobbex subscriber & subscription
         $subscription = $this->get_subscription($order, $wcs_sub->order->get_id());
         mbbxs_log('debug', "Scheduled Payment. Subscription obtained succesfuly. Order ID " . $order->get_id(), $subscription->uid);
 
+        // Check total. Updates order total if necessary
+        if ($total != $subscription->total){
+            mbbxs_log('debug', "Scheduled Payment. Subscription total change from $" . $total . " to $" . $subscription->total, []);
+            $order->add_order_note("Subscription total change from $" . $total . " to $" . $subscription->total);
+            $total = $subscription->total;
+        }
 
         if(!empty($subscription->uid))
             $subscriber = new \MobbexSubscriber($wcs_sub->order->get_id());
