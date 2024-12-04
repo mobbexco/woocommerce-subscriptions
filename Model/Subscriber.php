@@ -207,17 +207,23 @@ class Subscriber extends \MobbexSubscription\Model
     /**
      * Execute subscription charge manually using Mobbex API.
      * 
-     * @param integer $total
+     * @param string $reference
+     * @param int|float $total
+     * 
      * @return array|null $response_result
      */
-    public function execute_charge($total)
+    public function execute_charge($reference, $total)
     {
+        mbbxs_log('debug', "Execute Charge. Init. Total $total. $this->subscription_uid $this->uid");
+
         $data = [
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
             'method' => 'POST',
+            'raw'    => true,
             'body'   => [
                 'total' => (float) $total,
-                'test'  => ($this->helper->test_mode === 'yes'),
+                'reference' => $reference,
+                'test' => ($this->helper->test_mode === 'yes'),
             ]
         ];
         $this->logger->log('debug', 'MobbexSubscriber\Subscriber > execute_charge - data: ', ['data' => $data]);
@@ -296,6 +302,17 @@ class Subscriber extends \MobbexSubscription\Model
         } catch (\Exception $e) {
             $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), []);
         }
+    }
+
+    /**
+     * Get correct subscriptions total
+     * 
+     * @return total
+     */
+    public function get_subscription_total($order, $subscription)
+    {
+        // Just to avoid charging a duplicate sign up fee
+        return $subscription->signup_fee ? $order->get_total() - $subscription->signup_fee : $order->get_total();
     }
 
     /**

@@ -173,14 +173,14 @@ class ProductSettings
         
         //sub options
         $sub_options = [
-            'type'      => 'dynamic',
-            'interval'  => $charge_interval . $charge_period,
-            'trial'     => $free_trial_interval,
-            'setup_fee' => $signup_fee,
-            'post_id'   => $post_id,
-            'reference' => "wc_order_{$post_id}",
-            'price'     => $product->get_price(),
-            'name'      => $product->get_name(),
+            'post_id'    => $post_id,
+            'type'       => 'dynamic',
+            'signup_fee' => $signup_fee,
+            'trial'      => $free_trial_interval,
+            'reference'  => "wc_order_{$post_id}",
+            'name'       => $product->get_name(),
+            'price'      => $product->get_price(),
+            'interval'   => $charge_interval . $charge_period,
         ];
 
         //Create/update subscription.
@@ -206,26 +206,27 @@ class ProductSettings
      */
     public static function create_mobbex_sub_integration_wcs($post_id)
     {
-        // get product
+        // Gets product
         $product = wc_get_product($post_id);
+        mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - product_id: ' . $product->get_id() , []);
 
         // Checks if there is a subscription product
-        if(!\WC_Subscriptions_Product::is_subscription($post_id))
+        if(!\MobbexSubscription\Helper::is_wcs_active() && !\WC_Subscriptions_Product::is_subscription($post_id))
             return;
         
         //sub options
         $sub_options = [
-            'type'      => 'manual',
-            'interval'  => '',
             'trial'     => '',
-            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'interval'  => '',
+            'type'      => 'manual',
             'post_id'   => $post_id,
-            'reference' => "wc_order_{$post_id}",
-            'price'     => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : 0,
             'name'      => $product->get_name(),
+            'reference' => "wc_order_{$post_id}",
+            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'price'     => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : $product->get_price(),
         ];
 
-        //Create/update subscription.
+        // Create/update subscription.
         \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options);
     }
 
