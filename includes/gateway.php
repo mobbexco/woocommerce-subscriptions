@@ -6,6 +6,16 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     /** @var Mbbxs_Helper */
     public $helper;
 
+    /** Settings */
+    public $embed;
+    public $api_key;
+    public $test_mode;
+    public $access_token;
+    public $send_subscriber_email;
+    
+    /** Errors array */
+    public $error;
+
     public $supports = array(
         'products',
         'subscriptions',
