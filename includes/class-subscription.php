@@ -118,6 +118,7 @@ class MobbexSubscription extends \Mobbex\Model {
         ];
 
         try {
+            mbbxs_log('debug', 'MobbexSubscription > create()', ['data' => $data]);
             return $this->api->request($data);
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscription Create/Update Error: ' . $e->getMessage(), [], true);
