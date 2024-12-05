@@ -70,12 +70,14 @@ class Mbbxs_Helper
     public function get_api_endpoint($endpoint)
     {
         $query = [
+            "wc-api"       => $endpoint,
+            'platform'     => "woocommerce",
+            "version"      => MOBBEX_SUBS_VERSION,
             'mobbex_token' => $this->generate_token(),
-            'platform' => "woocommerce",
-            "version" => MOBBEX_SUBS_VERSION,
         ];
 
-        $query['wc-api'] = $endpoint;
+        if ($this->debug_mode && $endpoint == 'mobbex_subs_webhook')
+            $query['XDEBUG_SESSION_START'] = 'PHPSTORM';
 
         return add_query_arg($query, home_url('/'));
     }
