@@ -613,7 +613,15 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function scheduled_subscription_payment($total, $order)
     {
+        mbbxs_log('debug', 'Gateway (Hook) > scheduled_subscription_payment', ['orden_payment_method' => $order->get_payment_method()]);
+        // Return if payment method is not Mobbex
+        if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()){
+            mbbxs_log('debug', "El método de pago no es Mobbex => Gateway (Hook) > scheduled_subscription_payment is bypassed.", ['payment_method' => $order->get_payment_method()]);
+            return;
+        }
+
         mbbxs_log('debug', "Scheduled Payment. Init for $ $total. Order ID " . $order->get_id());
+ 
         $order->add_order_note("Processing scheduled payment for $ $total");
 
         // Get subscription from order id
@@ -697,15 +705,26 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function update_subscriber_state($subscription)
     {
+        mbbxs_log('debug', 'Hook > update_subscriber_state', ['subscripion' => $subscription->get_parent()->get_id()]);
+        // Gets order
+        $order_id = $subscription->get_parent()->get_id();
+        $order    = wc_get_order($order_id);
+
+        mbbxs_log('debug', 'Hook > update_subscriber_state', ['orden_payment_method' => $order->get_payment_method()]);
+
+        // Returns if payment method is not Mobbex
+        if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()){
+            mbbxs_log('debug', "El método de pago no es Mobbex => update_subscriber_state is bypassed.", ['payment_method' => $order->get_payment_method()]);
+            return;
+        }
+
         try {
-                
             // Checks that subscription or order id is nor null
             if (!$subscription || !$subscription->get_parent())
                 throw new \Exception(__('Mobbex error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
 
-            // Gets subscription status, order id
+            // Gets subscription status
             $status   = $subscription->get_status();
-            $order_id = $subscription->get_parent()->get_id();
 
                         // Get susbscriber
             $subscriber = new \MobbexSubscriber($order_id);
