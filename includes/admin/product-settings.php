@@ -12,6 +12,10 @@ class Mbbx_Subs_Product_Settings
 
         if(self::$helper->is_wcs_active()){
             add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_sub_integration_wcs']);
+            // Display custom fields in the "General" tab of the product edit page
+            add_action('woocommerce_product_options_general_product_data', [self::class, 'add_mobbex_custom_product_fields']);
+            // Save custom fields when the product is saved
+            add_action('woocommerce_process_product_meta', [self::class, 'save_mobbex_custom_product_fields']);
             return;
         }
 
@@ -34,6 +38,7 @@ class Mbbx_Subs_Product_Settings
         self::charge_interval_field();
         self::free_trial_field();
         self::signup_fee_field();
+        self::test_mode_field();
 
         echo '</div>';
     }
@@ -135,6 +140,7 @@ class Mbbx_Subs_Product_Settings
         $field = [
             'id'            => 'mbbxs_signup_fee',
             'value'         => Mbbx_Subs_Product::get_signup_fee(),
+            'cbvalue'       => false,
             'label'         => __('Sign-up fee', 'mobbex-subs-for-woocommerce'), // Tarifa de registro
             'description'   => __('Fee charged at subscription start', 'mobbex-subs-for-woocommerce'), // Tarifa cobrada al iniciar la suscripción
             'desc_tip'      => true,
@@ -144,6 +150,22 @@ class Mbbx_Subs_Product_Settings
         woocommerce_wp_text_input($field);
     }
 
+    /**
+     * Render Subscription Test Mode field.
+     */
+    public static function test_mode_field()
+    {
+        $field = [
+            'id'            => 'mbbxs_test_mode',
+            'value'         => \Mbbx_Subs_Product::get_test_mode(),
+            'label'         => __('Mobbex Test Mode', 'mobbex-subs-for-woocommerce'), 
+            'description'   => __('Set Mobbex Subscription test mode', 'mobbex-subs-for-woocommerce'),
+            'desc_tip'      => true,
+            'wrapper_class' => 'hidden',
+        ];
+
+        woocommerce_wp_checkbox($field);
+    }
     /**
      * Save subscription fields from product admin.
      * 
@@ -164,18 +186,20 @@ class Mbbx_Subs_Product_Settings
         $free_trial_interval = (!empty($_POST['mbbxs_free_trial_interval']) && is_numeric($_POST['mbbxs_free_trial_interval'])) ? (int) $_POST['mbbxs_free_trial_interval'] : 0;
         $free_trial_period   = (!empty($_POST['mbbxs_free_trial_period']) && in_array($_POST['mbbxs_free_trial_period'], $possible_periods)) ? esc_attr($_POST['mbbxs_free_trial_period']) : '';
         $signup_fee          = (!empty($_POST['mbbxs_signup_fee']) && is_numeric($_POST['mbbxs_signup_fee'])) ? (int) $_POST['mbbxs_signup_fee'] : 0;
+        $test_mode           = (!empty($_POST['mbbxs_test_mode']) ? $_POST['mbbxs_test_mode'] : '');
         // TODO: Validate that interval and period work fine together in dynamic subscription mode
         
         //sub options
         $sub_options = [
-            'post_id'    => $post_id,
-            'type'       => 'dynamic',
-            'signup_fee' => $signup_fee,
-            'trial'      => $free_trial_interval,
-            'reference'  => "wc_order_{$post_id}",
-            'name'       => $product->get_name(),
-            'price'      => $product->get_price(),
-            'interval'   => $charge_interval . $charge_period,
+            'type'      => 'dynamic',
+            'interval'  => $charge_interval . $charge_period,
+            'trial'     => $free_trial_interval,
+            'setup_fee' => $signup_fee,
+            'post_id'   => $post_id,
+            'reference' => "wc_order_{$post_id}",
+            'price'     => $product->get_price(),
+            'name'      => $product->get_name(),
+            'test'      => $test_mode,
         ];
 
         //Create/update subscription.
@@ -193,6 +217,7 @@ class Mbbx_Subs_Product_Settings
             'period'   => $free_trial_period,
         ]);
         update_post_meta($post_id, 'mbbxs_signup_fee', $signup_fee);
+        update_post_meta($post_id, 'mbbxs_test_mode', $test_mode);
     }
 
     /**
@@ -236,5 +261,37 @@ class Mbbx_Subs_Product_Settings
             wp_enqueue_style('mbbxs-product-style', plugin_dir_url(__FILE__) . '../../assets/css/product-admin.css');
             wp_enqueue_script('mbbxs-product', plugin_dir_url(__FILE__) . '../../assets/js/product-admin.js');
         }
+    }
+
+    /** WCS product custom fields */ 
+
+    /**
+     * Add wcs subscription custom fields
+     */
+    public static function add_mobbex_custom_product_fields()
+    {
+        echo '<div class="product_custom_fields">';
+    
+        // Mobbex Subscription test mode
+        woocommerce_wp_checkbox(
+            array(
+                'id'          => 'mobbex_subscription_test_mode',
+                'label'       => __('Mobbex Test Mode', 'woocommerce'),
+                'description' => __('Enable/Disable setting the Mobbex Subscription in test mode', 'woocommerce'),
+                'value'       => get_post_meta(get_the_ID(), 'mobbex_subscription_test_mode', true),
+            )
+        );
+    
+        echo '</div>';
+    }
+    
+    /**
+     * Save wcs subscription custom fields
+     */
+    public static function save_mobbex_custom_product_fields($product_id)
+    {
+        // Save Mobbex Subscription test mode
+        $checkbox_value = isset($_POST['mobbex_subscription_test_mode']) ? 'yes' : 'no';
+        update_post_meta($product_id, 'mobbex_subscription_test_mode', $checkbox_value);
     }
 }
