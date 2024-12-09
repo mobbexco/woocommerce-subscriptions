@@ -3,6 +3,16 @@ require_once 'utils.php';
 
 class Mbbxs_Helper
 {
+    public $title;
+    public $embed;
+    public $enabled;
+    public $api_key;
+    public $test_mode;
+    public $debug_mode;
+    public $integration;
+    public $access_token;
+    public $send_subscriber_email;
+
     public static $periods = [
         'd' => 'day',
         'm' => 'month',
