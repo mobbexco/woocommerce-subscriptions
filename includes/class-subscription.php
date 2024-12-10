@@ -5,22 +5,26 @@ class MobbexSubscription extends \Mobbex\Model {
     /** @var MobbexApi */
     public $api;
 
-    public $product_id;
     public $uid;
+    public $name;
     public $type;
     public $state;
-    public $interval;
-    public $name;
-    public $description;
     public $total;
     public $limit;
-    public $free_trial;
-    public $signup_fee;
     public $result;
     public $helper;
-
-    public $table       = 'mobbex_subscription';
+    public $logger;
+    public $interval;
+    public $reference;
+    public $free_trial;
+    public $signup_fee;
+    public $product_id;
+    public $return_url;
+    public $webhook_url;
+    public $description;
+    
     public $primary_key = 'product_id';
+    public $table       = 'mobbex_subscription';
     
     public $periods = [
         'd' => 'day',
@@ -98,7 +102,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'body'   => [
                 'reference'   => $this->reference,
                 'total'       => $this->total,
-                'setupFee'    => $this->get_signup_fee(),
+                'setupFee'    => $this->signup_fee ,
                 'currency'    => 'ARS',
                 'type'        => $this->type,
                 'name'        => $this->name,
@@ -200,22 +204,6 @@ class MobbexSubscription extends \Mobbex\Model {
         }
 
         return $platform;
-    }
-
-    /**
-     * Get the correct signup value according the case
-     * 
-     * @return int signup_fee value
-     */
-    public function get_signup_fee()
-    {
-        if ($this->signup_fee != 0)
-            return $this->signup_fee;
-
-        if ($this->type == 'manual')
-            return $this->total;
-
-        return 0;
     }
 
     /**
