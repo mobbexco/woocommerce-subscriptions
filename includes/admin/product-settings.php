@@ -176,6 +176,10 @@ class Mbbx_Subs_Product_Settings
         // Get product
         $product = wc_get_product($post_id);
 
+        // Avoid if product isn´t subscription
+        if (!WC_Subscriptions_Product::is_subscription($post_id) || !Mbbx_Subs_Product::is_subscription($product->get_id()));
+            return;
+
         // Set possible periods for validation
         $possible_periods = ['d', 'w', 'm', 'y'];
 
