@@ -344,6 +344,12 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             if($type === 'subscription:registration'){
                 mbbxs_log('debug', "Process Webhook. Registration start. Order ID $id");
 
+                // Avoid duplicate registration process
+                if ($subscriber->register_data) {
+                    $order->add_order_note('Avoid attempt to re-register Subscriber UID: ' . $data['subscriber']['uid']);
+                    return false;
+                }
+
                 // Get registration result from context status
                 $result = !empty($data['context']['status']) && $data['context']['status'] === 'success';
     
