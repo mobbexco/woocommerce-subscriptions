@@ -177,7 +177,10 @@ class Mbbx_Subs_Product_Settings
         $product = wc_get_product($post_id);
 
         // Avoid if product isn´t subscription
-        if (!WC_Subscriptions_Product::is_subscription($post_id) || !Mbbx_Subs_Product::is_subscription($product->get_id()));
+        if (self::$helper->is_wcs_active() && !WC_Subscriptions_Product::is_subscription($post_id))
+            return;
+
+        if (isset($_POST["mbbxs_subscription_mode"]) != '1')
             return;
 
         // Set possible periods for validation
