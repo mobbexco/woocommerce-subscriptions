@@ -148,12 +148,12 @@ class Helper
             
 
             if ($this->helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product))
-                $sub_options['setup_fee'] = WC_Subscriptions_Product::get_sign_up_fee($product) ?: 0;
+                $sub_options['signup_fee'] = WC_Subscriptions_Product::get_sign_up_fee($product) ?: 0;
 
             if (\MobbexSubscription\Product::is_subscription($product_id)) {
-                    $sub_options['interval']  = implode(\MobbexSubscription\Product::get_charge_interval($product_id));
-                    $sub_options['trial']     = \MobbexSubscription\Product::get_free_trial($product_id)['interval'];
-                    $sub_options['setup_fee'] = \MobbexSubscription\Product::get_signup_fee($product_id);
+                    $sub_options['interval']   = implode(\MobbexSubscription\Product::get_charge_interval($product_id));
+                    $sub_options['trial']      = \MobbexSubscription\Product::get_free_trial($product_id)['interval'];
+                    $sub_options['signup_fee'] = \MobbexSubscription\Product::get_signup_fee($product_id);
             }
 
             if ($this->helper->is_wcs_active() && !\WC_Subscriptions_Product::is_subscription($product) && !$this->helper->has_subscription($order_id)) {

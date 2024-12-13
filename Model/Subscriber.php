@@ -314,15 +314,4 @@ class Subscriber extends \MobbexSubscription\Model
         // Just to avoid charging a duplicate sign up fee
         return $subscription->signup_fee ? $order->get_total() - $subscription->signup_fee : $order->get_total();
     }
-
-    /**
-     * Get correct subscriptions total
-     * 
-     * @return total
-     */
-    public function get_subscription_total($order, $subscription)
-    {
-        // Just to avoid charging a duplicate sign up fee
-        return $subscription->signup_fee ? $order->get_total() - $subscription->signup_fee : $order->get_total();
-    }
 }

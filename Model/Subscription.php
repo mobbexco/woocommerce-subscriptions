@@ -311,7 +311,7 @@ class Subscription extends \MobbexSubscription\Model {
             $sub_options['post_id'],
             $sub_options['reference'],
             $sub_options['price'],
-            $sub_options['setup_fee'],
+            $sub_options['signup_fee'],
             $sub_options['type'],
             $sub_options['name'],
             $sub_options['name'],
@@ -333,22 +333,6 @@ class Subscription extends \MobbexSubscription\Model {
     {
         $subscription = self::get_by_id($product_id);
         return isset($subscription);
-    }
-
-    /**
-     * Maybe add product subscriptions sign-up fee 
-     * 
-     * @param object $checkout used to get items and total
-     * 
-     * @return int|string total cleared
-     */
-    public function maybe_add_signup_fee($subscription, $checkout)
-    {
-        $signup_fee_totals  = 0;
-        $subscription       = \Mobbex\Repository::getProductSubscription($item['reference'], true);
-        $signup_fee_totals += $subscription['setupFee'];
-
-        $checkout->total = $checkout->total - $signup_fee_totals;
     }
 
     /**
