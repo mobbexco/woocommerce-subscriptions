@@ -101,8 +101,8 @@ class MobbexSubscription extends \Mobbex\Model {
             'method' => 'POST',
             'body'   => [
                 'reference'   => $this->reference,
-                'total'       => $this->total,
-                'setupFee'    => $this->signup_fee ,
+                'total'       => (float) $this->total,
+                'setupFee'    => (float) $this->signup_fee ? $this->signup_fee : $this->total,
                 'currency'    => 'ARS',
                 'type'        => $this->type,
                 'name'        => $this->name,
