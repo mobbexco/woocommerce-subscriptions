@@ -242,7 +242,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         mbbxs_log('debug', "Process Payment for order id $order_id. common result", [
             'result'     => 'success',
-            'redirect'   => $this->helper->embed ? false : $subscriber->source_url,
+            'redirect'   => $this->embed ? false : $subscriber->source_url,
             'return_url' => $subscription->return_url,
             'data'       => [
                 'id'  => $subscription->uid,
@@ -255,7 +255,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if (!empty($subscriber->uid) && !empty($subscription->uid)) {
             return [
                 'result'     => 'success',
-                'redirect'   => $this->helper->embed ? false : $subscriber->source_url,
+                'redirect'   => $this->embed ? false : $subscriber->source_url,
                 'return_url' => $subscription->return_url,
                 'data'       => [
                     'id'  => $subscription->uid,
