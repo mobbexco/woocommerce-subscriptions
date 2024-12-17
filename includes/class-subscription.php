@@ -102,7 +102,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'body'   => [
                 'reference'   => $this->reference,
                 'total'       => (float) $this->total,
-                'setupFee'    => (float) $this->signup_fee ? $this->signup_fee : $this->total,
+                'setupFee'    => $this->get_signup_fee(),
                 'currency'    => 'ARS',
                 'type'        => $this->type,
                 'name'        => $this->name,
@@ -240,5 +240,21 @@ class MobbexSubscription extends \Mobbex\Model {
             return (get_post_meta($this->product_id, 'mobbex_subscription_test_mode', true) == 'yes');
         else
             return (get_post_meta($this->product_id, 'mbbxs_test_mode', true) == 'yes');
+    }
+
+    /**
+     * Get the corresponding subscription signup fee
+     * 
+     * @return int signup_fee value
+     */
+    public function get_signup_fee()
+    {
+        if ($this->signup_fee != 0)
+            return $this->signup_fee;
+
+        if ($this->type == 'manual')
+            return $this->total;
+
+        return 0;
     }
 }
