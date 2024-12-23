@@ -3,7 +3,7 @@ namespace MobbexSubscription;
 class Helper
 {
     public static $config;
-    public $logger;
+    public static $logger;
 
     public static $periods = [
         'd' => 'day',
@@ -15,16 +15,6 @@ class Helper
     {
         self::$config = new \Mobbex\WP\Checkout\Model\Config;
         self::$logger = new \Mobbex\WP\Checkout\Model\Logger;
-    }
-
-    /**
-     * Checks if Mobbex Subscription Extension is ready
-     * 
-     * @return bool
-     */
-    public static function is_extension_ready()
-    {
-        return self::$config->enable_subscription == 'yes';
     }
 
     public static function is_wcs_active()
@@ -45,7 +35,7 @@ class Helper
         if ($order && $this->is_wcs_active()) {
             $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
             $wcs_sub = end($subscriptions);
-            return \MobbexSubscription\Subscription::is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
+            return (new \MobbexSubscription\Subscription)->is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
         } else {
             return $product_id;
         }
@@ -104,7 +94,7 @@ class Helper
     public static function get_product_subscription_signup_fee($id)
     { 
         try {
-            $subscription = \MobbexSubscription\Subscription::get_by_id($id);
+            $subscription = (new \MobbexSubscription\Subscription)->get_by_id($id);;
 
             if (!$subscription)
                 return null;
@@ -125,6 +115,7 @@ class Helper
     public function get_subscription($order)
     {
         $this->logger->log('debug', "Get subscription. Order ID: " . $order->get_id());
+        $subscription = new \MobbexSubscription\Subscription;
 
         $order_id    = $order->get_id();
         $sub_options = [
@@ -165,7 +156,7 @@ class Helper
         }
 
         $this->logger->log('debug', "Get subscription. Before creation. Order ID: " . $order->get_id(), $sub_options);
-        $subscription = \MobbexSubscription\Subscription::create_mobbex_subscription($sub_options);
+        $subscription = $subscription->create_mobbex_subscription($sub_options);
         $this->logger->log('debug', "Get subscription. After creation. Order ID: " . $order->get_id(), !empty($subscription->uid) ? $subscription->uid : null);
 
         if (!empty($subscription->uid))

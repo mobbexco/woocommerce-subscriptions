@@ -114,7 +114,7 @@ class Cart
     public static function get_subscription($product_id)
     {    
         // if (self::has_subscription() || self::has_wcs_subscription())
-            return \MobbexSubscription\Subscription::get_by_id($product_id);
+            return (new \MobbexSubscription\Subscription)->get_by_id($product_id);
         
         wc_add_notice(__("Cart has not subscription or integration is not activated.", 'mobbex-for-woocommerce'), 'error');
         return null;
@@ -202,7 +202,7 @@ class Cart
             return;
 
         foreach ( $cart->get_cart() as $item ){
-            $subscription = \MobbexSubscription\Subscription::get_by_id($item['product_id']);
+            $subscription = (new \MobbexSubscription\Subscription)->get_by_id($item['product_id']);
             isset($subscription->singup_fee) ? $cart->add_fee(__("{$subscription->name} Sign-up Fee", 'woocommerce'), $subscription->singup_fee, false) : '';
         }
     }
