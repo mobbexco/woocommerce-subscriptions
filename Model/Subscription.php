@@ -3,34 +3,32 @@ namespace MobbexSubscription;
 
 class Subscription extends \MobbexSubscription\Model {
 
-    /** @var \MobbexSubscription\Helper */
-    public $helper;
-
     /** @var \Mobbex\Api */
     public $api;
 
-    /** @var \Mobbex\WP\Checkout\Model\Logger */
-    public $logger;
+    /** @var \MobbexSubscription\Helper */
+    public $helper;
 
-    public $product_id;
     public $uid;
+    public $name;
+    public $test;
     public $type;
     public $state;
-    public $interval;
-    public $name;
-    public $description;
     public $total;
     public $limit;
+    public $result;
+    public $interval;
+    public $features;
+    public $product_id;
     public $free_trial;
     public $signup_fee;
-    public $result;
-    public $features;
     public $return_url;
     public $webhook_url;
+    public $description;
     public $checkout_helper;
 
-    public $table       = 'mobbex_subscription';
     public $primary_key = 'product_id';
+    public $table       = 'mobbex_subscription';
     
     public $periods = [
         'd' => 'day',
@@ -77,18 +75,82 @@ class Subscription extends \MobbexSubscription\Model {
         $description = null,
         $interval    = null,
         $free_trial  = null,
-        $limit       = null
+        $test        = null,
+        $limit       = null,
     ) {
         $this->api             = new \Mobbex\Api();
         $this->helper          = new \MobbexSubscription\Helper();
-        $this->logger          = new \Mobbex\WP\Checkout\Model\Logger();
         $this->checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
-
-        $this->return_url  =  $this->checkout_helper->get_api_endpoint('mobbex_subs_return_url');
         $this->webhook_url =  $this->checkout_helper->get_api_endpoint('mobbex_subs_webhook');
+        $this->return_url  =  $this->checkout_helper->get_api_endpoint('mobbex_subs_return_url');
 
         parent::__construct(...func_get_args());
+    }
+
+    /**
+     * Creates/Update a Mobbex Subscription & return Subscription class
+     * 
+     * @param array $sub_options
+     * 
+     * @return \Mobbex\Subscription|null
+     */
+    public function create_mobbex_subscription($sub_options)
+    {
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > create_mobbex_subscription', ['sub_options' => $sub_options]);
+
+        $subscription = new \MobbexSubscription\Subscription(
+            $sub_options['post_id'],
+            $sub_options['reference'],
+            $sub_options['price'],
+            $sub_options['signup_fee'],
+            $sub_options['type'],
+            $sub_options['name'],
+            $sub_options['name'],
+            $sub_options['interval'],
+            $sub_options['trial'],
+            $this->is_test_subscription(),
+            0,
+        );
+
+        if(!empty($subscription)){
+            // Save Subscription 
+            $subscription->save();
+            return $subscription;
+        }
+
+        return null;
+    }
+
+    /**
+     * Save/update data to db creating subscription from Mobbex API.
+     * 
+     * @return bool True if saved correctly.
+     */
+    public function save($arg = null)
+    {
+        $response = $this->create();
+
+        // Try to save uid
+        if (!empty($response['uid']))
+            $this->uid = $response['uid'];
+
+        $data = [
+            'product_id'  => $this->product_id ?: '',
+            'uid'         => $this->uid ?: '',
+            'type'        => $this->type ?: '',
+            'state'       => $this->state ?: 200,
+            'interval'    => $this->interval ?: '',
+            'name'        => $this->name ?: '',
+            'description' => $this->description ?: '',
+            'total'       => $this->total ?: '',
+            'limit'       => $this->limit ?: '',
+            'free_trial'  => $this->free_trial ?: '',
+            'signup_fee'  => $this->get_signup_fee(),
+        ];
+
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > save() - data', ['subscription data' => $data]);
+        return $this->uid && parent::save($data);
     }
 
     /**
@@ -117,44 +179,14 @@ class Subscription extends \MobbexSubscription\Model {
                 $this->description,
                 $this->interval,
                 $features,
-                $this->free_trial
+                $this->free_trial,
+                $this->is_test_subscription(),
             );
             $this->logger->log('debug', 'MobbexSubscription\Subsciption > create() subscription data', ['product_id' => $subscription->id, 'response' => $subscription->response]);
             return $subscription->response;
         } catch (\Exception $e) {
             $this->logger->log('error', 'MobbexSubscription\Subsciption > create() - Create/Update Error: ' . $e->getMessage(), $this);
         }
-    }
-
-    /**
-     * Save/update data to db creating subscription from Mobbex API.
-     * 
-     * @return bool True if saved correctly.
-     */
-    public function save($arg = null)
-    {
-        $response = $this->create();
-
-        // Try to save uid
-        if (!empty($response['uid']))
-            $this->uid = $response['uid'];
-
-        $data = [
-            'product_id'  => $this->product_id ?: '',
-            'uid'         => $this->uid ?: '',
-            'type'        => $this->type ?: '',
-            'state'       => $this->state ?: 200,
-            'interval'    => $this->interval ?: '',
-            'name'        => $this->name ?: '',
-            'description' => $this->description ?: '',
-            'total'       => $this->total ?: '',
-            'limit'       => $this->limit ?: '',
-            'free_trial'  => $this->free_trial ?: '',
-            'signup_fee'  => $this->signup_fee ?: '',
-        ];
-
-        $this->logger->log('debug', 'MobbexSubscription\Subscription > save() - data', ['subscription data' => $data]);
-        return $this->uid && parent::save($data);
     }
 
     /**
@@ -211,13 +243,7 @@ class Subscription extends \MobbexSubscription\Model {
      */
     public function get_signup_fee()
     {
-        if ($this->signup_fee != 0)
-            return $this->signup_fee;
-
-        if ($this->type == 'manual')
-            return $this->total;
-
-        return 0;
+        return $this->signup_fee != 0 ? $this->signup_fee : 0;
     }
 
     /**
@@ -227,12 +253,12 @@ class Subscription extends \MobbexSubscription\Model {
      * 
      * @return \Mobbex\Subscription|null
      */
-    public static function get_by_uid($uid)
+    public function get_by_uid($uid)
     {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE uid='$uid'", 'ARRAY_A');
 
-        self::$logger->log('debug', 'MobbexSubscription\Subscription > get_by_uid error: ' . $wpdb->last_error, []);
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > get_by_uid error: ' . $wpdb->last_error, $wpdb->last_error);
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
@@ -243,21 +269,21 @@ class Subscription extends \MobbexSubscription\Model {
      * 
      * @return \Mobbex\Subscription|null
      */
-    public static function get_by_id($id)
+    public function get_by_id($id)
     {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
 
-        self::$logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, []);
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
-    public static function is_stored($id)
+    public function is_stored($id)
     {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'");
 
-        self::$logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, []);
+        $this->logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
@@ -296,42 +322,9 @@ class Subscription extends \MobbexSubscription\Model {
         throw new Exception(__('MobbexSubscription\Subscription > modify_subscription - An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
     }
 
-    /**
-     * Creates/Update a Mobbex Subscription & return Subscription class
-     * 
-     * @param array $sub_options
-     * 
-     * @return \Mobbex\Subscription|null
-     */
-    public static function create_mobbex_subscription($sub_options)
+    public function is_subscription($product_id)
     {
-        self::$logger->log('debug', 'MobbexSubscription\Subscription > create_mobbex_subscription', ['sub_options' => $sub_options]);
-
-        $subscription = new \MobbexSubscription\Subscription(
-            $sub_options['post_id'],
-            $sub_options['reference'],
-            $sub_options['price'],
-            $sub_options['signup_fee'],
-            $sub_options['type'],
-            $sub_options['name'],
-            $sub_options['name'],
-            $sub_options['interval'],
-            $sub_options['trial'],
-            0,
-        );
-
-        if(!empty($subscription)){
-            //Save Subscription 
-            $subscription->save();
-            return $subscription;
-        }
-
-        return null;
-    }
-
-    public static function is_subscription($product_id)
-    {
-        $subscription = self::get_by_id($product_id);
+        $subscription = $this->get_by_id($product_id);
         return isset($subscription);
     }
 
@@ -346,7 +339,20 @@ class Subscription extends \MobbexSubscription\Model {
     {
         if (str_contains($this->type, "dynamic"))
             return ((float) $this->signup_fee) > 0 ? $total - $this->signup_fee : $total;
+        elseif (str_contains($this->type, "manual"))
+            return ((float) $this->signup_fee) > 0 ? $total : 0;
+    }
+
+    /**
+     * Check if the subscription was configured in test mode
+     * 
+     * @return bool is test
+     */
+    public function is_test_subscription()
+    {
+        if (isset($this->helper->integration) && $this->helper->integration === "wcs")
+            return (get_post_meta($this->product_id, 'mobbex_subscription_test_mode', true) == 'yes');
         else
-            return 0;
+            return (get_post_meta($this->product_id, 'mbbxs_test_mode', true) == 'yes');
     }
 }
