@@ -289,39 +289,61 @@ class MobbexSubscriptions
                 wp_send_json($checkout) && exit;
 
             $logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Modified Checkout', $checkout);
-        }
-        
-        if (!$subscription)
-            $logger->log(
-                'debug', 'MobbexSubscriptions > modify_checkout_data | Subscription is null/not found',
+        } else {
+            $logger->log('debug', 
+                'MobbexSubscriptions > modify_checkout_data | Subscription is null/not found', 
                 ['product id' => $checkout['items'][0]['entity']]
             );
+        }
 
         return $checkout;
     }
     
-
+    /**
+     * Process webhook when the user returns from the payment gateway.
+     */
     public function mobbex_subs_webhook()
     {
         $token    = $_REQUEST['mobbex_token'];
         $id       = isset($_REQUEST['mobbex_order_id']) ? $_REQUEST['mobbex_order_id'] : null;
         $postData = isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] == 'application/json' ? json_decode(file_get_contents('php://input'), true) : $_POST;
+        $logger   = new \Mobbex\WP\Checkout\Model\Logger;
 
-        $this->process_webhook($token, $postData['data'], $postData['type'], $id);
+        // Order webhook filter
+        $webhookData = \Mobbex\WP\Checkout\Model\Helper::format_webhook_data($id, $postData['data']);
+        $logger->log(
+            'debug', 
+            'MobbexSubscription > mobbex_subs_webhook - WebhookData', 
+            $webhookData
+        );
+
+        // Save transaction
+        global $wpdb;
+        $wpdb->replace(
+            "{$wpdb->prefix}mobbex_transaction", 
+            $webhookData, 
+            \Mobbex\WP\Checkout\Model\Helper::db_column_format($webhookData)
+        );
+        
+        $this->process_webhook($token, $postData['data'], $postData['type'], $id, $logger);
 
         echo "WebHook OK: Mobbex for WooCommerce Subscriptions v" . MOBBEX_SUBS_VERSION;
+        $logger->log(
+            "debug", 
+            "MobbexSubscription > mobbex_subs_webhook - WebHook OK: Mobbex for WooCommerce Subscriptions v" . MOBBEX_SUBS_VERSION, 
+            []
+        );
+        
         die();
     }
 
-    public function process_webhook($token, $data, $type, $order_id)
+    public function process_webhook($token, $data, $type, $order_id, $logger)
     {
         $status = $data['payment']['status']['code'];
         $order  = wc_get_order($order_id);
 
         if (empty($status) || empty($token) || !$type || empty($type) || !\Mobbex\Repository::validateToken($token))
             return false;
-
-        $logger = new \Mobbex\WP\Checkout\Model\Logger;
 
         $subscription = (new \MobbexSubscription\Subscription)->get_by_uid(
             $data['subscriptions'][0]['subscription']
@@ -334,11 +356,19 @@ class MobbexSubscriptions
             );
 
         if (!isset($subscription, $subscriber)){
-            $logger->log('debug', 'MobbexSubscription > process_webhook - Subscription or Subscriber cannot be loaded', $data);
+            $logger->log(
+                'debug', 
+                'MobbexSubscription > process_webhook - Subscription or Subscriber cannot be loaded', 
+                $data
+            );
             return false;
         }
 
-        $logger->log('debug', 'MobbexSubscription > process_webhook - Mobbex Subscription UID: ' . $subscription->uid . 'Mobbex Subscriber UID: ' . $subscriber->uid, []);
+        $logger->log(
+            "debug", 
+            "MobbexSubscription > process_webhook - Mobbex Subscription UID: $subscription->uid 'Mobbex Subscriber UID: $subscriber->uid", 
+            []
+        );
 
         $state = \MobbexSubscription\Helper::get_state($status);
         $dates = $subscription->calculateDates();
@@ -363,7 +393,7 @@ class MobbexSubscriptions
             // Avoid duplicate registration process
             if ($subscriber->register_data) {
                 $logger->log('debug', 'MobbexSubscription > process_webhook - Avoid duplicate registration', ['register_data' => $subscriber->register_data]);
-                $order_id->add_order_note('Avoid attempt to re-register Subscriber UID: ' . $data['subscriber']['uid']);
+                $order->add_order_note('Avoid attempt to re-register Subscriber UID: ' . $data['subscriptions'][0]['subscriber']);
                 return false;
             }
             // Save registration data and update subscriber state
@@ -372,7 +402,7 @@ class MobbexSubscriptions
             $subscriber->start_date    = $dates['current'];
 
             // Get registration result from context status
-            $result = !empty($data['context']['status']) && $data['context']['status'] === 'success';
+            $result = $status == 200;
             $logger->log('debug', 'MobbexSubscription > process_webhook - Registration result: ' . $result, []);
 
             $order->add_order_note('Mobbex Subscription UID: ' . $subscription->uid);
@@ -428,37 +458,58 @@ class MobbexSubscriptions
     {
         $logger = new \Mobbex\WP\Checkout\Model\Logger;
 
-        $logger->log('debug', 'MobbexSubscription > scheduled_subscription_payment - payment method: ' . $order->get_payment_method(), []);
+        $logger->log(
+            "debug", 
+            "MobbexSubscription > scheduled_subscription_payment - payment method: {$order->get_payment_method()}", 
+            []
+        );
+
         // Return if payment method is not Mobbex
         if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()){
-            $logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Payment method is not Mobbex.", ['payment_method' => $order->get_payment_method()]);
+            $logger->log(
+                "debug", 
+                "MobbexSubscription > scheduled_subscription_payment - Payment method is not Mobbex.", 
+                ['payment_method' => $order->get_payment_method()]
+            );
             return;
         }
 
-        $logger->log('debug', 'MobbexSubscription > scheduled_subscription_payment - Init for $' . $total . ' - Order ID ' . $order->get_id());
+        $logger->log(
+            "debug", 
+            "MobbexSubscription > scheduled_subscription_payment - Init for $$total - Order ID {$order->get_id()}",
+            []
+        );
         $order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Processing scheduled payment for $ $total");
 
         // Get subscription from order id
         $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']); 
+        $logger->log(
+            "debug", 
+            "MobbexSubscription > scheduled_subscription_payment - Getting subscriptions. Order ID {$order->get_id()}", 
+            $subscriptions
+        );
 
-        $logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Getting subscriptions. Order ID " . $order->get_id(), $subscriptions);
         $wcs_sub = end($subscriptions);
-        $logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Subscription extract. Order ID " . $order->get_id(), [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]);
-
-        //Migrate subscriptions
-        $this->subs_order_helper->maybe_migrate_subscriptions($wcs_sub->order);
+        $logger->log(
+            "debug", 
+            "MobbexSubscription > scheduled_subscription_payment - Subscription extract. Order ID {$order->get_id()}", 
+            [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]
+        );
         
-        //get mobbex subscriber & subscription
+        // Get mobbex subscriber & subscription
         $subscription = $this->helper->get_subscription($order, $wcs_sub->order->get_id());
-        $logger->log('debug', "MobbexSubscription > scheduled_subscription_payment - Subscription obtained succesfuly. Order ID " . $order->get_id(), $subscription->uid);
-
+        $logger->log(
+            'debug', 
+            "MobbexSubscription > scheduled_subscription_payment - Subscription obtained succesfuly. Order ID {$order->get_id()}", 
+            $subscription->uid
+        );
 
         if(!empty($subscription->uid))
             $subscriber = new \MobbexSubscription\Subscriber($wcs_sub->order->get_id());
 
         $logger->log(
             'debug',
-            "MobbexSubscription > scheduled_subscription_payment - Subscriber obtained succesfuly. Order ID " . $order->get_id(),
+            "MobbexSubscription > scheduled_subscription_payment - Subscriber obtained succesfuly. Order ID {$order->get_id()}",
             [!empty($subscriber->uid) ? $subscriber->uid : null, $total]
         );
 
@@ -504,7 +555,7 @@ class MobbexSubscriptions
 
             $logger->log(
                 'debug',
-                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscription->uid $subscriber->uid. Order ID " . $order->get_id(),
+                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscription->uid $subscriber->uid. Order ID {$order->get_id()}",
                 $result
             );
 
@@ -512,7 +563,11 @@ class MobbexSubscriptions
         } catch (\Exception $e) {
             $order->add_order_note("Charge execution error: " . $e->getMessage());
             $wcs_sub->payment_failed();
-            $logger->log('debug', 'MobbexSubscription > scheduled_subscription_payment - Charge execution error: ' . $e->getMessage());
+            $logger->log(
+                "debug", 
+                "MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}, Order ID {$order->get_id()}", 
+                []
+                );
 
             return false;
         }
@@ -531,7 +586,10 @@ class MobbexSubscriptions
         try {
             // Checks that subscription or order id is nor null
             if (!$subscription || !$subscription->get_parent())
-                throw new \Exception(__('MobbexSubscription > update_subscriber_state -  error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
+                throw new \Exception(__(
+                    'MobbexSubscription > update_subscriber_state -  error: Subscription or parent order not found on state update', 
+                    'mobbex-subs-for-woocommerce'
+                ));
 
             // Gets subscription status, order id
             $status   = $subscription->get_status();
@@ -544,7 +602,10 @@ class MobbexSubscriptions
             $subscriber->update_status($status);
             
         } catch (\Exception $e) {
-            $subscription->add_order_note(__('MobbexSubscription > update_subscriber_state - Error modifying subscriber status: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
+            $subscription->add_order_note(__(
+                'MobbexSubscription > update_subscriber_state - Error modifying subscriber status', 
+                'mobbex-subs-for-woocommerce') . $e->getMessage()
+            );
         }
     }
 }
