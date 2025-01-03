@@ -148,7 +148,7 @@ class OrderHelper
         if ($order && \MobbexSubscription\Helper::is_wcs_active()) {
             $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
             $wcs_sub = end($subscriptions);
-            return (new \MobbexSubscription\Subscription)->is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
+            return  \MobbexSubscription\Subscription::get_by_id($wcs_sub->order->get_id(), false) ? $wcs_sub->order->get_id() : $product_id;
         } else {
             return $product_id;
         }

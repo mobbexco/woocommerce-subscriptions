@@ -5,15 +5,13 @@ class ProductSettings
     /** @var \MobbexSubscription\Helper */
     public static $helper;
 
-     /** @var \Mobbex\WP\Checkout\Model\Helper; */
-    public static $checkout_helper;
-
     public static function init()
     {
-        // Load helper
+        // Load helpers
         self::$helper = new \MobbexSubscription\Helper;
+        $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
-        if ((new \Mobbex\WP\Checkout\Model\Helper)->is_extension_ready()){
+        if ($checkout_helper->is_extension_ready()){
             if (self::$helper->is_wcs_active()){
                 add_action('wp_after_insert_post', [self::class, 'create_mobbex_sub_integration_wcs']);
                 add_action('woocommerce_product_options_general_product_data', [self::class, 'add_mobbex_custom_product_fields']);
@@ -71,7 +69,7 @@ class ProductSettings
     public static function charge_interval_field()
     {
         $charge_interval = \MobbexSubscription\Product::get_charge_interval();
-        $sub_type = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
+        $sub_type = self::$helper->is_wcs_active() ? 'manual' : 'dynamic';
 
         ?>
         <p class="form-field mbbxs_charge_interval_field hidden">
@@ -112,7 +110,7 @@ class ProductSettings
     public static function free_trial_field()
     {
         $free_trial = \MobbexSubscription\Product::get_free_trial();
-        $sub_type   = isset(self::$helper->type) ? self::$helper->type : 'dynamic';
+        $sub_type   = self::$helper->is_wcs_active() ? 'manual' : 'dynamic';
 
         ?>
         <p class="form-field mbbxs_free_trial_field hidden">

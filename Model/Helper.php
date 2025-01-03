@@ -35,7 +35,7 @@ class Helper
         if ($order && $this->is_wcs_active()) {
             $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
             $wcs_sub = end($subscriptions);
-            return (new \MobbexSubscription\Subscription)->is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
+            return  \MobbexSubscription\Subscription::get_by_id($wcs_sub->order->get_id(), false) ? $wcs_sub->order->get_id() : $product_id;
         } else {
             return $product_id;
         }
@@ -94,7 +94,7 @@ class Helper
     public static function get_product_subscription_signup_fee($id)
     { 
         try {
-            $subscription = (new \MobbexSubscription\Subscription)->get_by_id($id);;
+            $subscription = \MobbexSubscription\Subscription::get_by_id($id);;
 
             if (!$subscription)
                 return null;
