@@ -266,24 +266,18 @@ class Subscription extends \MobbexSubscription\Model {
      * Get a Subscription from db using product id.
      * 
      * @param string $id
+     * @param bool $array
      * 
      * @return \Mobbex\Subscription|null
      */
-    public function get_by_id($id)
+    public static function get_by_id($id, $array = true)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", 'ARRAY_A');
+        $logger = new  \Mobbex\WP\Checkout\Model\Logger;
 
-        $this->logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
-        return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
-    }
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", $array ? 'ARRAY_A' : 'OBJECT');
 
-    public function is_stored($id)
-    {
-        global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'");
-
-        $this->logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
+        $logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
@@ -320,12 +314,6 @@ class Subscription extends \MobbexSubscription\Model {
         }
 
         throw new Exception(__('MobbexSubscription\Subscription > modify_subscription - An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
-    }
-
-    public function is_subscription($product_id)
-    {
-        $subscription = $this->get_by_id($product_id);
-        return isset($subscription);
     }
 
     /**
