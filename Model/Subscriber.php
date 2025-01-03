@@ -3,38 +3,39 @@ namespace MobbexSubscription;
 
 class Subscriber extends \MobbexSubscription\Model
 {
-    /** @var \Mobbex\Repository */
-    public $repository;
     /** @var \Mobbex\Api */
     public $api;
 
     /** @var \Mobbex\WP\Checkout\Model\Logger */
     public $logger;
 
-    public $order_id;
-    public $subscription_uid;
+    /** @var \Mobbex\Repository */
+    public $repository;
+
     public $uid;
-    public $reference;
     public $state;
     public $test;
     public $name;
     public $email;
     public $phone;
-    public $identification;
-    public $customer_id;
+    public $helper;
+    public $result;
+    public $order_id;
+    public $reference;
+    public $addresses;
     public $source_url;
+    public $start_date;
+    public $customer_id;
     public $control_url;
     public $register_data;
-    public $start_date;
+    public $identification;
     public $last_execution;
     public $next_execution;
-    public $result;
-    public $addresses;
-    public $helper;
+    public $subscription_uid;
 
-    public $table         = 'mobbex_subscriber';
     public $primary_key   = 'order_id';
     public $array_columns = ['register_data'];
+    public $table         = 'mobbex_subscriber';
     public $fillable      = [
         'order_id',
         'subscription_uid',
@@ -104,10 +105,18 @@ class Subscriber extends \MobbexSubscription\Model
                 $this->get_addresses($order),
                 $subscription->total,
             );
-            $this->logger->log('debug', 'MobbexSubscriber\Subscriber Created. subscriber_uid: ' . $subscriber->uid , []);
+            $this->logger->log(
+                'debug', 
+                "MobbexSubscriber\Subscriber Created. subscriber_uid: $subscriber->uid"
+            );
+
             return $subscriber->response;
         } catch (\Exception $e) {
-            $this->logger->log('error', 'MobbexSubscriber\Subscriber Create/Update Error: ' . $e->getMessage(), [$this, $dates, $order]);
+            $this->logger->log(
+                'error', 
+                "MobbexSubscriber\Subscriber Create/Update Error: {$e->getMessage()}", 
+                [$this, $dates, $order]
+                );
         }
     }
 
@@ -126,13 +135,13 @@ class Subscriber extends \MobbexSubscription\Model
 
             $this->addresses[] = [
                 'type'         => $type,
-                'country'      => $this->repository->convertCountryCode($object->$country()),
-                'state'        => $object->$state(),
                 'city'         => $object->$city(),
+                'state'        => $object->$state(),
                 'zipCode'      => $object->$postcode(),
+                'streetNotes'  => $object->$address_2(),
+                'country'      => $this->repository->convertCountryCode($object->$country()),
                 'street'       => trim(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1()))),
                 'streetNumber' => str_replace(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1())), '', trim($object->$address_1())),
-                'streetNotes'  => $object->$address_2()
             ];
         }
     }
@@ -146,19 +155,19 @@ class Subscriber extends \MobbexSubscription\Model
      * 
      * @return bool True if saved correctly.
      */
-    public function saveExecution($webhookData, $order_id, $date)
+    public function save_execution($webhookData, $order_id, $date)
     {
         global $wpdb;
 
         $data = [
-            'uid'              => $webhookData['execution']['uid'],
-            'order_id'         => $order_id,
-            'subscription_uid' => $this->subscription_uid,
-            'subscriber_uid'   => $this->uid,
-            'status'           => $webhookData['payment']['status']['code'],
-            'total'            => $webhookData['payment']['total'],
             'date'             => $date,
-            'data'             => json_encode($webhookData)
+            'order_id'         => $order_id,
+            'subscriber_uid'   => $this->uid,
+            'subscription_uid' => $this->subscription_uid,
+            'data'             => json_encode($webhookData),
+            'total'            => $webhookData['payment']['total'],
+            'status'           => $webhookData['payment']['status']['code'],
+            'uid'              => $webhookData['subscriptions'][0]['execution'],
         ];
         
         return $wpdb->insert($wpdb->prefix.'mobbex_execution', $data);
@@ -177,27 +186,27 @@ class Subscriber extends \MobbexSubscription\Model
             $this->result = $this->sync();
 
             $this->uid         = isset($this->result['uid'])           ? $this->result['uid']           : $this->uid;
+            $this->test        = isset($this->result['test'])          ? $this->result['test']          : $this->test;
             $this->source_url  = isset($this->result['sourceUrl'])     ? $this->result['sourceUrl']     : $this->source_url;
             $this->control_url = isset($this->result['subscriberUrl']) ? $this->result['subscriberUrl'] : $this->control_url;
-            $this->test        = isset($this->result['test'])          ? $this->result['test']          : $this->test;
         }
 
         $data = [
-            'order_id'         => $this->order_id ?: '',
             'uid'              => $this->uid ?: '',
-            'subscription_uid' => $this->subscription_uid ?: '',
-            'state'            => $this->state ?: '',
             'name'             => $this->name ?: '',
+            'state'            => $this->state ?: '',
             'email'            => $this->email ?: '',
             'phone'            => $this->phone ?: '',
-            'identification'   => $this->identification ?: '',
-            'customer_id'      => $this->customer_id ?: '',
+            'order_id'         => $this->order_id ?: '',
             'source_url'       => $this->source_url ?: '',
-            'control_url'      => $this->control_url ?: '',
-            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
             'start_date'       => $this->start_date ?: '',
+            'control_url'      => $this->control_url ?: '',
+            'customer_id'      => $this->customer_id ?: '',
             'last_execution'   => $this->last_execution ?: '',
-            'next_execution'   => $this->next_execution ?: ''
+            'next_execution'   => $this->next_execution ?: '',
+            'identification'   => $this->identification ?: '',
+            'subscription_uid' => $this->subscription_uid ?: '',
+            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
         ];
         
         $this->logger->log('debug', 'MobbexSubscriber\Subscriber > save - data: ', ['data' => $data]);
@@ -214,24 +223,34 @@ class Subscriber extends \MobbexSubscription\Model
      */
     public function execute_charge($reference, $total)
     {
-        $this->logger->log('debug', "Execute Charge. Init. Total $total. $this->subscription_uid $this->uid");
+        $this->logger->log(
+            'debug', 
+            "Execute Charge. Init. Total $total. $this->subscription_uid $this->uid"
+        );
 
         $data = [
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
             'method' => 'POST',
             'raw'    => true,
             'body'   => [
-                'total' => (float) $total,
                 'reference' => $reference,
-                'test' => ($this->test === 'yes'),
+                'total'     => (float) $total,
+                'test'      => (bool) $this->test,
             ]
         ];
-        $this->logger->log('debug', 'MobbexSubscriber\Subscriber > execute_charge - data: ', ['data' => $data]);
+        $this->logger->log(
+            'debug', 
+            'MobbexSubscriber\Subscriber > execute_charge - data: ', 
+            ['data' => $data]
+        );
 
         try {
             return $this->api::request($data);
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'MobbexSubscriber\Subscriber > execute_charge Error: ' . $e->getMessage(), []);
+            $this->logger->log(
+                "debug", 
+                "MobbexSubscriber\Subscriber > execute_charge Error: {$e->getMessage()}",
+            );
         }
     }
 
@@ -245,22 +264,49 @@ class Subscriber extends \MobbexSubscription\Model
     public function get_by_uid($subscriber_uid, $subscription_uid = null, $order_id = null)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$subscriber_uid'");
+        $result = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}mobbex_subscriber WHERE uid=$subscriber_uid");
 
         if (empty($result))
             $result = $this->get_subscriber($subscriber_uid, $subscription_uid, $order_id);
+        $this->logger->log(
+            'debug', 
+            "MobbexSubscriber\Subscriber > get_by_uid - error: $wpdb->last_error",
+        );
 
-        $this->logger->log('debug', 'MobbexSubscriber\Subscriber > get_by_uid - error: ' . $wpdb->last_error, []);
         return $result;
     }
 
-    public function is_stored($id)
+    /**
+     * Get a Subscriber from db using product id.
+     * 
+     * @param string $id
+     * @param bool $array
+     * 
+     * @return array|object \MobbexSubscription\Subscriber|null
+     */
+    public static function get_by_id($id, $array = true)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE order_id='$id'", 'ARRAY_A');
+        $logger = new \Mobbex\WP\Checkout\Model\Logger;
 
-        $this->logger->log('debug', 'MobbexSubscriber\Subscriber > is_stored - error: ' . $wpdb->last_error, []);
-        return !empty($result[0]);
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE order_id='$id'", $array ? 'ARRAY_A' : 'OBJECT');
+
+        $logger->log('debug', 'MobbexSubscriber\Subscriber > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
+        
+        if ($result[0] && !$array)
+            return new \MobbexSubscription\Subscriber(
+                $result[0]->order_id,
+                $result[0]->subscription_uid,
+                $result[0]->reference,
+                $result[0]->name,
+                $result[0]->email,
+                $result[0]->phone,
+                $result[0]->identification,
+                $result[0]->customer_id
+            );
+
+        return $result[0];
+
     }
 
     /**
@@ -273,8 +319,10 @@ class Subscriber extends \MobbexSubscription\Model
      */
     public function update_status($status)
     {
+        $checkot_helper = new \Mobbex\WP\Checkout\Model\Helper();
+
         // Checks if plugin is ready
-        if (!$this->helper->is_ready()) {
+        if (!$checkot_helper->is_extension_ready()) {
             throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
         }
 
@@ -303,7 +351,10 @@ class Subscriber extends \MobbexSubscription\Model
                 'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
             ]);
         } catch (\Exception $e) {
-            $this->logger->log('debug', 'Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), []);
+            $this->logger->log(
+                'debug', 
+                "Mobbex Subscriber Create/Update Error: {$e->getMessage()}",
+            );
         }
     }
 
@@ -328,7 +379,10 @@ class Subscriber extends \MobbexSubscription\Model
      */
     public function get_subscriber($subscriber_uid, $subscription_uid = null, $order_id = null)
     {
-        $this->logger->log('debug', "Mobbex Subscriber > get_subscriber: $subscription_uid / $subscriber_uid", []);
+        $this->logger->log(
+            'debug', 
+            "Mobbex Subscriber > get_subscriber: $subscription_uid / $subscriber_uid",
+        );
 
         if (isset($subscriber_uid, $subscription_uid, $order_id)){
             try {
@@ -337,22 +391,26 @@ class Subscriber extends \MobbexSubscription\Model
                     'uri'    => "subscriptions/$subscription_uid/subscriber/$subscriber_uid"
                 ]);
             } catch (\Exception $e) {
-                $this->logger->log('debug', 'Mobbex Subscriber > get_subscriber: ' . $e->getMessage(), [ 'exception' => $e]);
+                $this->logger->log(
+                    'debug', 
+                    "Mobbex Subscriber > get_subscriber: {$e->getMessage()}", 
+                    ['exception' => $e]
+                );
             };
         
-        $subscriber = new \MobbexSubscription\Subscriber(
-            $order_id,
-            $subscription_uid,
-            $res['subscriber']['reference'],
-            $res['subscriber']['customerData']['name'],
-            $res['subscriber']['customerData']['email'],
-            $res['subscriber']['customerData']['phone'],
-            $res['subscriber']['customerData']['identification'],
-            $res['subscriber']['customerData']['uid']
-        );
+            $subscriber = new \MobbexSubscription\Subscriber(
+                $order_id,
+                $subscription_uid,
+                $res['subscriber']['reference'],
+                $res['subscriber']['customerData']['name'],
+                $res['subscriber']['customerData']['email'],
+                $res['subscriber']['customerData']['phone'],
+                $res['subscriber']['customerData']['identification'],
+                $res['subscriber']['customerData']['uid']
+            );
 
-        $subscriber->save();
-        return $subscriber;
+            $subscriber->save();
+            return $subscriber;
         }
     }
 }
