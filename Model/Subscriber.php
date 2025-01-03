@@ -193,6 +193,7 @@ class Subscriber extends \MobbexSubscription\Model
 
         $data = [
             'uid'              => $this->uid ?: '',
+            'test'             => $this->test ?: '',
             'name'             => $this->name ?: '',
             'state'            => $this->state ?: '',
             'email'            => $this->email ?: '',
