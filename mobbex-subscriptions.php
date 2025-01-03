@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Mobbex Subscriptions for WooCommerce
- * Description: Plugin that integrates Mobbex Subscriptions in WooCommerce.
+ * Plugin Name: Mobbex for Woocommerce Subscription 
+ * Description: Extension that integrates Mobbex Subscriptions in Mobbex For Woocommerce.
  * Version: 4.0.0
  * WC tested up to: 6.7.0
  * Author: mobbex.com
@@ -9,18 +9,15 @@
  * Copyright: 2021 mobbex.com
  */
 
-// Sdk classes
 // Only requires autload if the file exists to avoid fatal errors
-
 if (file_exists(__DIR__ . '/vendor/autoload.php'))
-    require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 
 require_once plugin_dir_path(__FILE__) . 'utils/definitions.php';
 
 class MobbexSubscriptions
 {
     public static $version = '4.0.0';
-    public static $id;
 
     /** @var \Mobbex\WP\Checkout\Model\Logger */
     public static $logger;
@@ -92,11 +89,9 @@ class MobbexSubscriptions
             return;
         }
         // Always
+        add_action ('mobbex_subs_scheduled_payment', [$this, 'scheduled_subscription_payment'], 10, 2);
         add_filter('mobbex_checkout_custom_data', [$this, 'modify_checkout_data'], 10, 2);
         add_filter('mobbex_subs_support', [$this, 'add_subscription_support'], 10, 2);
-
-        // Always Required
-        add_action('woocommerce_scheduled_subscription_payment_' . self::$id, [$this, 'scheduled_subscription_payment'], 10, 2);
 
         // Update subscription status
         add_action('woocommerce_subscription_status_active', [$this, 'update_subscriber_state']);
@@ -441,7 +436,7 @@ class MobbexSubscriptions
         $subscriber->save(false);
 
         // Save webhooks data in execution table
-        $subscriber->saveExecution($data, $order_id, $subscriber->last_execution);
+        $subscriber->save_execution($data, $order_id, $subscriber->last_execution);
 
         return true;
     }
@@ -465,7 +460,7 @@ class MobbexSubscriptions
         );
 
         // Return if payment method is not Mobbex
-        if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()){
+        if (MOBBEX_WC_GATEWAY_ID != $order->get_payment_method()){
             $logger->log(
                 "debug", 
                 "MobbexSubscription > scheduled_subscription_payment - Payment method is not Mobbex.", 
@@ -476,8 +471,7 @@ class MobbexSubscriptions
 
         $logger->log(
             "debug", 
-            "MobbexSubscription > scheduled_subscription_payment - Init for $$total - Order ID {$order->get_id()}",
-            []
+            "MobbexSubscription > scheduled_subscription_payment - Init for $$total - Order ID {$order->get_id()}"
         );
         $order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Processing scheduled payment for $ $total");
 
@@ -496,33 +490,23 @@ class MobbexSubscriptions
             [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]
         );
         
-        // Get mobbex subscriber & subscription
-        $subscription = $this->helper->get_subscription($order, $wcs_sub->order->get_id());
+        // Get mobbex subscriber
+        $subscriber = \MobbexSubscription\Subscriber::get_by_id($wcs_sub->get_parent_id(), false);
         $logger->log(
             'debug', 
-            "MobbexSubscription > scheduled_subscription_payment - Subscription obtained succesfuly. Order ID {$order->get_id()}", 
-            $subscription->uid
+            "MobbexSubscription > scheduled_subscription_payment - Subscriber $subscriber->uid obtained succesfuly. Order ID {$order->get_id()}", 
+            $subscriber->uid
         );
 
-        if(!empty($subscription->uid))
-            $subscriber = new \MobbexSubscription\Subscriber($wcs_sub->order->get_id());
-
-        $logger->log(
-            'debug',
-            "MobbexSubscription > scheduled_subscription_payment - Subscriber obtained succesfuly. Order ID {$order->get_id()}",
-            [!empty($subscriber->uid) ? $subscriber->uid : null, $total]
-        );
-
-        // if subscription is registered and is not empty
-        if (empty($subscription->uid) || empty($subscriber->uid) || empty($total)) {
+        if(!$subscriber){
             $order->add_order_note("Error executing subscription. Empty subscription data or total" . $total);
             return false;
         }
 
         try {
-            $order->add_order_note("Executing charge for Mobbex Subscription $subscription->uid and Mobbex Subscriber $subscriber->uid");
+            $order->add_order_note("Executing charge for Mobbex Subscription $subscriber->subscription_uid and Mobbex Subscriber $subscriber->uid");
             $result = $subscriber->execute_charge(
-                implode('_', [$subscription->uid, $subscriber->uid, $order->get_id()]),
+                implode('_', [$subscriber->subscription_uid, $subscriber->uid, $order->get_id()]),
                 $total
             );
 
@@ -555,7 +539,7 @@ class MobbexSubscriptions
 
             $logger->log(
                 'debug',
-                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscription->uid $subscriber->uid. Order ID {$order->get_id()}",
+                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscriber-subscription_>uid $subscriber->uid. Order ID {$order->get_id()}",
                 $result
             );
 
