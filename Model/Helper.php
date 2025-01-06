@@ -2,8 +2,8 @@
 namespace MobbexSubscription;
 class Helper
 {
-    public static $config;
-    public static $logger;
+    public $config;
+    public $logger;
 
     public static $periods = [
         'd' => 'day',
@@ -13,13 +13,14 @@ class Helper
 
     public function __construct()
     {
-        self::$config = new \Mobbex\WP\Checkout\Model\Config;
-        self::$logger = new \Mobbex\WP\Checkout\Model\Logger;
+        $this->config = new \Mobbex\WP\Checkout\Model\Config;
+        $this->logger = new \Mobbex\WP\Checkout\Model\Logger;
     }
 
     public static function is_wcs_active()
     {
-        return (!empty(self::$config->integration) && self::$config->integration === 'wcs' && get_option('woocommerce_subscriptions_is_active'));
+        $config = new \Mobbex\WP\Checkout\Model\Config;
+        return (!empty($config->integration) && $config->integration === 'wcs' && get_option('woocommerce_subscriptions_is_active'));
     }
 
     /**
@@ -93,6 +94,8 @@ class Helper
      */
     public static function get_product_subscription_signup_fee($id)
     { 
+        $logger = new \Mobbex\WP\Checkout\Model\Logger;
+
         try {
             $subscription = \MobbexSubscription\Subscription::get_by_id($id);;
 
@@ -101,7 +104,7 @@ class Helper
 
             return ((float) $subscription->signup_fee > 0) ? $subscription->signup_fee : null;
         } catch (\Exception $e) {
-            self::$logger->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), isset($subscription));
+            $logger->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), isset($subscription));
         }
     }
 
