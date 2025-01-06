@@ -186,19 +186,18 @@ class Subscriber extends \MobbexSubscription\Model
             $this->result = $this->sync();
 
             $this->uid         = isset($this->result['uid'])           ? $this->result['uid']           : $this->uid;
-            $this->test        = isset($this->result['test'])          ? $this->result['test']          : $this->test;
             $this->source_url  = isset($this->result['sourceUrl'])     ? $this->result['sourceUrl']     : $this->source_url;
             $this->control_url = isset($this->result['subscriberUrl']) ? $this->result['subscriberUrl'] : $this->control_url;
         }
 
         $data = [
             'uid'              => $this->uid ?: '',
-            'test'             => $this->test ?: '',
             'name'             => $this->name ?: '',
             'state'            => $this->state ?: '',
             'email'            => $this->email ?: '',
             'phone'            => $this->phone ?: '',
             'order_id'         => $this->order_id ?: '',
+            'test'             => $this->get_test_mode(),
             'source_url'       => $this->source_url ?: '',
             'start_date'       => $this->start_date ?: '',
             'control_url'      => $this->control_url ?: '',
@@ -413,5 +412,17 @@ class Subscriber extends \MobbexSubscription\Model
             $subscriber->save();
             return $subscriber;
         }
+    }
+
+    /**
+     * Get test mode from config 
+     * Plugin level
+     *  
+     * @return bool
+     */
+    public function get_test_mode()
+    {
+        // Maybe can be set from plugin config in the future
+        return $this->helper->config->test == 'yes';
     }
 }
