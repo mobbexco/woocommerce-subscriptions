@@ -80,6 +80,51 @@ class Subscriber extends \MobbexSubscription\Model
     }
 
     /**
+     * Save data to db and sync with Mobbex (optional).
+     * 
+     * @param bool $sync Synchronize with Mobbex.
+     * 
+     * @return bool True if saved correctly.
+     */
+    public function save($sync = true, $subscriber_uid = '')
+    {
+        if ($sync) {
+            $this->logger->log(
+                'debug', 
+                "MobbexSubscriber\Subscriber > save - syncronize subscriber with Mobbex"
+            );
+            $this->result = $this->sync();
+
+            $this->uid         = isset($this->result['uid'])           ? $this->result['uid']           : $this->uid;
+            $this->source_url  = isset($this->result['sourceUrl'])     ? $this->result['sourceUrl']     : $this->source_url;
+            $this->control_url = isset($this->result['subscriberUrl']) ? $this->result['subscriberUrl'] : $this->control_url;
+        }
+
+        $data = [
+            'name'             => $this->name ?: '',
+            'state'            => $this->state ?: '',
+            'email'            => $this->email ?: '',
+            'phone'            => $this->phone ?: '',
+            'order_id'         => $this->order_id ?: '',
+            'test'             => $this->get_test_mode(),
+            'source_url'       => $this->source_url ?: '',
+            'start_date'       => $this->start_date ?: '',
+            'control_url'      => $this->control_url ?: '',
+            'customer_id'      => $this->customer_id ?: '',
+            'last_execution'   => $this->last_execution ?: '',
+            'next_execution'   => $this->next_execution ?: '',
+            'identification'   => $this->identification ?: '',
+            'subscription_uid' => $this->subscription_uid ?: '',
+            'uid'              => $this->uid ? $this->uid : $subscriber_uid,
+            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
+        ];
+        $this->logger->log('debug', "MobbexSubscriber\Subscriber > save | UID: {$data['uid']} ", ['data' => $data]);
+
+        parent::save($data);
+        return $this->uid;
+    }
+
+    /**
      * Syncronize Subscriber data on Mobbex.
      * 
      * @return string|null UID if created correctly.
@@ -107,16 +152,16 @@ class Subscriber extends \MobbexSubscription\Model
             );
             $this->logger->log(
                 'debug', 
-                "MobbexSubscriber\Subscriber Created. subscriber_uid: $subscriber->uid"
+                "MobbexSubscriber\Subscriber > sync | Syncronized/Created subscriber: $subscriber->uid"
             );
 
             return $subscriber->response;
         } catch (\Exception $e) {
             $this->logger->log(
                 'error', 
-                "MobbexSubscriber\Subscriber Create/Update Error: {$e->getMessage()}", 
+                "MobbexSubscriber\Subscriber > sync | Create/Update Error: {$e->getMessage()}", 
                 [$this, $dates, $order]
-                );
+            );
         }
     }
 
@@ -147,6 +192,18 @@ class Subscriber extends \MobbexSubscription\Model
     }
 
     /**
+     * Get test mode from config 
+     * Plugin level
+     *  
+     * @return bool
+     */
+    public function get_test_mode()
+    {
+        // Maybe can be set from plugin config in the future
+        return $this->helper->config->test == 'yes';
+    }
+
+    /**
      * Save execution data in db.
      * 
      * @param array $webhookData
@@ -171,46 +228,6 @@ class Subscriber extends \MobbexSubscription\Model
         ];
         
         return $wpdb->insert($wpdb->prefix.'mobbex_execution', $data);
-    }
-
-    /**
-     * Save data to db and sync with Mobbex (optional).
-     * 
-     * @param bool $sync Synchronize with Mobbex.
-     * 
-     * @return bool True if saved correctly.
-     */
-    public function save($sync = true)
-    {
-        if ($sync) {
-            $this->result = $this->sync();
-
-            $this->uid         = isset($this->result['uid'])           ? $this->result['uid']           : $this->uid;
-            $this->source_url  = isset($this->result['sourceUrl'])     ? $this->result['sourceUrl']     : $this->source_url;
-            $this->control_url = isset($this->result['subscriberUrl']) ? $this->result['subscriberUrl'] : $this->control_url;
-        }
-
-        $data = [
-            'uid'              => $this->uid ?: '',
-            'name'             => $this->name ?: '',
-            'state'            => $this->state ?: '',
-            'email'            => $this->email ?: '',
-            'phone'            => $this->phone ?: '',
-            'order_id'         => $this->order_id ?: '',
-            'test'             => $this->get_test_mode(),
-            'source_url'       => $this->source_url ?: '',
-            'start_date'       => $this->start_date ?: '',
-            'control_url'      => $this->control_url ?: '',
-            'customer_id'      => $this->customer_id ?: '',
-            'last_execution'   => $this->last_execution ?: '',
-            'next_execution'   => $this->next_execution ?: '',
-            'identification'   => $this->identification ?: '',
-            'subscription_uid' => $this->subscription_uid ?: '',
-            'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
-        ];
-        
-        $this->logger->log('debug', 'MobbexSubscriber\Subscriber > save - data: ', ['data' => $data]);
-        return $this->uid && parent::save($data);
     }
 
     /**
@@ -255,25 +272,122 @@ class Subscriber extends \MobbexSubscription\Model
     }
 
     /**
+     * Get a Subscriber.
+     * 
+     * @param string $subscriber_uid
+     * @param string $subscription_uid
+     * @param string $order_id
+     * 
+     * @return \MobbexSubscriber|null
+     */
+    public function get($subscriber_uid, $subscription_uid = null, $order_id = null)
+    {
+        $result = $this->get_by_uid($subscriber_uid);
+
+        if ($result) {
+            $this->logger->log(
+                'debug', 
+                "MobbexSubscriber\Subscriber > get_by_uid - subscriber found in db",
+                $result[0]
+            );
+            return $this->get_instance($result[0]);
+        } else {
+            $this->logger->log(
+                'debug', 
+                "MobbexSubscriber\Subscriber > get_by_uid - subscriber not found, trying to get from Mobbex",
+            );
+            return $this->get_mobbex_subscriber($subscriber_uid, $subscription_uid, $order_id);
+        }
+    }
+
+    /**
      * Get a Subscriber using UID.
      * 
      * @param string $uid
      * 
      * @return \MobbexSubscriber|null
      */
-    public function get_by_uid($subscriber_uid, $subscription_uid = null, $order_id = null)
+    public function get_by_uid($subscriber_uid)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}mobbex_subscriber WHERE uid=$subscriber_uid");
-
-        if (empty($result))
-            $result = $this->get_subscriber($subscriber_uid, $subscription_uid, $order_id);
-        $this->logger->log(
-            'debug', 
-            "MobbexSubscriber\Subscriber > get_by_uid - error: $wpdb->last_error",
-        );
+        $result = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}mobbex_subscriber WHERE uid='$subscriber_uid'");
+        $this->logger->maybe_log_error("MobbexSubscriber\Subscriber > get_by_uid - error: ");
 
         return $result;
+    }
+    
+    /**
+     * Instance Subscriber from object
+     * 
+     * @param object $data
+     * 
+     * @return \MobbexSubscription\Subscriber
+     */
+    public function get_instance($data){
+        if(!$data)
+            return null;
+
+        return new \MobbexSubscription\Subscriber(
+            $data->order_id,
+            $data->subscription_uid,
+            $data->reference,
+            $data->name,
+            $data->email,
+            $data->phone,
+            $data->identification,
+            $data->customer_id
+        );
+    }
+
+    /**
+     * Get subscriber data from Mobbex
+     * 
+     * @param string $subscription_uid
+     * @param string $subscriber_uid
+     * 
+     * @return subscriber
+     */
+    public function get_mobbex_subscriber($subscriber_uid, $subscription_uid = null, $order_id = null)
+    {
+        $this->logger->log(
+            'debug', 
+            "Mobbex Subscriber > get_mobbex_subscriber from Mobbex: $subscription_uid / $subscriber_uid",
+        );
+
+        if (isset($subscriber_uid, $subscription_uid, $order_id)){
+            try {
+                $res= $this->api::request([
+                    "method" => "GET",
+                    'uri'    => "subscriptions/$subscription_uid/subscriber/$subscriber_uid"
+                ]);
+                $this->logger->log(
+                    'debug', 
+                    "Mobbex Subscriber > get_mobbex_subscriber | Subscriber",
+                    $res,
+                );
+        
+                $subscriber = new \MobbexSubscription\Subscriber(
+                    $order_id,
+                    $subscription_uid,
+                    $res['subscriber']['reference'],
+                    $res['subscriber']['customerData']['name'],
+                    $res['subscriber']['customerData']['email'],
+                    $res['subscriber']['customerData']['phone'],
+                    $res['subscriber']['customerData']['identification'],
+                    $res['subscriber']['customerData']['uid']
+                );
+
+                $subscriber->save(false, $subscriber_uid);
+                return $subscriber;
+
+            } catch (\Exception $e) {
+                $this->logger->log(
+                    'debug', 
+                    "Mobbex Subscriber > get_mobbex_subscriber: {$e->getMessage()}",
+                    ['exception' => $e]
+                );
+            };
+        }
     }
 
     /**
@@ -294,16 +408,7 @@ class Subscriber extends \MobbexSubscription\Model
         $logger->log('debug', 'MobbexSubscriber\Subscriber > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
         
         if ($result[0] && !$array)
-            return new \MobbexSubscription\Subscriber(
-                $result[0]->order_id,
-                $result[0]->subscription_uid,
-                $result[0]->reference,
-                $result[0]->name,
-                $result[0]->email,
-                $result[0]->phone,
-                $result[0]->identification,
-                $result[0]->customer_id
-            );
+            return (new self())->get_instance($result[0]);
 
         return $result[0];
 
@@ -323,12 +428,12 @@ class Subscriber extends \MobbexSubscription\Model
 
         // Checks if plugin is ready
         if (!$checkot_helper->is_extension_ready()) {
-            throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
+            throw new \Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
         }
 
         // Checks that params are not empty
         if (empty($this->subscription_uid) || empty($this->uid) || empty($status)) {
-            throw new Exception(__(
+            throw new \Exception(__(
                 'Empty Subscription UID, Subscriber UID or Subscription status',
                 'mobbex-subs-for-woocommerce'
             ));
@@ -356,73 +461,5 @@ class Subscriber extends \MobbexSubscription\Model
                 "Mobbex Subscriber Create/Update Error: {$e->getMessage()}",
             );
         }
-    }
-
-    /**
-     * Get correct subscriptions total
-     * 
-     * @return total
-     */
-    public function get_subscription_total($order, $subscription)
-    {
-        // Just to avoid charging a duplicate sign up fee
-        return $subscription->signup_fee ? $order->get_total() - $subscription->signup_fee : $order->get_total();
-    }
-
-    /**
-     * Get subscriber data from Mobbex
-     * 
-     * @param string $subscription_uid
-     * @param string $subscriber_uid
-     * 
-     * @return subscriber
-     */
-    public function get_subscriber($subscriber_uid, $subscription_uid = null, $order_id = null)
-    {
-        $this->logger->log(
-            'debug', 
-            "Mobbex Subscriber > get_subscriber: $subscription_uid / $subscriber_uid",
-        );
-
-        if (isset($subscriber_uid, $subscription_uid, $order_id)){
-            try {
-                $res= $this->api::request([
-                    "method" => "GET",
-                    'uri'    => "subscriptions/$subscription_uid/subscriber/$subscriber_uid"
-                ]);
-            } catch (\Exception $e) {
-                $this->logger->log(
-                    'debug', 
-                    "Mobbex Subscriber > get_subscriber: {$e->getMessage()}", 
-                    ['exception' => $e]
-                );
-            };
-        
-            $subscriber = new \MobbexSubscription\Subscriber(
-                $order_id,
-                $subscription_uid,
-                $res['subscriber']['reference'],
-                $res['subscriber']['customerData']['name'],
-                $res['subscriber']['customerData']['email'],
-                $res['subscriber']['customerData']['phone'],
-                $res['subscriber']['customerData']['identification'],
-                $res['subscriber']['customerData']['uid']
-            );
-
-            $subscriber->save();
-            return $subscriber;
-        }
-    }
-
-    /**
-     * Get test mode from config 
-     * Plugin level
-     *  
-     * @return bool
-     */
-    public function get_test_mode()
-    {
-        // Maybe can be set from plugin config in the future
-        return $this->helper->config->test == 'yes';
     }
 }
