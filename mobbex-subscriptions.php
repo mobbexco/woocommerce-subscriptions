@@ -89,7 +89,7 @@ class MobbexSubscriptions
             return;
         }
         // Always
-        add_action ('mobbex_subs_scheduled_payment', [$this, 'scheduled_subscription_payment'], 10, 2);
+        add_action('mobbex_subs_scheduled_payment', [$this, 'scheduled_subscription_payment'], 10, 2);
         add_filter('mobbex_checkout_custom_data', [$this, 'modify_checkout_data'], 10, 2);
         add_filter('mobbex_subs_support', [$this, 'add_subscription_support'], 10, 2);
 
@@ -260,10 +260,13 @@ class MobbexSubscriptions
             $logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Checkout to modify', $checkout);
             $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
+            // Remove merchants node and items
+            unset($checkout['merchants'], $checkout['items']);
+
             // Modify checkout
             $checkout['total']   -= $subscription->calculate_checkout_total($checkout['total']);
             $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook', $id);
-            $checkout['items'][0] = [
+            $checkout['items'][] = [
                 'type'      => 'subscription',
                 'reference' => $subscription->uid,
             ];
@@ -275,9 +278,6 @@ class MobbexSubscriptions
                     'description'  => $subscription->name . ' - costo de instalación',
                     'quantity'     => 1,
                 ];
-
-            // Remove merchants node
-            unset($checkout['merchants']);
 
             // Make sure to use json in pay for order page
             if (isset($_GET['pay_for_order']))
@@ -344,7 +344,7 @@ class MobbexSubscriptions
             $data['subscriptions'][0]['subscription']
             );
 
-        $subscriber   = (new \MobbexSubscription\Subscriber)->get_by_uid(
+        $subscriber   = (new \MobbexSubscription\Subscriber)->get(
             $data['subscriptions'][0]['subscriber'],
             $subscription->uid,
             $order_id
@@ -358,11 +358,9 @@ class MobbexSubscriptions
             );
             return false;
         }
-
         $logger->log(
             "debug", 
-            "MobbexSubscription > process_webhook - Mobbex Subscription UID: $subscription->uid 'Mobbex Subscriber UID: $subscriber->uid", 
-            []
+            "MobbexSubscription > process_webhook - Mobbex Subscription UID: $subscription->uid 'Mobbex Subscriber UID: $subscriber->uid"
         );
 
         $state = \MobbexSubscription\Helper::get_state($status);
@@ -411,8 +409,8 @@ class MobbexSubscriptions
                 $order->update_status('failed', __('MobbexSubscription > process_webhook -  Validation failed', 'mobbex-subs-for-woocommerce'));
 
         } elseif ($type === 'subscription:execution'){
-            $logger->log('debug', 'MobbexSubscription > process_webhook - is standalone: ' . isset($standalone), []);
-            $logger->log('debug', 'MobbexSubscription > process_webhook - execution state: ' . $state, []);
+            $logger->log('debug', 'MobbexSubscription > process_webhook - is standalone: ' . isset($standalone));
+            $logger->log('debug', 'MobbexSubscription > process_webhook - execution state: ' . $state);
             
             if ($state == 'approved' || $state == 'on-hold') {
                 // Mark as payment complete
@@ -453,12 +451,6 @@ class MobbexSubscriptions
     {
         $logger = new \Mobbex\WP\Checkout\Model\Logger;
 
-        $logger->log(
-            "debug", 
-            "MobbexSubscription > scheduled_subscription_payment - payment method: {$order->get_payment_method()}", 
-            []
-        );
-
         // Return if payment method is not Mobbex
         if (MOBBEX_WC_GATEWAY_ID != $order->get_payment_method()){
             $logger->log(
@@ -477,31 +469,25 @@ class MobbexSubscriptions
 
         // Get subscription from order id
         $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']); 
+        $wcs_sub       = end($subscriptions);
         $logger->log(
             "debug", 
             "MobbexSubscription > scheduled_subscription_payment - Getting subscriptions. Order ID {$order->get_id()}", 
-            $subscriptions
-        );
-
-        $wcs_sub = end($subscriptions);
-        $logger->log(
-            "debug", 
-            "MobbexSubscription > scheduled_subscription_payment - Subscription extract. Order ID {$order->get_id()}", 
             [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]
         );
         
-        // Get mobbex subscriber
+        // Get Mobbex subscriber
         $subscriber = \MobbexSubscription\Subscriber::get_by_id($wcs_sub->get_parent_id(), false);
+
+        if(!$subscriber){
+            $order->add_order_note("Error executing subscription. Subscriber not found. Parent Order ID: {$wcs_sub->get_parent_id()}");
+            return false;
+        }
         $logger->log(
             'debug', 
             "MobbexSubscription > scheduled_subscription_payment - Subscriber $subscriber->uid obtained succesfuly. Order ID {$order->get_id()}", 
             $subscriber->uid
         );
-
-        if(!$subscriber){
-            $order->add_order_note("Error executing subscription. Empty subscription data or total" . $total);
-            return false;
-        }
 
         try {
             $order->add_order_note("Executing charge for Mobbex Subscription $subscriber->subscription_uid and Mobbex Subscriber $subscriber->uid");
@@ -510,48 +496,20 @@ class MobbexSubscriptions
                 $total
             );
 
-            $order->add_order_note("Charge execution raw result: " . (empty($result['result']) ? 'unknown' : 'success'));
-
-            // Throw exception if result is invalid
-            if (!isset($result['result']))
-                throw new \Exception(sprintf(
-                    'Mobbex request error #%s: %s %s',
-                    isset($result['code']) ? $result['code'] : 'NOCODE',
-                    isset($result['error']) ? $result['error'] : 'NOERROR',
-                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
-                ), 0);
-
-            // Return true if is in progress
-            if (isset($result['code']) && $result['code'] === 'SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS') {
-                $order->add_order_note("Charge execution result: Already in progress");
-
-                return true;
-            }
-
-            // Throw exception on any other false status
-            if (!$result['result'])
-                throw new \Exception(sprintf(
-                    'Mobbex request error #%s: %s %s',
-                    isset($result['code']) ? $result['code'] : 'NOCODE',
-                    isset($result['error']) ? $result['error'] : 'NOERROR',
-                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
-                ), 0);
-
             $logger->log(
                 'debug',
-                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscriber-subscription_>uid $subscriber->uid. Order ID {$order->get_id()}",
+                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscriber->subscription_uid $subscriber->uid. Order ID {$order->get_id()}",
                 $result
             );
 
             return true;
         } catch (\Exception $e) {
-            $order->add_order_note("Charge execution error: " . $e->getMessage());
             $wcs_sub->payment_failed();
             $logger->log(
                 "debug", 
-                "MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}, Order ID {$order->get_id()}", 
-                []
+                "MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}, Order ID {$order->get_id()}"
                 );
+            $order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}");
 
             return false;
         }
