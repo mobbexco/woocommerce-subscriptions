@@ -179,13 +179,23 @@ class Subscription extends \MobbexSubscription\Model {
                 $this->description,
                 $this->interval,
                 $features,
+                $this->limit,
                 $this->free_trial,
                 $this->is_test_subscription(),
+                $this->get_signup_fee(),
             );
-            $this->logger->log('debug', 'MobbexSubscription\Subsciption > create() subscription data', ['product_id' => $subscription->id, 'response' => $subscription->response]);
+            $this->logger->log(
+                'debug', 
+                'MobbexSubscription\Subsciption > create() subscription data', 
+                ['subscription_uid' => $subscription->uid, 'response' => $subscription->response]
+            );
+
             return $subscription->response;
         } catch (\Exception $e) {
-            $this->logger->log('error', 'MobbexSubscription\Subsciption > create() - Create/Update Error: ' . $e->getMessage(), $this);
+            $this->logger->log(
+                'error', 
+                "MobbexSubscription\Subsciption > create() - Create/Update Error: {$e->getMessage()}"
+            );
         }
     }
 
@@ -243,7 +253,7 @@ class Subscription extends \MobbexSubscription\Model {
      */
     public function get_signup_fee()
     {
-        return $this->signup_fee != 0 ? $this->signup_fee : 0;
+        return (float) $this->signup_fee != 0 ? $this->signup_fee : 0;
     }
 
     /**

@@ -196,15 +196,15 @@ class ProductSettings
         
         //sub options
         $sub_options = [
-            'test'      => $test,
-            'post_id'   => $post_id,
-            'type'      => 'dynamic',
-            'setup_fee' => $signup_fee,
-            'name'      => $product->get_name(),
-            'trial'     => $free_trial_interval,
-            'price'     => $product->get_price(),
-            'reference' => "wc_order_{$post_id}",
-            'interval'  => $charge_interval . $charge_period,
+            'test'       => $test,
+            'post_id'    => $post_id,
+            'type'       => 'dynamic',
+            'signup_fee' => $signup_fee,
+            'name'       => $product->get_name(),
+            'trial'      => $free_trial_interval,
+            'price'      => $product->get_price(),
+            'reference'  => "wc_order_{$post_id}",
+            'interval'   => $charge_interval . $charge_period,
         ];
 
         //Create/update subscription.
@@ -252,14 +252,14 @@ class ProductSettings
         
         //sub options
         $sub_options = [
-            'type'      => 'manual',
-            'interval'  => '',
-            'trial'     => '',
-            'setup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
-            'post_id'   => $post_id,
-            'reference' => "wc_order_{$post_id}",
-            'price'     => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : 0,
-            'name'      => $product->get_name()
+            'interval'   => '',
+            'trial'      => '',
+            'type'       => 'manual',
+            'post_id'    => $post_id,
+            'name'       => $product->get_name(),
+            'reference'  => "wc_order_{$post_id}",
+            'price'      => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : 0,
+            'signup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
         ];
 
         // Create/update subscription.
