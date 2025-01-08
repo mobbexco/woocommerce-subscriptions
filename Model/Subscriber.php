@@ -212,22 +212,37 @@ class Subscriber extends \MobbexSubscription\Model
      * 
      * @return bool True if saved correctly.
      */
-    public function save_execution($webhookData, $order_id, $date)
+    public function save_execution($webhookData, $date)
     {
         global $wpdb;
 
         $data = [
             'date'             => $date,
-            'order_id'         => $order_id,
             'subscriber_uid'   => $this->uid,
             'subscription_uid' => $this->subscription_uid,
             'data'             => json_encode($webhookData),
-            'total'            => $webhookData['payment']['total'],
-            'status'           => $webhookData['payment']['status']['code'],
-            'uid'              => $webhookData['subscriptions'][0]['execution'],
+            'total'            => (float) $webhookData['payment']['total'],
+            'uid'              => $webhookData['execution']['uid'],
+            'status'           => (int) $webhookData['payment']['status']['code'],
         ];
         
         return $wpdb->insert($wpdb->prefix.'mobbex_execution', $data);
+    }
+
+    /**
+     * Get execution data from db.
+     * 
+     * @param string $uid
+     * 
+     * @return array $result
+     */
+    public function get_execution($uid)
+    {
+        global $wpdb;
+        $result = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}mobbex_execution WHERE uid='$uid'");
+        $this->logger->maybe_log_error("MobbexSubscriber\Subscriber > get_execution - error: ");
+
+        return $result;
     }
 
     /**
