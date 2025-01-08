@@ -340,12 +340,13 @@ class MobbexSubscriptions
         if (empty($status) || empty($token) || !$type || empty($type) || !\Mobbex\Repository::validateToken($token))
             return false;
 
-        $subscription = (new \MobbexSubscription\Subscription)->get_by_uid(
-            $data['subscriptions'][0]['subscription']
+        // Get subscription and subscriber
+        $subscriptions = $this->format_subs_webhook($type, $data);
+        $subscription  = (new \MobbexSubscription\Subscription)->get_by_uid(
+            $subscriptions['subscription_uid'],
             );
-
-        $subscriber   = (new \MobbexSubscription\Subscriber)->get(
-            $data['subscriptions'][0]['subscriber'],
+        $subscriber    = (new \MobbexSubscription\Subscriber)->get(
+            $subscriptions['subscriber_uid'],
             $subscription->uid,
             $order_id
             );
@@ -366,29 +367,33 @@ class MobbexSubscriptions
         $state = \MobbexSubscription\Helper::get_state($status);
         $dates = $subscription->calculateDates();
 
-        // Recognize kind of subscription
+        // Recognize kind of subscription. Get a WCS subscription if possible, otherwise set standalone or return false
         if (\MobbexSubscription\Helper::is_wcs_active() && wcs_order_contains_subscription($order_id)) {
-            // Get a WCS subscription if possible
-            $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
-            $wcs_sub       = end($subscriptions);
+            $wcs_subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
+            $wcs_sub           = end($wcs_subscriptions);
             $logger->log('debug', 'MobbexSubscription > process_webhook - is WCS Subscription', ['wcs_sub' => $wcs_sub]);
         } else if (\MobbexSubscription\Cart::has_subscription($order_id)) {
-            // If has a mobbex subscription set standalone
+            $logger->log('debug', 'MobbexSubscription > process_webhook - is standalone');
             $standalone = true;
         } else {
-            // No subscriptions
+            $logger->log('debug', "MobbexSubscription > process_webhook - No subscription found for order $order_id");
             return false;
         }
 
-        $logger->log('debug', 'MobbexSubscription > process_webhook - type: ' . $type, []);
         // Manage registration or execution
         if ($type === 'checkout'){
             // Avoid duplicate registration process
             if ($subscriber->register_data) {
-                $logger->log('debug', 'MobbexSubscription > process_webhook - Avoid duplicate registration', ['register_data' => $subscriber->register_data]);
-                $order->add_order_note('Avoid attempt to re-register Subscriber UID: ' . $data['subscriptions'][0]['subscriber']);
+                $logger->log(
+                    'debug', 
+                    'MobbexSubscription > process_webhook - Avoid duplicate registration', 
+                    ['register_data' => $subscriber->register_data]
+                );
+                $order->add_order_note("Avoid attempt to re-register Subscriber UID: $subscriber->uid");
                 return false;
             }
+
+            $logger->log('debug', "MobbexSubscription > process_webhook | type: $type | status: $status");
             // Save registration data and update subscriber state
             $subscriber->register_data = json_encode($data);
             $subscriber->state         = $status;
@@ -397,9 +402,7 @@ class MobbexSubscriptions
             // Get registration result from context status
             $result = $status == 200;
             $logger->log('debug', 'MobbexSubscription > process_webhook - Registration result: ' . $result, []);
-
-            $order->add_order_note('Mobbex Subscription UID: ' . $subscription->uid);
-            $order->add_order_note('Mobbex Subscriber UID:' . $subscriber->uid);
+            $order->add_order_note("Mobbex Subscription/Subcriber Registration UID: $subscription->uid / $subscriber->uid");
 
             if (isset($wcs_sub) && $result)
                 $wcs_sub->payment_complete(); // Enable subscription
@@ -409,21 +412,45 @@ class MobbexSubscriptions
                 $order->update_status('failed', __('MobbexSubscription > process_webhook -  Validation failed', 'mobbex-subs-for-woocommerce'));
 
         } elseif ($type === 'subscription:execution'){
-            $logger->log('debug', 'MobbexSubscription > process_webhook - is standalone: ' . isset($standalone));
-            $logger->log('debug', 'MobbexSubscription > process_webhook - execution state: ' . $state);
+            $logger->log('debug', "MobbexSubscription > process_webhook | type: $type | status: $status");
+            $order->add_order_note("Mobbex Subscription/Subcriber Execution UID: $subscription->uid / $subscriber->uid");
+
+            // Avoid duplicate execution process
+            if ($subscriber->get_execution($data['execution']['uid'])) {
+                $logger->log(
+                    'debug', 
+                    'MobbexSubscription > process_webhook - Avoid duplicate execution', 
+                    ['execution' => $data['execution']]
+                );
+                $order->add_order_note("Avoid attempt to re-execute Subscriber UID: $subscriber->uid");
+                return false;
+            }
             
             if ($state == 'approved' || $state == 'on-hold') {
                 // Mark as payment complete
                 if (isset($standalone))
                     $order->payment_complete();
-                else if (isset($wcs_sub))
+                else if (isset($wcs_sub)){
+                    $renewal_order = wcs_create_renewal_order($wcs_sub);
+
+                    if (is_wp_error($renewal_order)) 
+                        throw new Exception('Failed to create renewal order: ' . $renewal_order->get_error_message());
+
+                    $renewal_order->set_total($subscriptions['execution']['total']);
+                    $renewal_order->save();
+                    $renewal_order->payment_complete($data['payment_id']);
                     $wcs_sub->payment_complete();
+                }
+
+                $order->add_order_note("MobbexSubscription > process_webhook - Charge executed successfully");
             } else {
                 // Mark as payment failed
                 if (isset($standalone))
                     $order->update_status('failed', __('MobbexSubscription > process_webhook - Execution failed', 'mobbex-subs-for-woocommerce'));
                 else if (isset($wcs_sub))
                     $wcs_sub->payment_failed();
+
+                $order->add_order_note("MobbexSubscription > process_webhook - Execution failed. No subscription found for order $order_id");   
             }
         }
         // Update execution dates
@@ -434,9 +461,35 @@ class MobbexSubscriptions
         $subscriber->save(false);
 
         // Save webhooks data in execution table
-        $subscriber->save_execution($data, $order_id, $subscriber->last_execution);
+        $subscriber->save_execution($data, $subscriber->last_execution);
 
         return true;
+    }
+
+    /**
+     * Format the webhook data to get the subscription and subscriber
+     * 
+     * @param string $type webhook type
+     * @param array $data webhook data
+     * 
+     * @return array formated webhook data
+     */
+    public function format_subs_webhook($type, $data){
+        $format_data = [];
+
+        if ($type === 'checkout')
+            $format_data = [
+                'subscription_uid' => $data['subscriptions'][0]['subscription'],
+                'subscriber_uid'   => $data['subscriptions'][0]['subscriber'],
+            ];
+        else
+            $format_data = [
+                'subscription_uid' => $data['subscription']['uid'],
+                'subscriber_uid'   => $data['subscriber']['uid'],
+                'execution'        => $data['execution'],
+            ];
+
+        return $format_data;
     }
 
     /**
