@@ -89,7 +89,7 @@ class MobbexSubscriptions
             return;
         }
         // Always
-        add_action('mobbex_subs_scheduled_payment', [$this, 'scheduled_subscription_payment'], 10, 2);
+        add_filter('mobbex_subs_scheduled_payment', [$this, 'scheduled_subscription_payment'], 10, 2);
         add_filter('mobbex_checkout_custom_data', [$this, 'modify_checkout_data'], 10, 2);
         add_filter('mobbex_subs_support', [$this, 'add_subscription_support'], 10, 2);
 
@@ -442,37 +442,37 @@ class MobbexSubscriptions
     /**
      * Executed by WooCommerce Subscriptions in each billing period.
      * 
-     * @param integer $total
-     * @param WC_Order|WC_Abstract_Order $order
+     * @param integer $renewal_total
+     * @param WC_Order|WC_Abstract_Order $renewal_order
      * 
      * @return bool Result of charge execution.
      */
-    public function scheduled_subscription_payment($total, $order)
+    public function scheduled_subscription_payment($renewal_total, $renewal_order)
     {
         $logger = new \Mobbex\WP\Checkout\Model\Logger;
 
         // Return if payment method is not Mobbex
-        if (MOBBEX_WC_GATEWAY_ID != $order->get_payment_method()){
+        if (MOBBEX_WC_GATEWAY_ID != $renewal_order->get_payment_method()){
             $logger->log(
                 "debug", 
                 "MobbexSubscription > scheduled_subscription_payment - Payment method is not Mobbex.", 
-                ['payment_method' => $order->get_payment_method()]
+                ['payment_method' => $renewal_order->get_payment_method()]
             );
             return;
         }
 
         $logger->log(
             "debug", 
-            "MobbexSubscription > scheduled_subscription_payment - Init for $$total - Order ID {$order->get_id()}"
+            "MobbexSubscription > scheduled_subscription_payment - Init for $$renewal_total - Order ID {$renewal_order->get_id()}"
         );
-        $order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Processing scheduled payment for $ $total");
+        $renewal_order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Processing scheduled payment for $ $renewal_total");
 
         // Get subscription from order id
-        $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']); 
+        $subscriptions = wcs_get_subscriptions_for_order($renewal_order->get_id(), ['order_type' => 'any']); 
         $wcs_sub       = end($subscriptions);
         $logger->log(
             "debug", 
-            "MobbexSubscription > scheduled_subscription_payment - Getting subscriptions. Order ID {$order->get_id()}", 
+            "MobbexSubscription > scheduled_subscription_payment - Getting subscriptions. Order ID {$renewal_order->get_id()}", 
             [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]
         );
         
@@ -480,36 +480,41 @@ class MobbexSubscriptions
         $subscriber = \MobbexSubscription\Subscriber::get_by_id($wcs_sub->get_parent_id(), false);
 
         if(!$subscriber){
-            $order->add_order_note("Error executing subscription. Subscriber not found. Parent Order ID: {$wcs_sub->get_parent_id()}");
+            $renewal_order->add_order_note("Error executing subscription. Subscriber not found. Parent Order ID: {$wcs_sub->get_parent_id()}");
             return false;
         }
         $logger->log(
             'debug', 
-            "MobbexSubscription > scheduled_subscription_payment - Subscriber $subscriber->uid obtained succesfuly. Order ID {$order->get_id()}", 
+            "MobbexSubscription > scheduled_subscription_payment - Subscriber $subscriber->uid obtained succesfuly. Order ID {$renewal_order->get_id()}", 
             $subscriber->uid
         );
 
         try {
-            $order->add_order_note("Executing charge for Mobbex Subscription $subscriber->subscription_uid and Mobbex Subscriber $subscriber->uid");
-            $result = $subscriber->execute_charge(
-                implode('_', [$subscriber->subscription_uid, $subscriber->uid, $order->get_id()]),
-                $total
+            $renewal_order->add_order_note("Executing charge for Mobbex Subscription $subscriber->subscription_uid and Mobbex Subscriber $subscriber->uid");
+            $subscriber->execute_charge(
+                implode('_', [$subscriber->subscription_uid, $subscriber->uid, $renewal_order->get_id()]),
+                $renewal_total
             );
-
             $logger->log(
                 'debug',
-                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscriber->subscription_uid $subscriber->uid. Order ID {$order->get_id()}",
-                $result
+                "MobbexSubscription > scheduled_subscription_payment - Execute Charge Result $subscriber->subscription_uid $subscriber->uid. Order ID {$renewal_order->get_id()}",
+                ['return' => true]
             );
+
+            $renewal_order->payment_complete();
+            $renewal_order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Charge executed successfully");
 
             return true;
         } catch (\Exception $e) {
             $wcs_sub->payment_failed();
             $logger->log(
                 "debug", 
-                "MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}, Order ID {$order->get_id()}"
-                );
-            $order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}");
+                "MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}, Order ID {$renewal_order->get_id()}",
+                ['return' => false]
+            );
+
+            $renewal_order->update_status('failed','MobbexSubscription > scheduled_subscription_payment - Charge execution failed', 'mobbex-subs-for-woocommerce');
+            $renewal_order->add_order_note("MobbexSubscription > scheduled_subscription_payment - Charge execution error: {$e->getMessage()}");
 
             return false;
         }
