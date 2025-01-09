@@ -412,19 +412,19 @@ class MobbexSubscriptions
                 $order->update_status('failed', __('MobbexSubscription > process_webhook -  Validation failed', 'mobbex-subs-for-woocommerce'));
 
         } elseif ($type === 'subscription:execution'){
-            $logger->log('debug', "MobbexSubscription > process_webhook | type: $type | status: $status");
-            $order->add_order_note("Mobbex Subscription/Subcriber Execution UID: $subscription->uid / $subscriber->uid");
-
             // Avoid duplicate execution process
             if ($subscriber->get_execution($data['execution']['uid'])) {
                 $logger->log(
                     'debug', 
-                    'MobbexSubscription > process_webhook - Avoid duplicate execution', 
+                    "MobbexSubscription > process_webhook - Avoid duplicate manual execution webhook | ex-uid: {$data['execution']['uid']}", 
                     ['execution' => $data['execution']]
                 );
-                $order->add_order_note("Avoid attempt to re-execute Subscriber UID: $subscriber->uid");
+                $order->add_order_note("Avoid attempt to manual re-execute | Subscriber UID: $subscriber->uid");
                 return false;
             }
+
+            $logger->log('debug', "MobbexSubscription > process_webhook | type: $type | status: $status");
+            $order->add_order_note("Mobbex Subscription/Subcriber Manual Execution | UID: $subscription->uid / $subscriber->uid");
             
             if ($state == 'approved' || $state == 'on-hold') {
                 // Mark as payment complete
@@ -433,24 +433,29 @@ class MobbexSubscriptions
                 else if (isset($wcs_sub)){
                     $renewal_order = wcs_create_renewal_order($wcs_sub);
 
-                    if (is_wp_error($renewal_order)) 
-                        throw new Exception('Failed to create renewal order: ' . $renewal_order->get_error_message());
-
-                    $renewal_order->set_total($subscriptions['execution']['total']);
-                    $renewal_order->save();
-                    $renewal_order->payment_complete($data['payment_id']);
-                    $wcs_sub->payment_complete();
+                    try {
+                        $renewal_order->set_total($subscriptions['execution']['total']);
+                        $renewal_order->save();
+                        $renewal_order->payment_complete($data['payment_id']);
+                        $wcs_sub->payment_complete();
+                    } catch (\Exception $e) {
+                        $logger->log(
+                            'debug', 
+                            "MobbexSubscription > process_webhook - Error creating renewal order: {$e->getMessage()}", 
+                            ['error' => $e]
+                        );
+                    }
                 }
 
-                $order->add_order_note("MobbexSubscription > process_webhook - Charge executed successfully");
+                $order->add_order_note("MobbexSubscription > process_webhook - Manual Execution : success");
             } else {
                 // Mark as payment failed
                 if (isset($standalone))
-                    $order->update_status('failed', __('MobbexSubscription > process_webhook - Execution failed', 'mobbex-subs-for-woocommerce'));
+                    $order->update_status('failed', __('MobbexSubscription > process_webhook - Manual Execution : failed', 'mobbex-subs-for-woocommerce'));
                 else if (isset($wcs_sub))
                     $wcs_sub->payment_failed();
 
-                $order->add_order_note("MobbexSubscription > process_webhook - Execution failed. No subscription found for order $order_id");   
+                $order->add_order_note("MobbexSubscription > process_webhook - Manual Execution : failed. No subscription found for order $order_id");   
             }
         }
         // Update execution dates

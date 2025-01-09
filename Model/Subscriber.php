@@ -221,8 +221,8 @@ class Subscriber extends \MobbexSubscription\Model
             'subscriber_uid'   => $this->uid,
             'subscription_uid' => $this->subscription_uid,
             'data'             => json_encode($webhookData),
-            'total'            => (float) $webhookData['payment']['total'],
             'uid'              => $webhookData['execution']['uid'],
+            'total'            => (float) $webhookData['payment']['total'],
             'status'           => (int) $webhookData['payment']['status']['code'],
         ];
         
