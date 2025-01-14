@@ -56,7 +56,7 @@ class Subscription extends \MobbexSubscription\Model {
      * @param int|null $productId It can be an order id for old subscriptions support
      * @param string|null $reference
      * @param int|float|null $total Amount to charge.
-     * @param int|float|null $setupFee Different initial amount.
+     * @param int|float|null $signup_fee Different initial amount.
      * @param string|null $type "manual" | "dynamic"
      * @param string|null $name
      * @param string|null $description
@@ -109,7 +109,7 @@ class Subscription extends \MobbexSubscription\Model {
             $sub_options['name'],
             $sub_options['interval'],
             $sub_options['trial'],
-            $this->is_test_subscription(),
+            $sub_options['test'],
             0,
         );
 
@@ -204,7 +204,7 @@ class Subscription extends \MobbexSubscription\Model {
      * 
      * @return string[]
      */
-    public function calculateDates()
+    public function calculate_dates()
     {
         $interval = preg_replace('/[^0-9]/', '', (string) $this->interval) ?: 1;
         $period   = $this->periods[preg_replace('/[0-9]/', '', (string) $this->interval) ?: 'm'];
@@ -283,11 +283,11 @@ class Subscription extends \MobbexSubscription\Model {
     public static function get_by_id($id, $array = true)
     {
         global $wpdb;
-        $logger = new  \Mobbex\WP\Checkout\Model\Logger;
+        $logger = new \Mobbex\WP\Checkout\Model\Logger;
 
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscription" . " WHERE product_id='$id'", $array ? 'ARRAY_A' : 'OBJECT');
 
-        $logger->log('debug', 'MobbexSubscription\Subscription > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
+        $logger->maybe_log_error("MobbexSubscription\Subscription > get_by_uid - error: ");
         return !empty($result[0]) ? new \MobbexSubscription\Subscription($result[0]['product_id']) : null;
     }
 
@@ -326,6 +326,7 @@ class Subscription extends \MobbexSubscription\Model {
         throw new Exception(__('MobbexSubscription\Subscription > modify_subscription - An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
     }
 
+
     /**
      * Calculate the appropriate total to build checkout according to subscription type
      * 
@@ -335,22 +336,27 @@ class Subscription extends \MobbexSubscription\Model {
      */
     public function calculate_checkout_total($total)
     {
-        if (str_contains($this->type, "dynamic"))
-            return ((float) $this->signup_fee) > 0 ? $total - $this->signup_fee : $total;
-        elseif (str_contains($this->type, "manual"))
-            return ((float) $this->signup_fee) > 0 ? $total : 0;
+        if ($this->type == "dynamic")
+            return (float) $total;
+        elseif ($this->type == "manual")
+            return (float) $this->signup_fee > 0 ? $total : 0;
     }
 
     /**
      * Check if the subscription was configured in test mode
      * 
+     * @param int $post_id
+     * 
      * @return bool is test
      */
-    public function is_test_subscription()
+    public function is_test_subscription($post_id = '')
     {
-        if (isset($this->helper->integration) && $this->helper->integration === "wcs")
-            return (get_post_meta($this->product_id, 'mobbex_subscription_test_mode', true) == 'yes');
+        if (empty($post_id))
+            $post_id = $this->product_id;
+
+        if (isset($this->helper->config->integration) && $this->helper->config->integration === "wcs")
+            return (get_post_meta($post_id, 'mobbex_subscription_test_mode', true) == 'yes');
         else
-            return (get_post_meta($this->product_id, 'mbbxs_test_mode', true) == 'yes');
+            return (get_post_meta($post_id, 'mbbxs_test_mode', true) == '1');
     }
 }
