@@ -91,7 +91,7 @@ class Subscriber extends \MobbexSubscription\Model
         if ($sync) {
             $this->logger->log(
                 'debug', 
-                "MobbexSubscriber\Subscriber > save - syncronize subscriber with Mobbex"
+                "MobbexSubscription\Subscriber > save - syncronize subscriber with Mobbex"
             );
             $this->result = $this->sync();
 
@@ -118,7 +118,7 @@ class Subscriber extends \MobbexSubscription\Model
             'uid'              => $this->uid ? $this->uid : $subscriber_uid,
             'register_data'    => $this->register_data ? json_encode($this->register_data) : '',
         ];
-        $this->logger->log('debug', "MobbexSubscriber\Subscriber > save | UID: {$data['uid']} ", ['data' => $data]);
+        $this->logger->log('debug', "MobbexSubscription\Subscriber > save | UID: {$data['uid']} ", ['data' => $data]);
 
         parent::save($data);
         return $this->uid;
@@ -132,7 +132,7 @@ class Subscriber extends \MobbexSubscription\Model
     public function sync()
     {
         $subscription = (new \MobbexSubscription\Subscription)->get_by_uid($this->subscription_uid); // Aca hay que revisar
-        $dates        = $subscription->calculateDates();
+        $dates        = $subscription->calculate_dates();
         $order        = wc_get_order($this->order_id);
 
         try {
@@ -152,14 +152,14 @@ class Subscriber extends \MobbexSubscription\Model
             );
             $this->logger->log(
                 'debug', 
-                "MobbexSubscriber\Subscriber > sync | Syncronized/Created subscriber: $subscriber->uid"
+                "MobbexSubscription\Subscriber > sync | Syncronized/Created subscriber: $subscriber->uid"
             );
 
             return $subscriber->response;
         } catch (\Exception $e) {
             $this->logger->log(
                 'error', 
-                "MobbexSubscriber\Subscriber > sync | Create/Update Error: {$e->getMessage()}", 
+                "MobbexSubscription\Subscriber > sync | Create/Update Error: {$e->getMessage()}", 
                 [$this, $dates, $order]
             );
         }
@@ -240,7 +240,7 @@ class Subscriber extends \MobbexSubscription\Model
     {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}mobbex_execution WHERE uid='$uid'");
-        $this->logger->maybe_log_error("MobbexSubscriber\Subscriber > get_execution - error: ");
+        $this->logger->maybe_log_error("MobbexSubscription\Subscriber > get_execution - error: ");
 
         return $result;
     }
@@ -272,7 +272,7 @@ class Subscriber extends \MobbexSubscription\Model
         ];
         $this->logger->log(
             'debug', 
-            'MobbexSubscriber\Subscriber > execute_charge - data: ', 
+            'MobbexSubscription\Subscriber > execute_charge - data: ', 
             ['data' => $data]
         );
 
@@ -281,7 +281,7 @@ class Subscriber extends \MobbexSubscription\Model
         } catch (\Exception $e) {
             $this->logger->log(
                 "debug", 
-                "MobbexSubscriber\Subscriber > execute_charge Error: {$e->getMessage()}",
+                "MobbexSubscription\Subscriber > execute_charge Error: {$e->getMessage()}",
             );
         }
     }
@@ -293,7 +293,7 @@ class Subscriber extends \MobbexSubscription\Model
      * @param string $subscription_uid
      * @param string $order_id
      * 
-     * @return \MobbexSubscriber|null
+     * @return \MobbexSubscription\Subscriber|null
      */
     public function get($subscriber_uid, $subscription_uid = null, $order_id = null)
     {
@@ -302,14 +302,14 @@ class Subscriber extends \MobbexSubscription\Model
         if ($result) {
             $this->logger->log(
                 'debug', 
-                "MobbexSubscriber\Subscriber > get_by_uid - subscriber found in db",
+                "MobbexSubscription\Subscriber > get_by_uid - subscriber found in db",
                 $result[0]
             );
             return $this->get_instance($result[0]);
         } else {
             $this->logger->log(
                 'debug', 
-                "MobbexSubscriber\Subscriber > get_by_uid - subscriber not found, trying to get from Mobbex",
+                "MobbexSubscription\Subscriber > get_by_uid - subscriber not found, trying to get from Mobbex",
             );
             return $this->get_mobbex_subscriber($subscriber_uid, $subscription_uid, $order_id);
         }
@@ -320,13 +320,13 @@ class Subscriber extends \MobbexSubscription\Model
      * 
      * @param string $uid
      * 
-     * @return \MobbexSubscriber|null
+     * @return object \MobbexSubscription\Subscriber|null
      */
     public function get_by_uid($subscriber_uid)
     {
         global $wpdb;
         $result = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}mobbex_subscriber WHERE uid='$subscriber_uid'");
-        $this->logger->maybe_log_error("MobbexSubscriber\Subscriber > get_by_uid - error: ");
+        $this->logger->maybe_log_error("MobbexSubscription\Subscriber > get_by_uid - error: ");
 
         return $result;
     }
@@ -336,7 +336,7 @@ class Subscriber extends \MobbexSubscription\Model
      * 
      * @param object $data
      * 
-     * @return \MobbexSubscription\Subscriber
+     * @return object \MobbexSubscription\Subscriber
      */
     public function get_instance($data){
         if(!$data)
@@ -360,7 +360,7 @@ class Subscriber extends \MobbexSubscription\Model
      * @param string $subscription_uid
      * @param string $subscriber_uid
      * 
-     * @return subscriber
+     * @return object MobbexSubscription\Subscriber
      */
     public function get_mobbex_subscriber($subscriber_uid, $subscription_uid = null, $order_id = null)
     {
@@ -420,7 +420,7 @@ class Subscriber extends \MobbexSubscription\Model
 
         $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE order_id='$id'", $array ? 'ARRAY_A' : 'OBJECT');
 
-        $logger->log('debug', 'MobbexSubscriber\Subscriber > get_by_id error: ' . $wpdb->last_error, $wpdb->last_error);
+        $logger->maybe_log_error("MobbexSubscription\Subscriber > get_by_uid - error: ");
         
         if ($result[0] && !$array)
             return (new self())->get_instance($result[0]);

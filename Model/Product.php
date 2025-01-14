@@ -102,9 +102,8 @@ class Product
     public static function get_test_mode($product_id = null)
     {
         // If not sent get it directly from the current post
-        if ($product_id === null) {
+        if ($product_id === null)
             $product_id = get_the_ID();
-        }
 
         return get_post_meta($product_id, 'mbbxs_test_mode', true);
     }

@@ -266,7 +266,7 @@ class MobbexSubscriptions
             // Modify checkout
             $checkout['total']   -= $subscription->calculate_checkout_total($checkout['total']);
             $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook', $id);
-            $checkout['items'][] = [
+            $checkout['items'][]  = [
                 'type'      => 'subscription',
                 'reference' => $subscription->uid,
             ];
@@ -278,10 +278,6 @@ class MobbexSubscriptions
                     'description'  => $subscription->name . ' - costo de instalación',
                     'quantity'     => 1,
                 ];
-
-            // Make sure to use json in pay for order page
-            if (isset($_GET['pay_for_order']))
-                wp_send_json($checkout) && exit;
 
             $logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Modified Checkout', $checkout);
         } else {
@@ -365,7 +361,7 @@ class MobbexSubscriptions
         );
 
         $state = \MobbexSubscription\Helper::get_state($status);
-        $dates = $subscription->calculateDates();
+        $dates = $subscription->calculate_dates();
 
         // Recognize kind of subscription. Get a WCS subscription if possible, otherwise set standalone or return false
         if (\MobbexSubscription\Helper::is_wcs_active() && wcs_order_contains_subscription($order_id)) {
@@ -587,7 +583,6 @@ class MobbexSubscriptions
      */
     public function update_subscriber_state($subscription)
     {
-        // Añadir comprobacion para ver si nos corresponder cambiar el estado
         try {
             // Checks that subscription or order id is nor null
             if (!$subscription || !$subscription->get_parent())

@@ -177,7 +177,7 @@ class ProductSettings
      */
     public static function save_subscription_fields($post_id)
     {
-        //get product
+        // Get product
         $product      = wc_get_product($post_id);
         $subscription = new \MobbexSubscription\Subscription;
 
@@ -185,44 +185,41 @@ class ProductSettings
         $possible_periods = ['d', 'w', 'm', 'y'];
 
         // Get and validate data
-        $test                = (!empty($_POST['mbbxs_test_mode']) ? $_POST['mbbxs_test_mode'] : '');
         $subscription_mode   = (!empty($_POST['mbbxs_subscription_mode']) && $_POST['mbbxs_subscription_mode'] === '1');
-        $signup_fee          = (!empty($_POST['mbbxs_signup_fee']) && is_numeric($_POST['mbbxs_signup_fee'])) ? (int) $_POST['mbbxs_signup_fee'] : 0;
         $free_trial_interval = (!empty($_POST['mbbxs_free_trial_interval']) && is_numeric($_POST['mbbxs_free_trial_interval'])) ? (int) $_POST['mbbxs_free_trial_interval'] : 0;
-        $charge_interval     = (!empty($_POST['mbbxs_charge_interval_interval']) && is_numeric($_POST['mbbxs_charge_interval_interval'])) ? (int) $_POST['mbbxs_charge_interval_interval'] : 1;
         $free_trial_period   = (!empty($_POST['mbbxs_free_trial_period']) && in_array($_POST['mbbxs_free_trial_period'], $possible_periods)) ? esc_attr($_POST['mbbxs_free_trial_period']) : '';
+        $charge_interval     = (!empty($_POST['mbbxs_charge_interval_interval']) && is_numeric($_POST['mbbxs_charge_interval_interval'])) ? (int) $_POST['mbbxs_charge_interval_interval'] : 1;
         $charge_period       = (!empty($_POST['mbbxs_charge_interval_period']) && in_array($_POST['mbbxs_charge_interval_period'], $possible_periods)) ? esc_attr($_POST['mbbxs_charge_interval_period']) : 'm';
         // TODO: Validate that interval and period work fine together in dynamic subscription mode
         
-        //sub options
         $sub_options = [
-            'test'       => $test,
             'post_id'    => $post_id,
             'type'       => 'dynamic',
-            'signup_fee' => $signup_fee,
             'name'       => $product->get_name(),
-            'trial'      => $free_trial_interval,
-            'price'      => $product->get_price(),
             'reference'  => "wc_order_{$post_id}",
+            'trial'      => $free_trial_interval,
             'interval'   => $charge_interval . $charge_period,
+            'price'      => isset($_POST['_regular_price']) ? (float) $_POST['_regular_price'] : 0,
+            'test'       => isset($_POST['mbbxs_test_mode']) ? $_POST['mbbxs_test_mode'] : '',
+            'signup_fee' => isset($_POST['mbbxs_signup_fee']) && is_numeric($_POST['mbbxs_signup_fee']) ? (float) $_POST['mbbxs_signup_fee'] : 0,
         ];
 
         //Create/update subscription.
-        if(\MobbexSubscription\Product::is_subscription($post_id))
+        if (\MobbexSubscription\Product::is_subscription($post_id) || $subscription_mode)
             $subscription->create_mobbex_subscription($sub_options);
-
+        
         // Save data
+        update_post_meta($post_id, 'mbbxs_test_mode', $sub_options['test']);
+        update_post_meta($post_id, 'mbbxs_signup_fee', $sub_options['signup_fee']);
+        update_post_meta($post_id, 'mbbxs_free_trial', [
+            'interval' => $free_trial_interval,
+            'period'   => $free_trial_period,
+        ]);
         update_post_meta($post_id, 'mbbxs_subscription_mode', $subscription_mode);
         update_post_meta($post_id, 'mbbxs_charge_interval', [
             'interval' => $charge_interval,
             'period'   => $charge_period,
         ]);
-        update_post_meta($post_id, 'mbbxs_free_trial', [
-            'interval' => $free_trial_interval,
-            'period'   => $free_trial_period,
-        ]);
-        update_post_meta($post_id, 'mbbxs_signup_fee', $signup_fee);
-        update_post_meta($post_id, 'mbbxs_test_mode', $test);
     }
 
     /**
@@ -260,6 +257,7 @@ class ProductSettings
             'reference'  => "wc_order_{$post_id}",
             'price'      => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : 0,
             'signup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
+            'test'       => isset($_POST['mobbex_subscription_test_mode']) ? $_POST['mobbex_subscription_test_mode'] : '',
         ];
 
         // Create/update subscription.
