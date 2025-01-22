@@ -113,7 +113,7 @@ class Cart
 
     public static function get_subscription($product_id)
     {    
-        // if (self::has_subscription() || self::has_wcs_subscription())
+        if (self::has_subscription() || self::has_wcs_subscription())
             return \MobbexSubscription\Subscription::get_by_id($product_id);
         
         wc_add_notice(__("Cart has not subscription or integration is not activated.", 'mobbex-for-woocommerce'), 'error');
