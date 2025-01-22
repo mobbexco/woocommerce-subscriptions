@@ -368,7 +368,7 @@ class MobbexSubscriptions
             $wcs_subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
             $wcs_sub           = end($wcs_subscriptions);
             $logger->log('debug', 'MobbexSubscription > process_webhook - is WCS Subscription', ['wcs_sub' => $wcs_sub]);
-        } else if (\MobbexSubscription\Cart::has_subscription($order_id)) {
+        } else if ($subscription->type == 'dynamic') {
             $logger->log('debug', 'MobbexSubscription > process_webhook - is standalone');
             $standalone = true;
         } else {
@@ -398,7 +398,9 @@ class MobbexSubscriptions
             // Get registration result from context status
             $result = $status == 200;
             $logger->log('debug', 'MobbexSubscription > process_webhook - Registration result: ' . $result, []);
-            $order->add_order_note("Mobbex Subscription/Subcriber Registration UID: $subscription->uid / $subscriber->uid");
+            $order->add_order_note(
+                "Mobbex Subscription/Subcriber Registration UID: {$subscriptions['subscription_uid']} / {$subscriptions['subscriber_uid']}"
+            );
 
             if (isset($wcs_sub) && $result)
                 $wcs_sub->payment_complete(); // Enable subscription
@@ -420,7 +422,9 @@ class MobbexSubscriptions
             }
 
             $logger->log('debug', "MobbexSubscription > process_webhook | type: $type | status: $status");
-            $order->add_order_note("Mobbex Subscription/Subcriber Manual Execution | UID: $subscription->uid / $subscriber->uid");
+            $order->add_order_note(
+                "Mobbex Subscription/Subcriber Manual Execution | UID: {$subscriptions['subscription_uid']} / {$subscriptions['subscriber_uid']}"
+            );
             
             if ($state == 'approved' || $state == 'on-hold') {
                 // Mark as payment complete
