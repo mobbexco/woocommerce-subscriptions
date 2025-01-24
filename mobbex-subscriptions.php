@@ -97,7 +97,7 @@ class MobbexSubscriptions
         add_action('woocommerce_subscription_status_active', [$this, 'update_subscriber_state']);
         add_action('woocommerce_subscription_status_cancelled', [$this, 'update_subscriber_state']);
         
-        add_action('woocommerce_api_mobbex_subs_return_url', [$this, 'mobbex_subs_return_url']);
+        add_action('woocommerce_api_mobbex_subs_return_url', [$this, 'mobbex_return_url']);
         add_action('woocommerce_api_mobbex_subs_webhook', [$this, 'mobbex_subs_webhook']);
 
     }
@@ -253,40 +253,42 @@ class MobbexSubscriptions
             return ['result' => 'error'];
 
         $logger = new \Mobbex\WP\Checkout\Model\Logger;
+
         // TODO foreach items searching another subs
         $subscription = \MobbexSubscription\Cart::get_subscription($checkout['items'][0]['entity']);
-
-        if ($subscription){
-            $logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Checkout to modify', $checkout);
-            $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
-
-            // Remove merchants node and items
-            unset($checkout['merchants'], $checkout['items']);
-
-            // Modify checkout
-            $checkout['total']   -= $subscription->calculate_checkout_total($checkout['total']);
-            $checkout['webhook']  = $checkout_helper->get_api_endpoint('mobbex_subs_webhook', $id);
-            $checkout['items'][]  = [
-                'type'      => 'subscription',
-                'reference' => $subscription->uid,
-            ];
-
-            // Maybe add sign up fee 
-            if ($subscription->type != 'manual' && (float) $subscription->signup_fee > 0)
-                $checkout['items'][] = [
-                    'total'        => (float) $subscription->signup_fee,
-                    'description'  => $subscription->name . ' - costo de instalación',
-                    'quantity'     => 1,
-                ];
-
-            $logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Modified Checkout', $checkout);
-        } else {
-            $logger->log('debug', 
-                'MobbexSubscriptions > modify_checkout_data | Subscription is null/not found', 
-                ['product id' => $checkout['items'][0]['entity']]
-            );
+        
+        if (!$subscription || self::$config->enable_subscription != "yes"){
+            !$subscription ?? $logger->log(
+                'debug', 
+                'MobbexSubscriptions > modify_checkout_data | Subscription not found or extension is desactivated',
+                ['subscription' => $subscription, 'enable_subscription' => self::$config->enable_subscription]);
+            return $checkout;
         }
 
+        $logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Checkout to modify', $checkout);
+        $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
+
+        // Remove merchants node and items
+        unset($checkout['merchants'], $checkout['items']);
+
+        // Modify checkout
+        $checkout['total']      -= $subscription->calculate_checkout_total($checkout['total']);
+        $checkout['webhook']     = $checkout_helper->get_api_endpoint('mobbex_subs_webhook', $id);
+        $checkout['return_url']  = $checkout_helper->get_api_endpoint('mobbex_return_url', $id);
+        $checkout['items'][]  = [
+            'type'      => 'subscription',
+            'reference' => $subscription->uid,
+        ];
+
+        // Maybe add sign up fee 
+        if ($subscription->type != 'manual' && (float) $subscription->signup_fee > 0)
+            $checkout['items'][] = [
+                'total'        => (float) $subscription->signup_fee,
+                'description'  => $subscription->name . ' - costo de instalación',
+                'quantity'     => 1,
+            ];
+
+        $logger->log('debug', 'MobbexSubscriptions > modify_checkout_data | Modified Checkout', $checkout);
         return $checkout;
     }
     

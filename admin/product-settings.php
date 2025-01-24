@@ -8,7 +8,7 @@ class ProductSettings
     public static function init()
     {
         // Load helpers
-        self::$helper = new \MobbexSubscription\Helper;
+        self::$helper    = new \MobbexSubscription\Helper;
         $checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
         if ($checkout_helper->is_extension_ready()){

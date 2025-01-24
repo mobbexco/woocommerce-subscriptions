@@ -83,7 +83,7 @@ class Subscription extends \MobbexSubscription\Model {
         $this->checkout_helper = new \Mobbex\WP\Checkout\Model\Helper;
 
         $this->webhook_url =  $this->checkout_helper->get_api_endpoint('mobbex_subs_webhook');
-        $this->return_url  =  $this->checkout_helper->get_api_endpoint('mobbex_subs_return_url');
+        $this->return_url  =  $this->checkout_helper->get_api_endpoint('mobbex_return_url');
 
         parent::__construct(...func_get_args());
     }
