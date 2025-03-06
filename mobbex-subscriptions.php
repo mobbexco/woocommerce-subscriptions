@@ -599,7 +599,12 @@ class MobbexSubscriptions
 
             // Gets subscription status, order id
             $status   = $subscription->get_status();
-            $order_id = $subscription->get_parent()->get_id();
+            $parent   = $subscription->get_parent();
+
+            if (!$parent)
+                return;
+            
+            $order_id = $parent->get_id();
 
             // Get susbscriber
             $subscriber = new MobbexSubscription\Subscriber($order_id);
