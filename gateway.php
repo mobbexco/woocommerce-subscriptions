@@ -569,15 +569,15 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function update_subscriber_state($subscription)
     {
-        // Check if is a mobbex subscriber
-        $order_id = $subscription->get_parent()->get_id();
-        if (!\MobbexSubscriber::is_stored($order_id))
-            return;
-
         try {
             // Checks that subscription or order id is nor null
             if (!$subscription || !$subscription->get_parent())
                 throw new \Exception(__('Mobbex error: Subscription or parent order not found on state update', 'mobbex-subs-for-woocommerce'));
+
+            // Check if is a mobbex subscriber
+            $order_id = $subscription->get_parent()->get_id();
+            if (!\MobbexSubscriber::is_stored($order_id))
+                return;
 
             // Gets status and subscriber
             $status     = $subscription->get_status();
@@ -585,7 +585,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             // Update subscriber state through the corresponding endpoint
             $subscriber->update_status($status);
-            
         } catch (\Exception $e) {
             $subscription->add_order_note(__('Error modifying subscriber status: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
         }
