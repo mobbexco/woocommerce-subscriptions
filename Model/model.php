@@ -1,13 +1,17 @@
 <?php
 
-namespace Mobbex;
+namespace MobbexSubscription;
 
 abstract class Model
 {
     /** @var wpdb */
     public $db;
 
+    public $data;
     public $table;
+    public $logger;
+    public $update;
+    public $fillable;
     public $primary_key;
     public $array_columns = [];
 
@@ -74,28 +78,29 @@ abstract class Model
             "SELECT * FROM " . $this->db->prefix . $this->table . " WHERE $this->primary_key=$key LIMIT 1;",
             ARRAY_A
         );
-
+        
+        $this->logger->maybe_log_error('MobbexSubscription\Model > get data error: ', []);
         return isset($result[0]) ? $result[0] : null;
     }
 
     public function save($data)
     {
-        global $wpdb;
-
         if($this->update){
-            $wpdb->update($wpdb->prefix.$this->table, $data, [$this->primary_key => $data[$this->primary_key]]);
+            $this->db->update($this->db->prefix.$this->table, $data, [$this->primary_key => $data[$this->primary_key]]);
 
-            if (empty($wpdb->last_error))
+            if (empty($this->db->last_error))
                 return true;
-            $this->logger->log('debug', 'Mobbex Subscription Abstract Model save error: ' . $wpdb->last_error, $data);
+
+            $this->logger->maybe_log_error('MobbexSubscription\Model > save error: ', $data);
             return false;
 
         } else {
-            $wpdb->insert($wpdb->prefix.$this->table, $data);
+            $this->db->insert($this->db->prefix.$this->table, $data);
 
-            if (empty($wpdb->last_error))
+            if (empty($this->db->last_error))
                 return true;
-            $this->logger->log('debug', 'Mobbex Subscription Abstract Model save error: ' . $wpdb->last_error, $data);
+
+            $this->logger->maybe_log_error('MobbexSubscription\Model > save error: ', $data);
             return false;
         }
     }

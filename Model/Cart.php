@@ -1,21 +1,21 @@
 <?php
-
+namespace MobbexSubscription;
 /**
  * Mirrors a few functions in WC_Cart class to work for subscriptions.
  */
-class Mbbxs_Cart
+class Cart
 {
-    /** @var Mbbxs_Helper */
+    /** @var \MobbexSubscription\Helper */
     public static $helper;
 
-    /** @var Mbbxs_Subs_Order */
+    /** @var \MobbexSubscription\OrderHelper */
     public static $order_helper;
 
     public static function init()
     {
         // Load helpers
-        self::$helper = new Mbbxs_Helper;
-        self::$order_helper = new Mbbxs_Subs_Order;
+        self::$helper = new \MobbexSubscription\Helper;
+        self::$order_helper = new \MobbexSubscription\OrderHelper;
 
         // Validate cart items
         add_filter('woocommerce_add_to_cart_validation', [self::class, 'validate_cart_items'], 10, 2);
@@ -28,8 +28,12 @@ class Mbbxs_Cart
         add_filter('woocommerce_product_add_to_cart_text', [self::class, 'display_signup_button'], 10, 2);
         add_filter('woocommerce_product_single_add_to_cart_text', [self::class, 'display_signup_button'], 10, 2);
 
-        // Disable the rest of payment gateways when there is a mobbex subscription
-        add_filter('woocommerce_available_payment_gateways', [self::class, 'filter_checkout_payment_gateways']);
+        // Change price to show sign up fee on it
+        add_filter('woocommerce_get_price_html', [self::$helper, 'display_sign_up_fee_on_price'], 10, 2);
+        add_filter('woocommerce_cart_item_price', [self::$helper, 'display_sign_up_fee_on_price'], 10, 2);
+
+        // Maybe add sign-up to totals to mobbex subscription product
+        add_filter('woocommerce_cart_calculate_fees', [self::class, 'maybe_add_mobbex_subscription_fee'], 10, 2);
     }
 
     /**
@@ -42,7 +46,7 @@ class Mbbxs_Cart
      */
     public static function display_signup_button($text, $product)
     {
-        if (Mbbx_Subs_Product::is_subscription($product->get_id()))
+        if (\MobbexSubscription\Product::is_subscription($product->get_id()))
             $text = __('Sign Up', 'mobbex-subs-for-woocommerce');
 
         return $text;
@@ -64,7 +68,7 @@ class Mbbxs_Cart
         if (self::has_subscription() || self::has_wcs_subscription()) {
             wc_add_notice(__("You can't add items in a cart with a subscription, please clean your cart before.", 'mobbex-for-woocommerce'), 'error');
             return false;
-        } else if (!empty(WC()->cart->get_cart()) && (Mbbx_Subs_Product::is_subscription($product_id) || strpos($product->get_type(), 'subscription') !== false)) {
+        } else if (!empty(WC()->cart->get_cart()) && (\MobbexSubscription\Product::is_subscription($product_id) || strpos($product->get_type(), 'subscription') !== false)) {
             wc_add_notice(__("You can't add a subscription in a cart with items, please clean your cart before.", 'mobbex-for-woocommerce'), 'error');
             return false;
         }
@@ -82,7 +86,7 @@ class Mbbxs_Cart
         $cart_items = WC()->cart ? WC()->cart->get_cart() : [];
 
         foreach ($cart_items as $item_key => $item) {
-            if (Mbbx_Subs_Product::is_subscription($item['product_id']))
+            if (\MobbexSubscription\Product::is_subscription($item['product_id']))
                 return true;
         }
 
@@ -105,6 +109,15 @@ class Mbbxs_Cart
         return \WC_Subscriptions_Cart::cart_contains_subscription()
             || wcs_cart_contains_renewal()
             || ($pending_order && wcs_order_contains_subscription($pending_order));
+    }
+
+    public static function get_subscription($product_id)
+    {    
+        if (self::has_subscription() || self::has_wcs_subscription())
+            return \MobbexSubscription\Subscription::get_by_id($product_id);
+        
+        wc_add_notice(__("Cart has not subscription or integration is not activated.", 'mobbex-for-woocommerce'), 'error');
+        return null;
     }
 
     /**
@@ -137,38 +150,60 @@ class Mbbxs_Cart
     public static function redirect_signup_to_checkout($url)
     {
         // If product is of the subscription type
-        if (isset($_REQUEST['add-to-cart']) && is_numeric($_REQUEST['add-to-cart']) && Mbbx_Subs_Product::is_subscription((int) $_REQUEST['add-to-cart']))
+        if (isset($_REQUEST['add-to-cart']) && is_numeric($_REQUEST['add-to-cart']) && \MobbexSubscription\Product::is_subscription((int) $_REQUEST['add-to-cart']))
             $url = wc_get_checkout_url();
 
         return $url;
     }
 
     /**
-     * Filter checkout payment gateways by product type.
+     * Remove items from cart by type.
      * 
-     * @param array $available_gateways
-     * 
-     * @return array $available_gateways
+     * @param string $type 'any' | 'subs'
      */
-    public static function filter_checkout_payment_gateways($available_gateways)
+    public static function remove_cart_items($type = 'any')
     {
-        if (is_admin() && !defined('DOING_AJAX'))
-            return;
+        $cart_items = !empty(WC()->cart->get_cart()) ? WC()->cart->get_cart() : [];
 
-        // Get gateway id formatted
-        $mobbex_gateway = [MOBBEX_SUBS_WC_GATEWAY_ID => true];
+        foreach ($cart_items as $item_key => $item) {
+            if ($type == 'any') {
+                WC()->cart->set_quantity($item_key , 0);
+            } else if ($type == 'subs' && \MobbexSubscription\Product::is_subscription($item['product_id'])) {
+                WC()->cart->set_quantity($item_key , 0);
+            }
+        }
+    }
 
-        // If cart has a mobbex subscription
-        if (self::has_subscription() || self::$order_helper::order_has_subscription()) {
-            // Remove all payment gateways except mobbex
-            $available_gateways = array_intersect_key($available_gateways, $mobbex_gateway);
-        } else if (self::has_wcs_subscription()) {
-            // Nothing
-        } else {
-            // By default, remove mobbex from available gateways
-            $available_gateways = array_diff_key($available_gateways, $mobbex_gateway);
+    /**
+	 * Check if the current Cart has a Mobbex Subscription product.
+	 *
+     * @return bool
+	 */
+    public static function cart_has_subscription()
+    {
+        $cart_items = WC()->cart ? WC()->cart->get_cart() : [];
+
+        foreach ($cart_items as $item_key => $item) {
+            if (\MobbexSubscription\Product::is_subscription($item['product_id']))
+                return true;
         }
 
-        return $available_gateways;
+        return false;
+	}
+
+    /**
+     * Add mobbex subscription fee to cart
+     * 
+     * @param WC_Cart $cart
+     */
+    public static function maybe_add_mobbex_subscription_fee($cart)
+    {
+        if ($cart->is_empty())
+            return;
+
+        foreach ( $cart->get_cart() as $item ){
+            $subscription = \MobbexSubscription\Subscription::get_by_id($item['product_id']);
+            isset($subscription->singup_fee) ? $cart->add_fee(__("{$subscription->name} Sign-up Fee", 'woocommerce'), $subscription->singup_fee, false) : '';
+        }
     }
 }

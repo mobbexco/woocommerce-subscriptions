@@ -1,80 +1,46 @@
 <?php
-class Mbbxs_Helper
+namespace MobbexSubscription;
+class Helper
 {
-    /** @var Mobbex\Api */
-    public $api;
+    public $config;
+    public $logger;
+
+    public static $periods = [
+        'd' => 'day',
+        'm' => 'month',
+        'y' => 'year'
+    ];
 
     public function __construct()
     {
-        // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
-        $option_key = 'woocommerce_' . MOBBEX_SUBS_WC_GATEWAY_ID . '_settings';
-        $settings = get_option($option_key, null) ?: [];
-        foreach ($settings as $key => $value) {
-            $key = str_replace('-', '_', $key);
-            $this->$key = $value;
-        }
-        // Instance sdk classes
-        $this->api = new \Mobbex\Api();
-    }
-    
-    public static function notice($type, $msg)
-    {
-        add_action('admin_notices', function () use ($type, $msg) {
-            $class = esc_attr("notice notice-$type");
-            $msg = esc_html($msg);
-
-            ob_start();
-
-            ?>
-
-            <div class="<?=$class?>">
-                <h2>Mobbex for Woocommerce Subscriptions</h2>
-                <p><?=$msg?></p>
-            </div>
-
-            <?php
-
-            echo ob_get_clean();
-        });
-    }
-    public static function _redirect_to_cart_with_error($error_msg)
-    {
-        wc_add_notice($error_msg, 'error');
-        wp_redirect(wc_get_cart_url());
-
-        return array('result' => 'error', 'redirect' => wc_get_cart_url());
+        $this->config = new \Mobbex\WP\Checkout\Model\Config;
+        $this->logger = new \Mobbex\WP\Checkout\Model\Logger;
     }
 
-    public function get_api_endpoint($endpoint)
+    public static function is_wcs_active()
     {
-        $query = [
-            'mobbex_token' => \Mobbex\Repository::generateToken(),
-            'platform' => "woocommerce",
-            "version" => MOBBEX_SUBS_VERSION,
-        ];
-
-        $query['wc-api'] = $endpoint;
-
-        return add_query_arg($query, home_url('/'));
-    }
-
-    public function is_ready()
-    {
-        return (!empty($this->enabled) && !empty($this->api_key) && !empty($this->access_token) && $this->enabled === 'yes');
-    }
-
-    public function is_wcs_active()
-    {
-        return (!empty($this->integration) && $this->integration === 'wcs' && get_option('woocommerce_subscriptions_is_active'));
+        $config = new \Mobbex\WP\Checkout\Model\Config;
+        return (!empty($config->integration) && $config->integration === 'wcs' && get_option('woocommerce_subscriptions_is_active'));
     }
 
     /**
-	 * Checks if page is pay for order and change subs payment page.
-	 */
-    public static function is_subs_change_method()
+     * Get the post id for 2.x subs compatibility.
+     * 
+     * @param string $product_id
+     * @param mixed $order
+     * 
+     * @return string
+     */
+    public function get_post_id($product_id, $order)
     {
-		return (isset($_GET['pay_for_order']) && isset($_GET['change_payment_method']));
-	}
+        if ($order && $this->is_wcs_active()) {
+            $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
+            $wcs_sub = end($subscriptions);
+            return  \MobbexSubscription\Subscription::get_by_id($wcs_sub->order->get_id(), false) ? $wcs_sub->order->get_id() : $product_id;
+        } else {
+            return $product_id;
+        }
+    }
 
     /**
 	 * Get payment state from Mobbex status code.
@@ -87,10 +53,58 @@ class Mbbxs_Helper
     {
         if ($status == 2 || $status == 3 || $status == 100 || $status == 201) {
             return 'on-hold';
-        } else if ($status == 4 || $status >= 200 && $status < 400) {
+        } else if ($status == 4 || $status >= 200 && $status < 300) {
             return 'approved';
+        } else if ($status >= 300 && $status < 400) {
+            return 'processing';
         } else {
             return 'cancelled';
         }
 	}
-} 
+
+    /**
+     * Display sign up fee on product price
+     * 
+     * @param string $price_html
+     * @param WC_Product $product
+     * 
+     * @return string $sign_up_fee || $price_html
+     */
+    public static function display_sign_up_fee_on_price($price_html, $product)
+    {
+        // Sometimes the hook gets an array type product
+        $product_id = is_object($product)? $product->get_id() : $product['product_id'];
+
+        // Avoid non subscription products
+        if (!\MobbexSubscription\Product::is_subscription($product_id))
+            return $price_html;
+
+        // Set sign up price
+        $sign_up_price = self::get_product_subscription_signup_fee($product_id);
+
+        return $sign_up_price ? $price_html .= __(" /month and a $$sign_up_price sign-up fee") : $price_html;
+    }
+
+    /*
+     * Get product subscription sign-up fee from db
+     * 
+     * @param int|string $id
+     * 
+     * @return string|null product subscription sign-up fee
+     */
+    public static function get_product_subscription_signup_fee($id)
+    { 
+        $logger = new \Mobbex\WP\Checkout\Model\Logger;
+
+        try {
+            $subscription = \MobbexSubscription\Subscription::get_by_id($id);;
+
+            if (!$subscription)
+                return null;
+
+            return ((float) $subscription->signup_fee > 0) ? $subscription->signup_fee : null;
+        } catch (\Exception $e) {
+            $logger->log('error', '\MobbexSubscription\Helper > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), isset($subscription));
+        }
+    }
+}

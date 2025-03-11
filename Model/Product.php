@@ -1,9 +1,10 @@
 <?php
-
 /**
  * For use in Standalone mode.
  */
-class Mbbx_Subs_Product
+namespace MobbexSubscription;
+
+class Product
 {
     /**
      * Mobbex meta fields saved.
@@ -13,6 +14,7 @@ class Mbbx_Subs_Product
         'mbbxs_charge_interval',
         'mbbxs_free_trial',
         'mbbxs_signup_fee',
+        'mbbxs_test_mode'
     ];
 
     /**
@@ -89,5 +91,20 @@ class Mbbx_Subs_Product
         }
 
         return (int) get_post_meta($product_id, 'mbbxs_signup_fee', true);
+    }
+
+    /**
+     *  Retrieve test mode.
+     * 
+     * @param integer $product_id
+     * @return integer
+     */
+    public static function get_test_mode($product_id = null)
+    {
+        // If not sent get it directly from the current post
+        if ($product_id === null)
+            $product_id = get_the_ID();
+
+        return get_post_meta($product_id, 'mbbxs_test_mode', true);
     }
 }
