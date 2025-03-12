@@ -86,6 +86,13 @@ class MobbexSubscriber extends \Mobbex\Model
         $order        = wc_get_order($this->order_id);
 
         try {
+            if (!$this->uid) {
+                $existing = $this->search_subscriber($this->reference);
+
+                if (isset($existing['uid']))
+                    $this->uid = $existing['uid'];
+            }
+
             return $this->api->request([
                 'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
                 'method' => 'POST',
@@ -318,5 +325,22 @@ class MobbexSubscriber extends \Mobbex\Model
     {
         // Just to avoid charging a duplicate sign up fee
         return $subscription->signup_fee ? $order->get_total() - $subscription->signup_fee : $order->get_total();
+    }
+
+    /**
+     * Search subscriber in Mobbex
+     * 
+     * @param string $search
+     * 
+     * @return array|null
+     */
+    public function search_subscriber($search)
+    {
+        $res = $this->api->request([
+            'uri'    => "subscriptions/$this->subscription_uid/subscriber?page=0&search=$search",
+            'method' => 'GET'
+        ]);
+
+        return empty($res['docs'][0]) ? null : $res['docs'][0];
     }
 }
