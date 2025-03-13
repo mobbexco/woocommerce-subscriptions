@@ -93,13 +93,21 @@ class MobbexSubscriptions
         add_filter('mobbex_checkout_custom_data', [$this, 'modify_checkout_data'], 10, 2);
         add_filter('mobbex_subs_support', [$this, 'add_subscription_support'], 10, 2);
 
+        add_action('rest_api_init', function () {
+            register_rest_route('mobbex_subscriptions/v1', '/webhook', [
+                'methods' => \WP_REST_Server::CREATABLE,
+                'callback' => [$this, 'mobbex_subs_webhook'],
+                'permission_callback' => '__return_true',
+            ]);
+        });
+        
         // Update subscription status
         add_action('woocommerce_subscription_status_active', [$this, 'update_subscriber_state']);
         add_action('woocommerce_subscription_status_cancelled', [$this, 'update_subscriber_state']);
         
         add_action('woocommerce_api_mobbex_subs_return_url', [$this, 'mobbex_return_url']);
         add_action('woocommerce_api_mobbex_subs_webhook', [$this, 'mobbex_subs_webhook']);
-
+        
     }
 
     private static function load_textdomain()
