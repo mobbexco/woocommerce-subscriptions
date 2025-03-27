@@ -204,16 +204,16 @@ class Mbbxs_Helper
      * 
      * @param int|string $status
      * 
-     * @return string "approved" | "on-hold" | "cancelled"
+     * @return string "approved" | "on-hold" | "failed"
 	 */
     public static function get_state($status)
     {
-        if ($status == 2 || $status == 3 || $status == 100 || $status == 201) {
+        if ($status == 2 || $status == 3 || $status == 100) {
             return 'on-hold';
         } else if ($status == 4 || $status >= 200 && $status < 400) {
             return 'approved';
         } else {
-            return 'cancelled';
+            return 'failed';
         }
 	}
 
@@ -412,112 +412,138 @@ class Mbbxs_Helper
      */
     public function maybe_migrate_subscriptions($order)
     {
-        mbbxs_log('debug', "Trying to migrate subscriptions. Order ID " . $order->get_id());
+        if (!$order || !method_exists($order, 'get_id'))
+            throw new \Exception('Invalid order object');
 
-        foreach ($order->get_items() as $item) {
-            $old_subscription = get_post_meta($order->get_id(), 'mobbex_subscription', true);
-            $old_subscriber   = get_post_meta($order->get_id(), 'mobbex_subscriber', true);
+        $old_subscription = get_post_meta($order->get_id(), 'mobbex_subscription', true);
+        $old_subscriber   = get_post_meta($order->get_id(), 'mobbex_subscriber', true);
 
-            //Migrate data if there are an old subscription
-            if($old_subscription){
-                $order->add_order_note("Old Subscription detected. Making migration");
+        if ($old_subscription){
+            $order->add_order_note("Old Subscription detected. Making migration");
 
-                mbbxs_log('warning', "Old Subscription detected. Making migration. Order ID " . $order->get_id(), [isset($old_subscription['uid']) ? $old_subscription['uid'] : '']);
-                $type = $this->is_wcs_active() ? 'manual' : 'dynamic';
-                mbbxs_log('debug', "Migrating subscription. Obtaining data. Order ID " . $order->get_id(), [
-                    $order->get_id(),
-                    "wc_order_{$order->get_id()}", 
-                    isset($old_subscription['total']) ? $old_subscription['total'] : '',
-                    isset($old_subscription['setupFee']) ? $old_subscription['setupFee'] : '',
-                    $type,
-                    isset($old_subscription['name']) ? $old_subscription['name'] : '',
-                    isset($old_subscription['description']) ? $old_subscription['description'] : '',
-                    isset($old_subscription['interval']) ? $old_subscription['interval'] : '',
-                    isset($old_subscription['trial']) ? $old_subscription['trial'] : '',
-                    isset($old_subscription['limit']) ? $old_subscription['limit'] : '',
-                    isset($old_subscription['uid']) ? $old_subscription['uid'] : '',
-                    isset($old_subscription['return_url']) ? $old_subscription['return_url'] : '',
-                    isset($old_subscription['webhook']) ? $old_subscription['webhook'] : ''
-                ]);
+            $subscription = new \MobbexSubscription(
+                $order->get_id(),
+                "wc_order_{$order->get_id()}", 
+                isset($old_subscription['total']) ? $old_subscription['total'] : '',
+                isset($old_subscription['setupFee']) ? $old_subscription['setupFee'] : '',
+                $this->is_wcs_active() ? 'manual' : 'dynamic',
+                isset($old_subscription['name']) ? $old_subscription['name'] : '',
+                isset($old_subscription['description']) ? $old_subscription['description'] : '',
+                isset($old_subscription['interval']) ? $old_subscription['interval'] : '',
+                isset($old_subscription['trial']) ? $old_subscription['trial'] : '',
+                isset($old_subscription['limit']) ? $old_subscription['limit'] : ''
+            );
 
-                //Load subscription
-                $subscription = new \MobbexSubscription(
-                    $order->get_id(),
-                    "wc_order_{$order->get_id()}", 
-                    isset($old_subscription['total']) ? $old_subscription['total'] : '',
-                    isset($old_subscription['setupFee']) ? $old_subscription['setupFee'] : '',
-                    $type,
-                    isset($old_subscription['name']) ? $old_subscription['name'] : '',
-                    isset($old_subscription['description']) ? $old_subscription['description'] : '',
-                    isset($old_subscription['interval']) ? $old_subscription['interval'] : '',
-                    isset($old_subscription['trial']) ? $old_subscription['trial'] : '',
-                    isset($old_subscription['limit']) ? $old_subscription['limit'] : ''
-                );
+            //Set uid
+            $subscription->uid        = isset($old_subscription['uid']) ? $old_subscription['uid'] : '';
+            $subscription->return_url = isset($old_subscription['return_url']) ? $old_subscription['return_url'] : '';
+            $subscription->webhook    = isset($old_subscription['webhook']) ? $old_subscription['webhook'] : '';
 
-                //Set uid
-                $subscription->uid        = isset($old_subscription['uid']) ? $old_subscription['uid'] : '';
-                $subscription->return_url = isset($old_subscription['return_url']) ? $old_subscription['return_url'] : '';
-                $subscription->webhook    = isset($old_subscription['webhook']) ? $old_subscription['webhook'] : '';
+            mbbxs_log('debug', "Migrating subscription. Before save. Order ID " . $order->get_id());
+            $subscription->save();
 
-                mbbxs_log('debug', "Migrating subscription. Before save. Order ID " . $order->get_id());
-                //Save the data
-                $subscription->save();
-                mbbxs_log('debug', "Migrating subscription. Save succesfully. Order ID " . $order->get_id());
-
-                $order->add_order_note("Old Subscription detected. Migration done");
-
-                //update metapost
-                update_post_meta($order->get_id(), 'mobbex_subscription', '');
-            }
-
-            //Migrate data if there are an old subscriber
-            if($old_subscriber){
-                $order->add_order_note("Old Subscriber detected. Making migration");
-
-                mbbxs_log('warning', "Old Subscriber detected. Making migration. Order ID " . $order->get_id());
-                mbbxs_log('warning', "Old Subscribre detected. Obtaining data. Order ID " . $order->get_id(), [
-                    $order->get_id(),
-                    isset($old_subscription['uid']) ? $old_subscription['uid'] : '',
-                    isset($old_subscriber['reference']) ? $old_subscriber['reference'] : '',
-                    $order->get_billing_first_name(),
-                    $order->get_billing_email(),
-                    $order->get_billing_phone(),
-                    get_post_meta($order->get_id(), !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni', true),
-                    $order->get_customer_id(),
-                    isset($old_subscriber['uid']) ? $old_subscriber['uid'] : '',
-                    isset($old_subscriber['sourceUrl']) ? $old_subscriber['sourceUrl'] : '',
-                    isset($old_subscriber['subscriberUrl']) ? $old_subscriber['subscriberUrl'] : ''
-                ]);
-
-                //load Subscriber
-                $subscriber = new \MobbexSubscriber(
-                    $order->get_id(),
-                    isset($old_subscription['uid']) ? $old_subscription['uid'] : '',
-                    isset($old_subscriber['reference']) ? $old_subscriber['reference'] : '',
-                    $order->get_billing_first_name(),
-                    $order->get_billing_email(),
-                    $order->get_billing_phone(),
-                    get_post_meta($order->get_id(), !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni', true),
-                    $order->get_customer_id()
-                );
-
-                //set other data
-                $subscriber->uid         = isset($old_subscriber['uid']) ? $old_subscriber['uid'] : '';
-                $subscriber->source_url  = isset($old_subscriber['sourceUrl']) ? $old_subscriber['sourceUrl'] : '';
-                $subscriber->control_url = isset($old_subscriber['subscriberUrl']) ? $old_subscriber['subscriberUrl'] : '';
-
-                mbbxs_log('debug', "Migrating subscriber. Before save. Order ID " . $order->get_id());
-                //Save the data
-                $subscriber->save(false);
-                mbbxs_log('debug', "Migrating subscriber. Save succesfully. Order ID " . $order->get_id());
-
-                $order->add_order_note("Old Subscriber detected. Migration done");
-
-                //update metapost
-                update_post_meta($order->get_id(), 'mobbex_subscriber', '');
-            }
+            update_post_meta($order->get_id(), 'mobbex_subscription', '');
+            $order->add_order_note("Old Subscription detected. Migration done");
+            $order->save();
         }
 
-        mbbxs_log('debug', "Finish subscriptions migration try. Order ID " . $order->get_id());
+        if ($old_subscriber){
+            $order->add_order_note("Old Subscriber detected. Making migration");
+
+            if (empty($old_subscription['uid'])) {
+                // Try to obatin from 
+                $new_subscription = new \MobbexSubscription($order->get_id());
+                $old_subscription['uid'] = $new_subscription->uid;
+            }
+
+            $subscriber = new \MobbexSubscriber(
+                $order->get_id(),
+                isset($old_subscription['uid']) ? $old_subscription['uid'] : '',
+                isset($old_subscriber['reference']) ? $old_subscriber['reference'] : '',
+                $order->get_billing_first_name(),
+                $order->get_billing_email(),
+                $order->get_billing_phone(),
+                get_post_meta($order->get_id(), !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni', true),
+                $order->get_customer_id()
+            );
+
+            //set other data
+            $subscriber->uid         = isset($old_subscriber['uid']) ? $old_subscriber['uid'] : '';
+            $subscriber->source_url  = isset($old_subscriber['sourceUrl']) ? $old_subscriber['sourceUrl'] : '';
+            $subscriber->control_url = isset($old_subscriber['subscriberUrl']) ? $old_subscriber['subscriberUrl'] : '';
+
+            mbbxs_log('debug', "Migrating subscriber. Before save. Order ID " . $order->get_id());
+            $subscriber->save(false);
+
+            update_post_meta($order->get_id(), 'mobbex_subscriber', '');
+            $order->add_order_note("Old Subscriber migration done");
+            $order->save();
+        }
+    }
+
+    /**
+	 * Checks to see if the current order, and a fresh copy of the order from the database are paid.
+	 *
+	 * @param WC_Order $order The order being checked.
+	 *
+	 * @return bool True if it has a paid status, false if not.
+	 */
+	public function is_order_paid($order) {
+		wp_cache_delete($order->get_id(), 'posts');
+
+		// Read the latest order properties from the database to avoid race conditions if webhook was handled during this request.
+		$clone_order = clone $order;
+		$clone_order->get_data_store()->read($clone_order);
+
+		// Check if the order is already complete.
+		if ( function_exists('wc_get_is_paid_statuses')) {
+			if ( $order->has_status(wc_get_is_paid_statuses())
+				|| $clone_order->has_status(wc_get_is_paid_statuses()) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+    /**
+     * Get WCS Subscription from Order ID.
+     * 
+     * @param int $order_id
+     * 
+     * @return \WC_Subscription|null
+     */
+    public function get_wcs_subscription($order_id)
+    {
+        if (!$this->is_wcs_active() || !$order_id || !is_numeric($order_id))
+            return null;
+
+        $subscriptions = wcs_get_subscriptions_for_order($order_id, ['order_type' => 'any']);
+        return end($subscriptions) ?: null;
+    }
+
+    /**
+     * Update order status securely.
+     * 
+     * @param WC_Order $order
+     * @param string $state
+     * @param string $message
+     */
+    public function update_order_status($order, $state, $message)
+    {
+        if ($state == 'approved') {
+            if ($this->is_order_paid($order)) {
+                $order->add_order_note("Order is already paid. $message");
+            } else {
+                $order->add_order_note($message);
+                $order->payment_complete();
+            }
+        } else {
+            if ($order->has_status($state)) {
+                $order->add_order_note("Order is already $state. $message");
+            } else {
+                $order->update_status($state, $message);
+            }
+        }
     }
 }

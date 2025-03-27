@@ -23,3 +23,10 @@ function mbbxs_log($level = 'debug', $msg, $data = []) {
         $level
     );
 }
+
+function mbbx_http_error($code, $message, ...$data) {
+    mbbxs_log('error', $message, $data);
+
+    http_response_code($code);
+    echo $message, exit;
+}
