@@ -621,93 +621,128 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * Executed by WooCommerce Subscriptions in each billing period.
      * 
      * @param integer $total
-     * @param WC_Order|WC_Abstract_Order $order
+     * @param WC_Order $order
      * 
      * @return bool Result of charge execution.
      */
     public function scheduled_subscription_payment($total, $order)
     {
-        mbbxs_log('debug', 'Gateway (Hook) > scheduled_subscription_payment', ['orden_payment_method' => $order->get_payment_method()]);
-        // Return if payment method is not Mobbex
-        if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()){
-            mbbxs_log('debug', "El método de pago no es Mobbex => Gateway (Hook) > scheduled_subscription_payment is bypassed.", ['payment_method' => $order->get_payment_method()]);
-            return;
-        }
-
-        mbbxs_log('debug', "Scheduled Payment. Init for $ $total. Order ID " . $order->get_id());
- 
-        $order->add_order_note("Processing scheduled payment for $ $total");
-
-        // Get subscription from order id
-        $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']); 
-
-        mbbxs_log('debug', "Scheduled Payment. Getting subscriptions. Order ID " . $order->get_id(), $subscriptions);
-        $wcs_sub = end($subscriptions);
-        mbbxs_log('debug', "Scheduled Payment. Subscription extract. Order ID " . $order->get_id(), [$wcs_sub, $wcs_sub->get_id(), $wcs_sub->order ? $wcs_sub->order->get_id() : null]);
-
-        //Migrate subscriptions
-        $this->helper->maybe_migrate_subscriptions($wcs_sub->order);
-        
-        //get mobbex subscriber & subscription
-        $subscription = $this->get_subscription($order, $wcs_sub->order->get_id());
-        mbbxs_log('debug', "Scheduled Payment. Subscription obtained succesfuly. Order ID " . $order->get_id(), $subscription->uid);
-
-
-        if(!empty($subscription->uid))
-            $subscriber = new \MobbexSubscriber($wcs_sub->order->get_id());
-
-        mbbxs_log('debug', "Scheduled Payment. Subscriber obtained succesfuly. Order ID " . $order->get_id(), [!empty($subscriber->uid) ? $subscriber->uid : null, $total]);
-
-        // if subscription is registered and is not empty
-        if (empty($subscription->uid) || empty($subscriber->uid) || empty($total)) {
-            $order->add_order_note("Error executing subscription. Empty subscription data or total" . $total);
-            return false;
-        }
-
         try {
-            $order->add_order_note("Executing charge for Mobbex Subscription $subscription->uid and Mobbex Subscriber $subscriber->uid");
-            $result = $subscriber->execute_charge(
-                implode('_', [$subscription->uid, $subscriber->uid, $order->get_id()]),
-                $total
-            );
+            if (!$this->helper->is_wcs_active())
+                throw new \Exception('WooCommerce Subscriptions integration is not active');
 
-            $order->add_order_note("Charge execution raw result: " . (empty($result['result']) ? 'unknown' : 'success'));
+            if (!$order || !$order->get_id())
+                throw new \Exception('Invalid order data');
 
-            // Throw exception if result is invalid
-            if (!isset($result['result']))
-                throw new \Exception(sprintf(
-                    'Mobbex request error #%s: %s %s',
-                    isset($result['code']) ? $result['code'] : 'NOCODE',
-                    isset($result['error']) ? $result['error'] : 'NOERROR',
-                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
-                ), 0);
+            if (empty($total))
+                throw new \Exception('Invalid total amount for order' . $order->get_id());
 
-            // Return true if is in progress
-            if (isset($result['code']) && $result['code'] === 'SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS') {
-                $order->add_order_note("Charge execution result: Already in progress");
+            if ($this->helper->is_order_paid($order))
+                throw new \Exception('Order already paid');
 
-                return true;
+            // Mark as processing
+            $order->add_order_note("Processing scheduled payment for $ $total. Order ID " . $order->get_id());
+
+            // Get wcs subscription
+            $wcs_sub = $this->helper->get_wcs_subscription($order->get_id());
+
+            if (empty($wcs_sub))
+                throw new \Exception('No subscriptions found for order' . $order->get_id());
+
+            try {
+                $this->helper->maybe_migrate_subscriptions($wcs_sub->order);
+            } catch (\Exception $e) {
+                $order->add_order_note('Error migrating subscriptions: ' . $e->getMessage());
+                mbbxs_log('error', 'Error migrating subscriptions: ' . $e->getMessage());
             }
 
-            // Throw exception on any other false status
-            if (!$result['result'])
-                throw new \Exception(sprintf(
-                    'Mobbex request error #%s: %s %s',
-                    isset($result['code']) ? $result['code'] : 'NOCODE',
-                    isset($result['error']) ? $result['error'] : 'NOERROR',
-                    isset($result['status_message']) ? $result['status_message'] : 'NOMESSAGE'
-                ), 0);
+            // Get subscriber
+            $subscriber = new \MobbexSubscriber($wcs_sub->order->get_id());
 
-            mbbxs_log('debug', "Scheduled Payment. Execute Charge Result $subscription->uid $subscriber->uid. Order ID " . $order->get_id(), $result);
+            if (empty($subscriber->uid) || empty($subscriber->subscription_uid))
+                throw new \Exception('Invalid subscriber data for order' . $wcs_sub->order->get_id());
 
-            return true;
+            $this->execute_scheduled_charge($subscriber, $order, $total);
         } catch (\Exception $e) {
-            $order->add_order_note("Charge execution error: " . $e->getMessage());
-            $wcs_sub->payment_failed();
             mbbxs_log('error', "Charge execution error: " . $e->getMessage());
 
-            return false;
+            // We cant update status if order is invalid
+            if ($e->getMessage() == 'Invalid order data')
+                return;
+
+            $this->helper->update_order_status($order, 'failed', 'Charge execution error: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Process scheduled payment charge.
+     * 
+     * @param \MobbexSubscriber $subscriber
+     * @param WC_Order $order
+     * @param float $total
+     * 
+     * @throws Exception 
+     */
+    public function execute_scheduled_charge($subscriber, $order, $total)
+    {
+        // Generate and log reference
+        $reference = implode('_', [$subscriber->subscription_uid, $subscriber->uid, $order->get_id()]);
+        $order->add_order_note("Executing charge with reference $reference");
+
+        // Default values for the new order status
+        $update = [
+            'status'  => 'on-hold',
+            'message' => 'Awaiting webhook for ' . $reference,
+        ];
+
+        $res = $subscriber->execute_charge($reference, $total);
+
+        // If has an error
+        if (empty($res['result'])) {
+            $code = isset($res['code']) ? $res['code'] : 'NOCODE';
+
+            if ($code == 'SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS') {
+                $coupon = $subscriber->search_coupon($reference);
+
+                if (empty($coupon['status'])) {
+                    $update = [
+                        'status'  => 'on-hold',
+                        'message' => "Already in progress. Awaiting webhook for $reference (no coupon found)",
+                    ];
+                } else {
+                    $state = $this->helper::get_state($coupon['status']);
+
+                    if ($state == 'failed') {
+                        $subscriber->retry_charge($coupon['uid']);
+
+                        $update = [
+                            'status'  => 'on-hold',
+                            'message' => "Already in progress. Awaiting webhook for $reference (charge retried)",
+                        ];
+                    } else if ($state == 'approved') {
+                        $update = [
+                            'status'  => 'approved',
+                            'message' => "Already in progress. Charge approved for $reference",
+                        ];
+                    } else {
+                        $update = [
+                            'status'  => 'on-hold',
+                            'message' => "Already in progress. Awaiting webhook for $reference",
+                        ];
+                    }
+                }
+            } else {
+                $update = [
+                    'status'  => 'failed',
+                    'message' => sprintf(
+                        "Mobbex request error #$code: %s %s",
+                        isset($res['error']) ? $res['error'] : 'NOERROR',
+                        isset($res['status_message']) ? $res['status_message'] : 'NOMESSAGE'
+                )];
+            }
+        }
+
+        $this->helper->update_order_status($order, $update['status'], "Charge execution result: $update[message]");
     }
 
     /**
