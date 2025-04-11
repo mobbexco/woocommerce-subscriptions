@@ -357,13 +357,18 @@ class MobbexSubscriber extends \Mobbex\Model
      * 
      * @return array|null
      */
-    public function search_coupon($reference)
+    public function search_execution($reference)
     {
         $res = $this->api->request([
-            'url'    => "https://api.mobbex.com/2.0/transactions/coupons/$reference",
+            'url'    => "https://api.mobbex.com/p/subscriptions/$this->subscription_uid/subscriber/$this->uid",
             'method' => 'GET'
         ]);
 
-        return empty($res[0]) ? null : $res[0];
+        if (empty($res['subscriber']['executions']) || !is_array($res['subscriber']['executions']))
+            return null;
+
+        return array_filter($res['subscriber']['executions'], function ($execution) use ($reference) {
+            return $execution['reference'] === $reference;
+        });
     }
 }

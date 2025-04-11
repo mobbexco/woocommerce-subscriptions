@@ -702,24 +702,17 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $code = isset($res['code']) ? $res['code'] : 'NOCODE';
 
             if ($code == 'SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS') {
-                $coupon = $subscriber->search_coupon($reference);
+                $execution = $subscriber->search_execution($reference);
+                $status    = isset($execution['status']) ? $execution['status'] : 'unknown';
 
-                if (empty($coupon['status'])) {
+                if ($status == 'failed') {
+                    $subscriber->retry_charge($execution['uid']);
+
                     $update = [
                         'status'  => 'on-hold',
-                        'message' => "Already in progress. Awaiting webhook for $reference (no coupon found)",
-                    ];
-                } else {
-                    $state = $this->helper::get_state($coupon['status']);
-
-                    if ($state == 'failed') {
-                        $subscriber->retry_charge($coupon['uid']);
-
-                        $update = [
-                            'status'  => 'on-hold',
-                            'message' => "Already in progress. Awaiting webhook for $reference (charge retried)",
+                        'message' => "Already in progress. Awaiting webhook for $reference (charge retried)",
                         ];
-                    } else if ($state == 'approved') {
+                    } else if ($status == 'approved') {
                         $update = [
                             'status'  => 'approved',
                             'message' => "Already in progress. Charge approved for $reference",
@@ -727,10 +720,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                     } else {
                         $update = [
                             'status'  => 'on-hold',
-                            'message' => "Already in progress. Awaiting webhook for $reference",
+                            'message' => "Already in progress. Awaiting webhook for $reference ($status)",
                         ];
-                    }
-                }
+                                    }
             } else {
                 $update = [
                     'status'  => 'failed',
