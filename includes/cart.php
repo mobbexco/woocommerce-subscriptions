@@ -160,8 +160,8 @@ class Mbbxs_Cart
      */
     public static function filter_checkout_payment_gateways($available_gateways)
     {
-        if (is_admin() && !defined('DOING_AJAX'))
-            return;
+        if (!is_cart() && !is_checkout() && !is_order_received_page())
+            return $available_gateways;
 
         // Get gateway id formatted
         $mobbex_gateway = [MOBBEX_SUBS_WC_GATEWAY_ID => true];

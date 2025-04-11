@@ -73,6 +73,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if (!$this->error && $this->helper->is_ready()) {
             add_action('woocommerce_api_mobbex_subs_return_url', [$this, 'mobbex_subs_return_url']);
             add_action('woocommerce_api_mobbex_subs_webhook', [$this, 'mobbex_subs_webhook']);
+            add_action('woocommerce_api_mobbex_subs_source_change', [$this, 'mobbex_subs_source_change']);
             add_action('wp_enqueue_scripts', [$this, 'payment_scripts']);
         }
 
@@ -196,63 +197,42 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function process_payment($order_id)
     {
-        mbbxs_log('debug', "Process Payment. Init. Order ID: $order_id");
-
-        if ($this->error) {
-            mbbxs_log('error', "Process Payment. Error. Order ID: $order_id", $this->error);
-
-            return ['result' => 'error'];
-        }
-
         $order = wc_get_order($order_id);
 
-        //Save order id in session
-        WC()->session->set('order_id', $order_id);
-        mbbxs_log('debug', "Process Payment. Order instanced and session updated. Order ID: $order_id", [$order->get_id()]);
+        try {
+            if ($this->error)
+                throw new \Exception('Mobbex Subscriptions is not configured. Please contact to support');
 
-        //Check if it's a payment method change, a manual renewal or new payment
-        if ($this->helper->is_subs_change_method()) {
-            mbbxs_log('debug', "Process Payment for order id $order_id. is_subs_change_method");
-            $order->add_order_note("Payment method change detected. Redirecting to Mobbex");
+            // Save order id to use later on return
+            WC()->session->set('order_id', $order_id);
+
+            if ($this->helper->is_method_change())
+                return $this->process_method_change($order);
+
+            // If is a manual renewal execute and return
+            if ($this->helper->is_wcs_active() && wcs_order_contains_renewal($order)) {
+                $order->add_order_note("Manual order renewal detected. Executing scheduled payment");
+                $this->scheduled_subscription_payment($order->get_total(), $order);
+
+                return [
+                    'result'   => 'success',
+                    'redirect' => $order->get_checkout_order_received_url(),
+                ];
+            }
 
             $this->helper->maybe_migrate_subscriptions($order);
             $subscription = $this->get_subscription($order);
-            $subscriber   = $this->get_subscriber($order, $subscription->uid);
-        } else if ($this->helper->is_wcs_active() && wcs_order_contains_renewal($order)) {
-            mbbxs_log('debug', "Process Payment for order id $order_id. order_contains_renewal. Scheduled Payment");
-            $order->add_order_note("Manual order renewal detected. Executing scheduled payment");
 
-            $result = $this->scheduled_subscription_payment($order->get_total(), $order);
+            if (empty($subscription->uid))
+                throw new \Exception('Invalid data. Subscription not found');
 
-            mbbxs_log('debug', "Process Payment for order id $order_id. order_contains_renewal result. Scheduled Payment", [
-                'result'   => $result ? 'success' : 'error',
-                'redirect' => $result ? $order->get_checkout_order_received_url() : Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción'),
-            ]);
-    
-            return [
-                'result'   => $result === false || is_wp_error($result) ? 'error' : 'success',
-                'redirect' => $result === false || is_wp_error($result) ? Mbbxs_Helper::_redirect_to_cart_with_error('Error al intentar realizar el cobro de la suscripción') : $order->get_checkout_order_received_url(),
-            ];
-        } else {
-            mbbxs_log('debug', "Process Payment for order id $order_id. else");
+            $subscriber = $this->get_subscriber($order, $subscription->uid);
 
-            $subscription = $this->get_subscription($order);
-            $subscriber   = $this->get_subscriber($order, $subscription->uid);
-        }
+            if (empty($subscriber->uid))
+                throw new \Exception('Invalid data. Subscriber not found');
 
-        mbbxs_log('debug', "Process Payment for order id $order_id. common result", [
-            'result'     => 'success',
-            'redirect'   => $this->embed ? false : $subscriber->source_url,
-            'return_url' => $subscription->return_url,
-            'data'       => [
-                'id'  => $subscription->uid,
-                'sid' => $subscriber->uid,
-                'url' => $subscriber->source_url
-            ],
-        ]);
+            $order->add_order_note("Redirecting to Mobbex {$subscription->uid}_{$subscriber->uid}");
 
-        // If data looks fine
-        if (!empty($subscriber->uid) && !empty($subscription->uid)) {
             return [
                 'result'     => 'success',
                 'redirect'   => $this->embed ? false : $subscriber->source_url,
@@ -263,9 +243,47 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                     'url' => $subscriber->source_url
                 ],
             ];
-        }
+        } catch (\Exception $e) {
+            $order->add_order_note("Process Payment Error: " . $e->getMessage());
 
-        return ['result' => 'error'];
+            return ['result' => 'error', 'messages' => [$e->getMessage()]];
+        }
+    }
+
+    /**
+     * Process the payment method change.
+     * 
+     * @param WC_Subscription $subscription
+     * 
+     * @return array $response_data
+     */
+    public function process_method_change($wc_subscription)
+    {
+        $wc_subscription->add_order_note("Payment method change detected. Redirecting to Mobbex");
+
+        if (!is_a($wc_subscription, 'WC_Subscription'))
+            throw new \Exception('Invalid order data. Order is not a subscription');
+
+        $order = $wc_subscription->get_parent();
+
+        if (!$order)
+            throw new \Exception('Invalid order data. Parent order of subscription not found');
+
+        $this->helper->maybe_migrate_subscriptions($order);
+        $subscription = $this->get_subscription($order);
+
+        if (empty($subscription->uid))
+            throw new \Exception('Invalid data. Subscription not found');
+
+        $subscriber = $this->get_subscriber($order, $subscription->uid);
+
+        if (empty($subscriber->uid))
+            throw new \Exception('Invalid data. Subscriber not found');
+
+        return [
+            'result'   => 'success',
+            'redirect' => $this->helper->get_api_endpoint('mobbex_subs_source_change') . "&order_id={$order->get_id()}"
+        ];
     }
 
     public function mobbex_subs_webhook()
@@ -441,7 +459,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $token  = $_GET['mobbex_token'];
         $error  = false;
 
-        if (empty($status) || empty($id) || empty($token)) {
+        if (empty($id) || empty($token)) {
             $error = "No se pudo validar la transacción. Contacte con el administrador de su sitio";
         }
 
@@ -456,16 +474,50 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         //Get the order from id
         $order = wc_get_order( $id );
 
-        if ($status == 0 || $status >= 400) {
+        // Payment method change support
+        if (is_a($order, 'WC_Subscription')) {
+            if (empty($status)) {
+                wc_add_notice('El cambio de medio de pago fue cancelado.', 'notice');
+            } else if ($status >= 400) {
+                wc_add_notice('Error al validar el medio de pago. Por favor, valide e intente nuevamente. ', 'error');
+            }
+
+            return wp_redirect($order->get_view_order_url());
+        }
+
+        if (empty($status) || $status >= 400) {
             // Try to restore the cart here
             $error = __("Payment failed. Please try updating your payment method and retry the transaction.");
             Mbbxs_Helper::_redirect_to_cart_with_error($error);
-        } else if ($status == 2 || $status == 3 || $status == 4 || $status >= 200 && $status < 400) {
+        } else if ($status == 2 || $status == 3 || $status == 4 || ($status >= 200 && $status < 400)) {
             // Redirect
             $redirect = $order->get_checkout_order_received_url();
         }
 
         wp_redirect($redirect);
+    }
+
+    // Handle the source change redirect
+    public function mobbex_subs_source_change()
+    {
+        $id = isset($_REQUEST['order_id']) ? $_REQUEST['order_id'] : null;
+        $token = isset($_REQUEST['mobbex_token']) ? $_REQUEST['mobbex_token'] : null;
+
+        if (!$token)
+            mbbx_http_error(400, 'Bad request. Missing token');
+
+        if (!$this->helper->valid_mobbex_token($token))
+            mbbx_http_error(401, 'Unauthorized. Invalid token', $token);
+
+        if (!$id || !is_numeric($id))
+            mbbx_http_error(400, 'Bad request. Invalid order id');
+
+        $subscriber = new \MobbexSubscriber($id);
+
+        if (empty($subscriber->uid) || empty($subscriber->source_url))
+            mbbx_http_error(404, 'Subscriber not found');
+
+        wp_redirect($subscriber->source_url);
     }
 
     public function payment_scripts()
@@ -491,8 +543,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         wp_enqueue_style('mobbex-subs-checkout-style', $dir_url . 'assets/css/checkout.css', null, \Mbbx_Subs_Gateway::$version);
         wp_register_script('mobbex-subs-checkout-script', $dir_url . 'assets/js/checkout.js', ['jquery'], \Mbbx_Subs_Gateway::$version);
 
-        wp_localize_script('mobbex-subs-checkout-script', 'mobbex_data', [
+        wp_localize_script('mobbex-subs-checkout-script', 'mobbex_subs_data', [
             'is_pay_for_order' => !empty($_GET['pay_for_order']),
+            'is_subs_change' => $this->helper->is_method_change(),
         ]);
         wp_enqueue_script('mobbex-subs-checkout-script');
     }

@@ -186,7 +186,8 @@ class Mbbxs_Helper
         // Try to get pending order (for manual renewals)
         $pending_order = wc_get_order(get_query_var('order-pay'));
 
-        return \WC_Subscriptions_Cart::cart_contains_subscription()
+        return is_a($pending_order, 'WC_Subscription')
+            || \WC_Subscriptions_Cart::cart_contains_subscription()
             || wcs_cart_contains_renewal()
             || ($pending_order && wcs_order_contains_subscription($pending_order));
     }
@@ -194,7 +195,7 @@ class Mbbxs_Helper
     /**
 	 * Checks if page is pay for order and change subs payment page.
 	 */
-    public static function is_subs_change_method()
+    public static function is_method_change()
     {
 		return (isset($_GET['pay_for_order']) && isset($_GET['change_payment_method']));
 	}
