@@ -90,7 +90,7 @@ class Mbbx_Subs_Order_Settings
                 switch ($state) {
                     case 'approved':  $msg = __('Charge Executed', 'mobbex-subs-for-woocommerce'); break;
                     case 'on-hold':   $msg = __('Charge On Hold', 'mobbex-subs-for-woocommerce');  break;
-                    case 'cancelled': $msg = __('Charge Failed', 'mobbex-subs-for-woocommerce');   break;
+                    case 'failed':    $msg = __('Charge Failed', 'mobbex-subs-for-woocommerce');   break;
                 }
 
                 // If it is the last execution for this payment
@@ -99,7 +99,7 @@ class Mbbx_Subs_Order_Settings
                     if (count($executions) > 1 && $state == 'approved') {
                         // Render retried message
                         $retry = __('Retried', 'mobbex-subs-for-woocommerce');
-                    } elseif ($state == 'cancelled') {
+                    } elseif ($state == 'failed') {
                         // Render retry button
                         $retry = "<button class='mbbx_retry_btn button' id='$id'>" . __('Retry', 'mobbex-subs-for-woocommerce') . "</button>";
                     }
