@@ -43,15 +43,15 @@ class MobbexApi
         if (!$this->ready)
             return false;
 
-        if (empty($data['method']) || empty($data['uri']))
-            throw new \Exception('Mobbex request error: Missing arguments'. "data: $data", 0);
+        if (empty($data['method']))
+            throw new \Exception("Mobbex request error: Missing argument 'method'. Data: $data", 0);
 
-        mbbxs_log('debug', 'Api > Request | Request Data:', $data);
+        if (empty($data['uri']) && empty($data['url']))
+            throw new \Exception("Mobbex request error: Missing argument 'uri' or 'url'. Data: $data", 0);
 
         $curl = curl_init();
 
         curl_setopt_array($curl, [
-            CURLOPT_URL            => $this->api_url . $data['uri'] . (!empty($data['params']) ? '?' . http_build_query($data['params']) : null),
             CURLOPT_HTTPHEADER     => $this->get_headers(),
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_MAXREDIRS      => 10,
@@ -59,6 +59,11 @@ class MobbexApi
             CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST  => $data['method'],
             CURLOPT_POSTFIELDS     => !empty($data['body']) ? json_encode($data['body']) : null,
+            CURLOPT_URL            => implode([
+                !empty($data['url']) ? $data['url'] : $this->api_url,
+                $data['uri'],
+                !empty($data['params']) ? '?' . http_build_query($data['params']) : ''
+            ])
         ]);
 
         $response    = curl_exec($curl);

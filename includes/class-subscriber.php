@@ -236,8 +236,6 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function execute_charge($reference, $total)
     {
-        mbbxs_log('debug', "Execute Charge. Init. Total $total. $this->subscription_uid $this->uid");
-
         $data = [
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution",
             'method' => 'POST',
@@ -245,11 +243,26 @@ class MobbexSubscriber extends \Mobbex\Model
             'body'   => [
                 'total' => (float) $total,
                 'reference' => $reference,
-                'test' => ($this->helper->test_mode === 'yes'),
+                'test' => $this->helper->test_mode === 'yes',
             ]
         ];
 
         return $this->api->request($data);
+    }
+
+    /**
+     * Retry a charge using Mobbex API.
+     * 
+     * @param string $eid
+     * 
+     * @return bool|null
+     */
+    public function retry_charge($eid)
+    {
+        return $this->api->request([
+            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution/$eid/action/retry",
+            'method' => 'GET',
+        ]);
     }
 
     /**
@@ -342,5 +355,27 @@ class MobbexSubscriber extends \Mobbex\Model
         ]);
 
         return empty($res['docs'][0]) ? null : $res['docs'][0];
+    }
+
+    /**
+     * Search coupon in Mobbex
+     * 
+     * @param string $reference
+     * 
+     * @return array|null
+     */
+    public function search_execution($reference)
+    {
+        $res = $this->api->request([
+            'url'    => "https://api.mobbex.com/p/subscriptions/$this->subscription_uid/subscriber/$this->uid",
+            'method' => 'GET'
+        ]);
+
+        if (empty($res['subscriber']['executions']) || !is_array($res['subscriber']['executions']))
+            return null;
+
+        return array_filter($res['subscriber']['executions'], function ($execution) use ($reference) {
+            return $execution['reference'] === $reference;
+        });
     }
 }
