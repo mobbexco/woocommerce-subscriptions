@@ -236,11 +236,10 @@ class Mbbx_Subs_Product_Settings
     {
         // Gets product
         $product = wc_get_product($post_id);
-        mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - product_id: ' . $product->get_id() , []);
 
         // Subscription options
         $sub_options = [
-            'trial'      => '',
+            'trial'      => isset($_POST['_subscription_trial_length']) ? (int) $_POST['_subscription_trial_length'] : 0,
             'interval'   => '',
             'type'       => 'manual',
             'post_id'    => $post_id,
@@ -249,8 +248,16 @@ class Mbbx_Subs_Product_Settings
             'signup_fee' => isset($_POST['_subscription_sign_up_fee']) ? $_POST['_subscription_sign_up_fee'] : 0,
             'price'      => isset($_POST['_subscription_price']) ? $_POST['_subscription_price'] : $product->get_price(),
         ];
-        mbbxs_log('debug', 'product-settings > create_mobbex_sub_integration_wcs - post_id: ' . $post_id , ['sub_options' => $sub_options]);
-        
+
+        try {
+            $sub_options['interval'] = self::$helper->get_valid_interval(
+                isset($_POST['_subscription_period_interval']) ? (int) $_POST['_subscription_period_interval'] : 1,
+                isset($_POST['_subscription_period']) ? $_POST['_subscription_period'] : 'm'
+            );
+        } catch (\Exception $e) {
+            $sub_options['interval'] = '1m';
+        }
+
         // Create/update subscription.
         if(self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription( $post_id ));
             $subscription = self::$helper->create_mobbex_subscription($sub_options);
