@@ -557,64 +557,32 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         return;
     }
 
-
     /**
      * Get subscriber.
      * 
-     * @param WC_Order|WC_Abstract_Order $order
-     * @param integer $mbbx_subscription_uid
+     * @param WC_Order $order
+     * @param string $mbbx_subscription_uid
      * @return MobbexSubscriber|null $response_data
      */
     public function get_subscriber($order, $mbbx_subscription_uid)
     {
-        mbbxs_log('debug', "Get subscriber. Init. Order ID: " . $order->get_id() . ". Subscription UID: $mbbx_subscription_uid");
+        $dni_key = !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni';
+        $dni     = get_post_meta($order->get_id(), $dni_key, true);
+        $user    = wp_get_current_user();
 
-        $order_id     = $order->get_id();
-        $current_user = wp_get_current_user();
-
-        $dni_key   = !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni';
-        $reference = get_post_meta($order_id, $dni_key, true) ? get_post_meta($order_id, $dni_key, true) . $current_user->ID : $current_user->ID;
-
-        $name        = $current_user->display_name ?: $order->get_formatted_billing_full_name();
-        $email       = $current_user->user_email ?: $order->get_billing_email();
-        $phone       = get_user_meta($current_user->ID, 'phone_number', true) ?: $order->get_billing_phone();
-        $dni         = get_post_meta($order_id, $dni_key, true);
-        $customer_id = $current_user->ID ?: null;
-
-        mbbxs_log('debug', "Get subscriber. Before creation. Order ID: " . $order->get_id() . ". Subscription UID: $mbbx_subscription_uid", [
-            $order_id,
-            $mbbx_subscription_uid,
-            $reference,
-            $name,
-            $email,
-            $phone,
-            $dni,
-            $customer_id
-        ]);
-
-        // Create subscriber
         $subscriber = new \MobbexSubscriber(
-            $order_id,
+            $order->get_id(),
             $mbbx_subscription_uid,
-            $reference,
-            $name,
-            $email,
-            $phone,
+            "dni:{$dni}_user:{$user->ID}_order:{$order->get_id()}",
+            $user->display_name ?: $order->get_formatted_billing_full_name(),
+            $user->user_email ?: $order->get_billing_email(),
+            get_user_meta($user->ID, 'phone_number', true) ?: $order->get_billing_phone(),
             $dni,
-            $customer_id
+            $user->ID ?: null
         );
+        $subscriber->save();
 
-        mbbxs_log('debug', "Get subscriber. After creation. Order ID: " . $order->get_id() . '. Subscription UID: ' .  $mbbx_subscription_uid);
-
-        // Save subscriber and sync with mobbex
-        $result = $subscriber->save();
-
-        mbbxs_log('debug', "Get subscriber. After save. Order ID: " . $order->get_id() . '. Subscription UID: ' .  $mbbx_subscription_uid, [$result, $subscriber]);
-
-        if ($result)
             return $subscriber;
-
-        return null;
     }
 
     /**

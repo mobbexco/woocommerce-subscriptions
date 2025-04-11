@@ -15,6 +15,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public $subscription_uid;
     public $uid;
     public $state;
+    public $reference;
     public $test;
     public $name;
     public $email;
@@ -86,11 +87,21 @@ class MobbexSubscriber extends \Mobbex\Model
         $order        = wc_get_order($this->order_id);
 
         try {
+            // Try to search in mobbex
             if (!$this->uid) {
                 $existing = $this->search_subscriber($this->reference);
 
-                if (isset($existing['uid']))
+                if (isset($existing['uid'])) {
                     $this->uid = $existing['uid'];
+
+                    // If the subscriber has an active source, throw an error
+                    if ($existing['activeSource'])
+                        throw new \Exception('Subscriber already has an active source');
+
+                    // If the subscription is not active, activate it
+                    if ($existing['status'] !== 'active')
+                        $this->update_status('active');
+                }
             }
 
             return $this->api->request([
@@ -275,7 +286,7 @@ class MobbexSubscriber extends \Mobbex\Model
     public static function get_by_uid($uid)
     {
         global $wpdb;
-        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$uid'", 'ARRAY_A');
+        $result = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "mobbex_subscriber" . " WHERE uid='$uid' ORDER BY order_id desc", 'ARRAY_A');
 
         return !empty($result[0]) ? new \MobbexSubscriber($result[0]['order_id']) : null;
     }
@@ -311,22 +322,19 @@ class MobbexSubscriber extends \Mobbex\Model
             ));
         }
 
-        $action = '';
+        $actions = [
+            'active'    => 'activate',
+            'cancelled' => 'suspend',
+        ];
 
-        // Status must have changed from any status to active or to on-hold
-        if ($status === 'cancelled')
-            $action = 'suspend';
-        elseif ($status === 'active')
-            $action = 'activate';
-        else
+        if (empty($actions[$status]))
             return;
 
         // Send endpoint to Mobbex api
-        $this->api->request([
+        return $this->api->request([
             "method" => "POST",
-            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/$action"
+            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/{$actions[$status]}"
         ]);
-
     }
 
     /**
