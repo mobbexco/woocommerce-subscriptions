@@ -365,29 +365,26 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function process_webhook_registration($data, $subscriber, $subscription, $parent_order)
     {
-        $result = isset($data['context']['status']) && $data['context']['status'] === 'success';
+        $status = isset($data['context']['status']) ? $data['context']['status'] : null;
 
-        // Save subscriber data
-        $subscriber->state         = (int) $result;
-        $subscriber->start_date    = $subscription->calculateDates()['current'];
+        if (!$status)
+            throw new \Exception('Invalid data. Status not found');
+
+        if ($status !== 'success' && $this->helper->is_order_paid($parent_order))
+            throw new \Exception("Parent order already paid moving to $status status on registration");
+
+        $this->helper->update_order_status(
+            $parent_order,
+            $status === 'success' ? 'approved' : 'failed',
+            "Updating status from validation webhook. Code: {$data['subscription']['uid']}_{$data['subscriber']['uid']}_$status"
+        );
+
+        // Update subscriber data
+        $subscriber->state = $status === 'success' ? 1 : 0;
+        $subscriber->start_date = $subscription->calculateDates()['current'];
         $subscriber->register_data = json_encode($data);
 
-        // Add order note
-        $parent_order->add_order_note(sprintf(
-            'Mobbex Subscription UID: %s. Mobbex Subscriber UID: %s. Status: %s',
-            $data['subscription']['uid'],
-            $data['subscriber']['uid'],
-            isset($data['context']['status']) ? $data['context']['status'] : 'unknown'
-        ));
-
-        if ($result) {
-            $this->helper->update_order_status($parent_order, 'approved', 'Payment approved from webhook');
-        } else {
-            if ($this->helper->is_order_paid($parent_order))
-                throw new \Exception('Parent order already paid moving to failed state on registration');
-
-            $this->helper->update_order_status($parent_order, 'failed', 'Payment denied from webhook');
-        }
+        $subscriber->save(false);
     }
 
     /**
