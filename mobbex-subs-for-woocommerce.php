@@ -9,6 +9,7 @@
  * Copyright: 2021 mobbex.com
  */
 
+require_once 'includes/helper.php';
 require_once 'includes/utils.php';
 require_once 'includes/logger.php';
 require_once !class_exists('Mobbex\Model') ? 'includes/lib/class-api.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/class-api.php';
@@ -69,9 +70,6 @@ class Mbbx_Subs_Gateway
             return;
         }
 
-        // Always
-        Mbbx_Subs_Gateway::load_gateway();
-        Mbbx_Subs_Gateway::add_gateway();
         Mbbx_Subs_Gateway::load_order_settings();
 
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_action_links']);
@@ -180,13 +178,10 @@ class Mbbx_Subs_Gateway
         Mbbxs_Cart::init();
     }
 
-    private static function load_gateway()
+    public static function woocommerce_init()
     {
         require_once plugin_dir_path(__FILE__) . 'includes/gateway.php';
-    }
 
-    private static function add_gateway()
-    {
         add_filter('woocommerce_payment_gateways', function ($methods) {
             $methods[] = MOBBEX_SUBS_WC_GATEWAY;
             return $methods;
@@ -304,5 +299,6 @@ function install_mobbex_subs_tables()
 }
 
 $mbbx_subs_gateway = new Mbbx_Subs_Gateway;
-add_action('plugins_loaded', [ & $mbbx_subs_gateway, 'init']);
+add_action('init', [$mbbx_subs_gateway, 'init']);
+add_action('before_woocommerce_init', [$mbbx_subs_gateway, 'woocommerce_init']);
 register_activation_hook(__FILE__, 'install_mobbex_subs_tables');

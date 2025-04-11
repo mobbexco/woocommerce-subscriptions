@@ -88,7 +88,7 @@ class Mbbxs_Cart
         foreach ( $cart->get_cart() as $item )
             $sign_up_price=  Mbbx_Subs_Product::get_signup_fee($item['product_id']);
 
-        $sign_up_price ? $cart->add_fee( __('Sign-up Fee', 'woocommerce') , $sign_up_price, false ) : '';
+        isset($sign_up_price) ? $cart->add_fee( __('Sign-up Fee', 'woocommerce') , $sign_up_price, false ) : '';
     }
 
     /**

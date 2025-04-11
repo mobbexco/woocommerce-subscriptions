@@ -397,13 +397,16 @@ class Mbbxs_Helper
      */
     public function get_post_id($product_id, $order)
     {
-        if ($order && $this->is_wcs_active()) {
-            $subscriptions = wcs_get_subscriptions_for_order($order->get_id(), ['order_type' => 'any']);
-            $wcs_sub = end($subscriptions);
-            return \MobbexSubscription::is_stored($wcs_sub->order->get_id()) ? $wcs_sub->order->get_id() : $product_id;
-        } else {
+        if (!$this->is_wcs_active())
             return $product_id;
-        }
+
+        $wcs_sub = $this->get_wcs_subscription($order->get_id());
+        $parent = $wcs_sub->get_parent();
+
+        if ($parent && \MobbexSubscription::is_stored($parent->get_id()))
+            return $parent->get_id();
+
+        return $product_id;
     }
 
     /**

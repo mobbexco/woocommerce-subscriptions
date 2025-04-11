@@ -15,7 +15,7 @@ define('MOBBEX_SUBS_WC_GATEWAY_ID', 'mobbex_subs');
 
 define('MOBBEX_SUBS_VERSION', '3.2.0');
 
-function mbbxs_log($level = 'debug', $msg, $data = []) {
+function mbbxs_log($level, $msg, $data = []) {
     apply_filters(
         'simple_history_log',
         '[Mobbex Subscriptions] ' . $msg,

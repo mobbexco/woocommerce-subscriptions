@@ -32,6 +32,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $this->id = MOBBEX_SUBS_WC_GATEWAY_ID;
 
         $this->method_title = __('Mobbex Subscriptions', 'mobbex-subs-for-woocommerce');
+        $this->description = __('Mobbex Payment Gateway redirects customers to Mobbex to enter their payment information.', 'mobbex-subs-for-woocommerce');
         $this->method_description = __('Mobbex Payment Gateway redirects customers to Mobbex to enter their payment information.', 'mobbex-subs-for-woocommerce');
 
         // Icon
@@ -435,7 +436,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         $this->helper->update_order_status(
             $this->helper->is_wcs_active() ? $renewal_order : $parent_order,
             $this->helper::get_state($data['payment']['status']['code']),
-            'Updating status from webhook. '. $data['payment']['status']['code']
+            "Updating status from execution webhook. Code: {$data['payment']['status']['code']}"
         );
 
         // Update execution dates
@@ -743,18 +744,18 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                     $update = [
                         'status'  => 'on-hold',
                         'message' => "Already in progress. Awaiting webhook for $reference (charge retried)",
-                        ];
-                    } else if ($status == 'approved') {
-                        $update = [
-                            'status'  => 'approved',
-                            'message' => "Already in progress. Charge approved for $reference",
-                        ];
-                    } else {
-                        $update = [
-                            'status'  => 'on-hold',
-                            'message' => "Already in progress. Awaiting webhook for $reference ($status)",
-                        ];
-                                    }
+                    ];
+                } else if ($status == 'approved') {
+                    $update = [
+                        'status'  => 'approved',
+                        'message' => "Already in progress. Charge approved for $reference",
+                    ];
+                } else {
+                    $update = [
+                        'status'  => 'on-hold',
+                        'message' => "Already in progress. Awaiting webhook for $reference ($status)",
+                    ];
+                }
             } else {
                 $update = [
                     'status'  => 'failed',
