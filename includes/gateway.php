@@ -527,10 +527,21 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $sub_options['reference'] = "wc_order_{$post_id}";
             $sub_options['price']     = $product->get_price();
             $sub_options['name']      = $product->get_name();
-            
 
-            if ($this->helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product))
+            if ($this->helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription($product)) {
+                try {
+                    $sub_options['interval'] = $this->helper->get_valid_interval(
+                        \WC_Subscriptions_Product::get_interval($product),
+                        \WC_Subscriptions_Product::get_period($product)
+                    );
+                } catch (\Exception $e) {
+                    $sub_options['interval'] = '1m';
+                    $order->add_order_note('Error obtaining interval: ' . $e->getMessage());
+                }
+
                 $sub_options['signup_fee'] = WC_Subscriptions_Product::get_sign_up_fee($product) ?: 0;
+                $sub_options['trial']      = WC_Subscriptions_Product::get_trial_length($product) ?: 0;
+            }
 
             if (Mbbx_Subs_Product::is_subscription($product_id)) {
                 $sub_options['test']       = Mbbx_Subs_Product::get_test_mode($product_id);
@@ -582,7 +593,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         );
         $subscriber->save();
 
-            return $subscriber;
+        return $subscriber;
     }
 
     /**

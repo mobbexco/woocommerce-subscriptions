@@ -546,4 +546,56 @@ class Mbbxs_Helper
             }
         }
     }
+
+    /**
+     * Get mobbex valid interval for a given wcs interval and period.
+     * 
+     * @param int $interval
+     * @param string $period
+     * 
+     * @return string
+     */
+    public function get_valid_interval($interval, $period)
+    {
+        if (empty($interval) || empty($period))
+            throw new \Exception('Empty interval or period');
+
+        // Valid intervals ordered by period
+        $valid_intervals = [
+            'day' => [
+                'code'      => 'd',
+                'intervals' => [7, 15]
+            ],
+            'month' => [
+                'code'      => 'm',
+                'intervals' => [1, 2, 3, 6]
+            ],
+            'year' => [
+                'code'      => 'y',
+                'intervals' => [1]
+            ]
+        ];
+
+        // Some week intervals can be transformed to other supported
+        if ($period === 'week') {
+            $transformable_intervals = [
+                1 => ['day', 7],
+                2 => ['day', 15],
+                4 => ['month', 1]
+            ];
+
+            if (isset($transformable_intervals[$interval])) {
+                $period = $transformable_intervals[$interval][0];
+                $interval = $transformable_intervals[$interval][1];
+            }
+        }
+
+        if (empty($valid_intervals[$period]))
+            throw new \Exception("Invalid period $period with interval $interval");
+
+        if (!in_array($interval, $valid_intervals[$period]['intervals']))
+            throw new \Exception("Invalid interval $interval for period $period");
+
+        return  $interval . $valid_intervals[$period]['code'];
+    }
 }
