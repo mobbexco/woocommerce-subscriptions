@@ -187,7 +187,7 @@ class Mbbx_Subs_Product_Settings
         $possible_periods = ['d', 'w', 'm', 'y'];
 
         // Get and validate data
-        $test_mode           = (!empty($_POST['mbbxs_test_mode']) ? $_POST['mbbxs_test_mode'] : '');
+        $test_mode           = (!empty($_POST['mbbxs_test_mode']) == 'yes');
         $price               = (!empty($_POST['_regular_price'])) ? $_POST['_regular_price'] : $product->get_price();
         $subscription_mode   = (!empty($_POST['mbbxs_subscription_mode']) && $_POST['mbbxs_subscription_mode'] === '1');
         $signup_fee          = (!empty($_POST['mbbxs_signup_fee']) && is_numeric($_POST['mbbxs_signup_fee'])) ? (int) $_POST['mbbxs_signup_fee'] : 0;
@@ -239,6 +239,7 @@ class Mbbx_Subs_Product_Settings
 
         // Subscription options
         $sub_options = [
+            'test'       => isset($_POST['mbbxs_wcs_test_mode']) == 'yes',
             'trial'      => isset($_POST['_subscription_trial_length']) ? (int) $_POST['_subscription_trial_length'] : 0,
             'interval'   => '',
             'type'       => 'manual',
@@ -290,10 +291,10 @@ class Mbbx_Subs_Product_Settings
         // Mobbex Subscription test mode
         woocommerce_wp_checkbox(
             array(
-                'id'          => 'mobbex_subscription_test_mode',
+                'id'          => 'mbbxs_wcs_test_mode',
                 'label'       => __('Mobbex Test Mode', 'woocommerce'),
                 'description' => __('Enable/Disable setting the Mobbex Subscription in test mode', 'woocommerce'),
-                'value'       => get_post_meta(get_the_ID(), 'mobbex_subscription_test_mode', true),
+                'value'       => get_post_meta(get_the_ID(), 'mbbxs_wcs_test_mode', true),
             )
         );
     
@@ -306,7 +307,7 @@ class Mbbx_Subs_Product_Settings
     public static function save_mobbex_custom_product_fields($product_id)
     {
         // Save Mobbex Subscription test mode
-        $checkbox_value = isset($_POST['mobbex_subscription_test_mode']) ? 'yes' : 'no';
-        update_post_meta($product_id, 'mobbex_subscription_test_mode', $checkbox_value);
+        $checkbox_value = isset($_POST['mbbxs_wcs_test_mode']) ? 'yes' : 'no';
+        update_post_meta($product_id, 'mbbxs_wcs_test_mode', $checkbox_value);
     }
 }
