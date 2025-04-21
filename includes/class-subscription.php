@@ -6,6 +6,7 @@ class MobbexSubscription extends \Mobbex\Model {
     public $api;
 
     public $uid;
+    public $test;
     public $name;
     public $type;
     public $state;
@@ -42,6 +43,7 @@ class MobbexSubscription extends \Mobbex\Model {
         'description',
         'interval',
         'free_trial',
+        'test',
         'limit' 
     ];
 
@@ -71,6 +73,7 @@ class MobbexSubscription extends \Mobbex\Model {
         $description = null,
         $interval    = null,
         $free_trial  = null,
+        $test        = null,
         $limit       = null
     ) {
         $this->helper = new \Mbbxs_Helper();
@@ -113,7 +116,7 @@ class MobbexSubscription extends \Mobbex\Model {
                 'return_url'  => $this->return_url,
                 'webhook'     => $this->webhook_url,
                 'features'    => $features,
-                'test'        => $this->is_test_subscription(),
+                'test'        => isset($this->test) ? $this->test : $this->is_test_subscription(),
                 'options'     => [
                     'platform' => $this->get_platform_data(),
                     'embed'    => get_option('send_subscriber_email') === 'yes',
@@ -152,8 +155,8 @@ class MobbexSubscription extends \Mobbex\Model {
             'description' => $this->description ?: '',
             'total'       => $this->total ?: '',
             'limit'       => $this->limit ?: '',
-            'free_trial'  => $this->free_trial ?: '',
-            'signup_fee'  => $this->signup_fee ?: '',
+            'free_trial'  => $this->free_trial ?: 0,
+            'signup_fee'  => $this->signup_fee ?: 0,
         ];
 
         return $this->uid && parent::save($data);
@@ -237,7 +240,7 @@ class MobbexSubscription extends \Mobbex\Model {
     public function is_test_subscription()
     {
         if (isset($this->helper->integration) && $this->helper->integration === "wcs")
-            return (get_post_meta($this->product_id, 'mobbex_subscription_test_mode', true) == 'yes');
+            return (get_post_meta($this->product_id, 'mbbxs_wcs_test_mode', true) == 'yes');
         else
             return (get_post_meta($this->product_id, 'mbbxs_test_mode', true) == 'yes');
     }
@@ -249,12 +252,6 @@ class MobbexSubscription extends \Mobbex\Model {
      */
     public function get_signup_fee()
     {
-        if ($this->signup_fee != 0)
-            return $this->signup_fee;
-
-        if ($this->type == 'manual')
-            return $this->total;
-
-        return 0;
+        return (float) isset($this->signup_fee) != 0 ? $this->signup_fee : 0;
     }
 }
