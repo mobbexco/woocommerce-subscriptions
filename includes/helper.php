@@ -19,6 +19,36 @@ class Mbbxs_Helper
         'y' => 'year'
     ];
 
+    public static $execution_status = [
+        'failed' => [
+            'failed',
+            'error',
+            'error_no_reference',
+            'error_no_payment_method',
+            'error_expired_sources',
+            'error_payment',
+            'error_too_many_retries',
+            'inactive_subscription',
+            'inactive_subscriber',
+        ],
+        'pending' => [
+            'pending',
+            'processing',
+            'scheduled',
+            'notretry',
+            'retried',
+            'auto_retried',
+            'trial',
+            'not_started',
+        ],
+        'finished' => [
+            'paid',
+            'deleted',
+            'suspended',
+            'finished',
+        ]
+    ];
+
     public function __construct()
     {
         // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)

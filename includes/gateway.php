@@ -332,7 +332,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             switch ($payload['type']) {
                 case 'subscription:registration':
                     $this->process_webhook_registration($payload['data'], $subscriber, $subscription, $parent_order); break;
-                case 'subscription:execution':
+                case 'subscription:execution' || 'subscription:execution:error':
                     $this->process_webhook_execution($payload['data'], $subscriber, $subscription, $parent_order); break;
                 case 'subscription:change_source':
                     break;
@@ -399,7 +399,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function process_webhook_execution($data, $subscriber, $subscription, $parent_order)
     {
-        $reference = isset($data['payment']['reference']) ? $data['payment']['reference'] : null;
+        $reference = isset($data['execution']['reference']) ? $data['execution']['reference'] : null;
+        $status = isset($data['payment']['status']['code']) ? $data['payment']['status']['code'] : 500;
 
         // If is using WCS, get the renewal order
         if ($this->helper->is_wcs_active()) {
@@ -432,8 +433,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         // Update order status
         $this->helper->update_order_status(
             $this->helper->is_wcs_active() ? $renewal_order : $parent_order,
-            $this->helper::get_state($data['payment']['status']['code']),
-            "Updating status from execution webhook. Code: {$data['payment']['status']['code']}"
+            $this->helper::get_state($status),
+            "Updating status from execution webhook. Code: $status"
         );
 
         // Update execution dates
@@ -735,14 +736,14 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 $execution = $subscriber->search_execution($reference);
                 $status    = isset($execution['status']) ? $execution['status'] : 'unknown';
 
-                if ($status == 'failed') {
+                if (in_array($status, $this->helper::$execution_status['failed'])) {
                     $subscriber->retry_charge($execution['uid']);
 
                     $update = [
                         'status'  => 'on-hold',
-                        'message' => "Already in progress. Awaiting webhook for $reference (charge retried)",
+                        'message' => "Already in progress. Awaiting webhook for $reference, charge retried ($status)",
                     ];
-                } else if ($status == 'approved') {
+                } else if ($status == 'paid') {
                     $update = [
                         'status'  => 'approved',
                         'message' => "Already in progress. Charge approved for $reference",
