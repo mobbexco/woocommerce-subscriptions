@@ -116,7 +116,7 @@ class MobbexSubscription extends \Mobbex\Model {
                 'return_url'  => $this->return_url,
                 'webhook'     => $this->webhook_url,
                 'features'    => $features,
-                'test'        => isset($this->test) ? $this->test : $this->is_test_subscription(),
+                'test'        => $this->test ?: $this->is_test_subscription(),
                 'options'     => [
                     'platform' => $this->get_platform_data(),
                     'embed'    => get_option('send_subscriber_email') === 'yes',

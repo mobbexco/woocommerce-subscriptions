@@ -187,7 +187,7 @@ class Mbbx_Subs_Product_Settings
         $possible_periods = ['d', 'w', 'm', 'y'];
 
         // Get and validate data
-        $test_mode           = (!empty($_POST['mbbxs_test_mode']) == 'yes');
+        $test_mode           = isset($_POST['mbbxs_test_mode']) && $_POST['mbbxs_test_mode'] == 'yes';
         $price               = (!empty($_POST['_regular_price'])) ? $_POST['_regular_price'] : $product->get_price();
         $subscription_mode   = (!empty($_POST['mbbxs_subscription_mode']) && $_POST['mbbxs_subscription_mode'] === '1');
         $signup_fee          = (!empty($_POST['mbbxs_signup_fee']) && is_numeric($_POST['mbbxs_signup_fee'])) ? (int) $_POST['mbbxs_signup_fee'] : 0;
@@ -239,7 +239,7 @@ class Mbbx_Subs_Product_Settings
 
         // Subscription options
         $sub_options = [
-            'test'       => isset($_POST['mbbxs_wcs_test_mode']) == 'yes',
+            'test'       => isset($_POST['mbbxs_wcs_test_mode']) && $_POST['mbbxs_wcs_test_mode'] == 'yes',
             'trial'      => isset($_POST['_subscription_trial_length']) ? (int) $_POST['_subscription_trial_length'] : 0,
             'interval'   => '',
             'type'       => 'manual',
