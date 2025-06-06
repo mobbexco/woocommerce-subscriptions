@@ -349,7 +349,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             if (isset($parent_order) && method_exists($parent_order, 'add_order_note'))
                 $parent_order->add_order_note('Error processing webhook: ' . $e->getMessage());
 
-            mbbx_http_error(500, 'Error processing webhook', $e->getMessage());
+            mbbx_http_error(500, 'Error processing webhook: ' . $e->getMessage());
         }
     }
 
