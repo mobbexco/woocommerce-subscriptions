@@ -632,4 +632,25 @@ class Mbbxs_Helper
 
         return  $interval . $valid_intervals[$period]['code'];
     }
+
+    /**
+     * Get the order ID from a Mobbex execution reference.
+     * 
+     * @param string $ref Subscriber execution reference.
+     * 
+     * @return string|null
+     */
+    public function get_order_id_from_execution_reference($ref)
+    {
+        if (empty($ref))
+            return null;
+
+        $reference_parts = explode('_', $ref);
+
+        // Check reference format
+        if (count($reference_parts) < 3 || !is_numeric($reference_parts[2]))
+            return null;
+
+        return $reference_parts[2];
+    }
 }

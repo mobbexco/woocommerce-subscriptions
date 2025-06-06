@@ -404,13 +404,10 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         // If is using WCS, get the renewal order
         if ($this->helper->is_wcs_active()) {
-            if ($reference) {
-                $reference_parts = explode('_', $reference);
+            $renewal_order_id = $this->helper->get_order_id_from_execution_reference($reference);
 
-                if (count($reference_parts) < 3)
-                    throw new \Exception('Invalid reference format. Expected <subscription_uid>_<subscriber_uid>_<order_id>');
-
-                $renewal_order = wc_get_order($reference_parts[2]);
+            if ($renewal_order_id) {
+                $renewal_order = wc_get_order($renewal_order_id);
             } else {
                 $wcs_sub = $this->helper->get_wcs_subscription($parent_order->get_id());
 
@@ -425,6 +422,10 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
             if ($this->helper->is_order_paid($renewal_order))
                 throw new \Exception('Renewal order already paid');
+
+            // Add warning note after validation
+            if (!$renewal_order_id)
+                $renewal_order->add_order_note("Created renewal order for external execution $reference");
         }
 
         // Set scheduled payment attemp as true to regenerate retries on failed
