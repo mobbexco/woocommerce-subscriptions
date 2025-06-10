@@ -332,7 +332,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             switch ($payload['type']) {
                 case 'subscription:registration':
                     $this->process_webhook_registration($payload['data'], $subscriber, $subscription, $parent_order); break;
-                case 'subscription:execution' || 'subscription:execution:error':
+                case 'subscription:execution':
+                    $this->process_webhook_execution($payload['data'], $subscriber, $subscription, $parent_order); break;
+                case 'subscription:execution:error':
                     $this->process_webhook_execution($payload['data'], $subscriber, $subscription, $parent_order); break;
                 case 'subscription:change_source':
                     break;
