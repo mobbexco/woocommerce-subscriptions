@@ -179,7 +179,18 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'label' => __('Enable Subscriber Emails', 'mobbex-subs-for-woocommerce'),
                 'default' => 'yes'
 
-            ]
+            ],
+
+            'currency' => [
+                'title'       => __('Moneda', 'mobbex-subs-for-woocommerce'),
+                'type'        => 'select',
+                'description' => __('Permite elegir la moneda en la que se procesaran las subscripciones (ARS, USD)', 'mobbex-for-woocommerce'),
+                'default'     => get_woocommerce_currency(),
+                'options'     => [
+                    'ARS' => __('ARS - Peso Argentino', 'mobbex-subs-for-woocommerce'),
+                    'USD' => __('USD - Dólar Estadounidense', 'mobbex-subs-for-woocommerce'),
+                ],
+            ],
         ];
 
         // Add integration options if are detected
