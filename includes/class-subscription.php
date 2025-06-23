@@ -103,7 +103,7 @@ class MobbexSubscription extends \Mobbex\Model {
                 'reference'   => $this->reference,
                 'total'       => (float) $this->total,
                 'setupFee'    => $this->get_signup_fee(),
-                'currency'    => 'ARS',
+                'currency'    => $this->helper->currency,
                 'type'        => $this->type,
                 'name'        => $this->name,
                 'description' => $this->name,
