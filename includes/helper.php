@@ -7,6 +7,7 @@ class Mbbxs_Helper
     public $embed;
     public $enabled;
     public $api_key;
+    public $currency;
     public $test_mode;
     public $debug_mode;
     public $integration;
