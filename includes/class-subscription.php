@@ -95,6 +95,8 @@ class MobbexSubscription extends \Mobbex\Model {
             array_push($features, 'no_email');
         if(!$this->free_trial)
             array_push($features, 'charge_on_first_source');
+        
+        $currency = $this->helper->currency == 'store' ? get_woocommerce_currency() : $this->helper->currency;
 
         $data = [
             'uri'    => 'subscriptions/' . $this->uid,
@@ -103,7 +105,7 @@ class MobbexSubscription extends \Mobbex\Model {
                 'reference'   => $this->reference,
                 'total'       => (float) $this->total,
                 'setupFee'    => $this->get_signup_fee(),
-                'currency'    => $this->helper->currency,
+                'currency'    => $currency,
                 'type'        => $this->type,
                 'name'        => $this->name,
                 'description' => $this->name,

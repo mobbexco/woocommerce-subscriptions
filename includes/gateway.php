@@ -185,10 +185,11 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 'title'       => __('Moneda', 'mobbex-subs-for-woocommerce'),
                 'type'        => 'select',
                 'description' => __('Permite elegir la moneda en la que se procesaran las subscripciones (ARS, USD)', 'mobbex-for-woocommerce'),
-                'default'     => get_woocommerce_currency(),
+                'default'     => 'store',
                 'options'     => [
-                    'ARS' => __('ARS - Peso Argentino', 'mobbex-subs-for-woocommerce'),
-                    'USD' => __('USD - Dólar Estadounidense', 'mobbex-subs-for-woocommerce'),
+                    'ARS'   => __('ARS - Peso Argentino', 'mobbex-subs-for-woocommerce'),
+                    'USD'   => __('USD - Dólar Estadounidense', 'mobbex-subs-for-woocommerce'),
+                    'store' => __( get_woocommerce_currency() . ' - Moneda establecida a nivel tienda', 'mobbex-subs-for-woocommerce'),
                 ],
             ],
         ];
