@@ -305,6 +305,12 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         if (empty($payload['data']['subscription']['uid']) || empty($payload['data']['subscriber']['uid']))
             mbbx_http_error(400, 'Bad request. Missing subscription or subscriber uid');
 
+        // Ignore 3xx status codes in all webhooks
+        $status = isset($payload['data']['payment']['status']['code']) ? $payload['data']['payment']['status']['code'] : 0;
+
+        if ($status >= 300 && $status < 400)
+            echo 'Ignored 3xx webhook', exit;
+
         try {
             $id && $this->helper->maybe_migrate_subscriptions(wc_get_order($id));
         } catch (\Exception $e) {
