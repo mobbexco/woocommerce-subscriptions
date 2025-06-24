@@ -645,12 +645,24 @@ class Mbbxs_Helper
         if (empty($ref))
             return null;
 
+        // First, try to extract the order ID directly from the reference
         $reference_parts = explode('_', $ref);
 
-        // Check reference format
-        if (count($reference_parts) < 3 || !is_numeric($reference_parts[2]))
+        if (count($reference_parts) >= 3 && is_numeric($reference_parts[2]))
+            return $reference_parts[2];
+
+        // Else, try to find it by transaction ID meta key
+        $orders = wc_get_orders([
+            'meta_key'     => '_transaction_id',
+            'meta_value'   => $ref,
+            'meta_compare' => '=',
+            'return'       => 'ids',
+            'limit'        => 1,
+        ]);
+
+        if (empty($orders) || !is_array($orders) || count($orders) < 1)
             return null;
 
-        return $reference_parts[2];
+        return reset($orders);
     }
 }
