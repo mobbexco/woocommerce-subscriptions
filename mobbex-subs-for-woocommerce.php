@@ -182,10 +182,15 @@ class Mbbx_Subs_Gateway
     {
         require_once plugin_dir_path(__FILE__) . 'includes/gateway.php';
 
+        // Add gateway to WooCommerce
         add_filter('woocommerce_payment_gateways', function ($methods) {
             $methods[] = MOBBEX_SUBS_WC_GATEWAY;
             return $methods;
         });
+
+        // Supports HPOS
+        if (class_exists(\Automattic\WooCommerce\Utilities\FeaturesUtil::class))
+            \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
     }
 
     /**

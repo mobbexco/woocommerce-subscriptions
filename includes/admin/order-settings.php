@@ -30,13 +30,19 @@ class Mbbx_Subs_Order_Settings
     /**
      * Display subscription panel in Order admin page.
      */
-    public static function add_subscription_panel()
+    public static function add_subscription_panel($screen)
     {
-        global $post;
+        // Only show in admin order pages
+        if (!is_admin() || !in_array($screen, ['shop_order', wc_get_page_screen_id('shop-order')]))
+            return;
 
-        // Only show if order has a subscription
-        if ($post->post_type == 'shop_order' && self::$helper->has_any_subscription($post->ID))
-            add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], 'shop_order', 'side', 'core');
+        $order = wc_get_order();
+
+        // Only show in standalone subscription orders
+        if (!$order || !self::$helper->has_subscription($order))
+            return;
+
+        add_meta_box('mbbxs_order_panel', __('Subscription Payments','mobbex-subs-for-woocommerce'), [self::class, 'show_subscription_executions'], $screen, 'side', 'core');
     }
 
     /**
@@ -47,10 +53,10 @@ class Mbbx_Subs_Order_Settings
      */
     public static function add_subscription_actions($actions)
     {
-        global $post;
+        $order = wc_get_order();
 
         // Only add actions if order has a subscription
-        if (is_admin() && $post && self::$helper->has_any_subscription($post->ID))
+        if (is_admin() && $order && self::$helper->has_any_subscription($order->get_id()))
             $actions['mbbxs_modify_total'] = __('Modificar monto de la suscripción', 'mobbex-subs-for-woocommerce');
 
         return $actions;
@@ -61,10 +67,10 @@ class Mbbx_Subs_Order_Settings
      */
     public static function show_subscription_executions()
     {
-        global $post;
+        $order = wc_get_order();
 
         // Get payments from webhooks post meta
-        $webhooks = get_post_meta($post->ID, 'mbbxs_webhooks', true);
+        $webhooks = $order->get_meta('mbbxs_webhooks', true);
         $payments = !empty($webhooks['payments']) ? $webhooks['payments'] : [];
 
         // Display subscription payments executions history
@@ -121,23 +127,37 @@ class Mbbx_Subs_Order_Settings
     /**
      * Load styles and scripts for dynamic options.
      */
-    public static function load_scripts($hook)
+    public static function load_scripts($screen)
     {
-        global $post;
+        $valid_pages = [
+            'post.php',
+            'post-new.php',
+            'shop_order',
+            'shop_subscription',
+            wc_get_page_screen_id('shop-order'),
+            wc_get_page_screen_id('shop-subscription')
+        ];
 
-        if (($hook == 'post-new.php' || $hook == 'post.php') && ($post->post_type == 'shop_order' || $post->post_type == 'shop_subscription')) {
-            wp_enqueue_style('mbbxs-order-style', plugin_dir_url(__FILE__) . '../../assets/css/order-admin.css');
-            wp_enqueue_script('mbbxs-order', plugin_dir_url(__FILE__) . '../../assets/js/order-admin.js');
+        // Only load on admin order pages
+        if (!is_admin() ||!in_array($screen, $valid_pages))
+            return;
 
-            // Add retry endpoint URL to script
-            $mobbex_data = [
-                'order_id'    => $post->ID,
-                'order_total' => wc_get_order($post->ID)->get_total(),
-                'retry_url'   => home_url('/wc-api/mbbxs_retry_execution')
-            ];
-            wp_localize_script('mbbxs-order', 'mobbex_data', $mobbex_data);
-            wp_enqueue_script('mbbxs-order');
-        }
+        $order = wc_get_order();
+
+        // Not show in order list page or other post types
+        if (!$order)
+            return;
+
+        wp_enqueue_style('mbbxs-order-style', plugin_dir_url(__FILE__) . '../../assets/css/order-admin.css');
+        wp_enqueue_script('mbbxs-order', plugin_dir_url(__FILE__) . '../../assets/js/order-admin.js');
+
+        // Add retry endpoint URL to script
+        wp_localize_script('mbbxs-order', 'mobbex_data', [
+            'order_id'    => $order->get_id(),
+            'order_total' => $order->get_total(),
+            'retry_url'   => home_url('/wc-api/mbbxs_retry_execution')
+        ]);
+        wp_enqueue_script('mbbxs-order');
     }
 
     /**
@@ -183,8 +203,8 @@ class Mbbx_Subs_Order_Settings
             // If data look fine
             if (is_numeric($new_total)) {
                 $order_id         = $order->get_id();
-                $subscription     = get_post_meta($order_id, 'mobbex_subscription', true);
-                $subscription_uid = !empty($subscription['uid']) ? $subscription['uid'] : get_post_meta($order_id, 'mobbex_subscription_uid', true);
+                $subscription     = $order->get_meta('mobbex_subscription', true);
+                $subscription_uid = !empty($subscription['uid']) ? $subscription['uid'] : $order->get_meta('mobbex_subscription_uid', true);
 
                 $result = self::$helper->modify_subscription($subscription_uid, ['total' => $new_total]);
 

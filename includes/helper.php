@@ -142,7 +142,7 @@ class Mbbxs_Helper
      */
     public function has_any_subscription($order_id)
     {
-        return $this->has_subscription($order_id) || $this->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id));
+        return $this->has_subscription($order_id) || ($this->is_wcs_active() && (wcs_is_subscription($order_id) || wcs_order_contains_subscription($order_id)));
     }
 
     /**
@@ -279,14 +279,18 @@ class Mbbxs_Helper
      */
     public function retry_execution($order_id, $execution_id)
     {
-        if (!$this->is_ready()) {
+        $order = wc_get_order($order_id);
+
+        if (!$this->is_ready())
             throw new Exception(__('Plugin is not ready', 'mobbex-subs-for-woocommerce'));
-        }
+
+        if (!$order || !method_exists($order, 'get_id'))
+            throw new Exception(__('Invalid order object', 'mobbex-subs-for-woocommerce'));
 
         // Query params
         $params = [
-            'id'  => get_post_meta($order_id, 'mobbex_subscription_uid'),
-            'sid' => get_post_meta($order_id, 'mobbex_subscriber_uid'),
+            'id'  => $order->get_meta('mobbex_subscription_uid'),
+            'sid' => $order->get_meta('mobbex_subscriber_uid'),
             'eid' => $execution_id,
         ];
 
@@ -450,8 +454,8 @@ class Mbbxs_Helper
         if (!$order || !method_exists($order, 'get_id'))
             throw new \Exception('Invalid order object');
 
-        $old_subscription = get_post_meta($order->get_id(), 'mobbex_subscription', true);
-        $old_subscriber   = get_post_meta($order->get_id(), 'mobbex_subscriber', true);
+        $old_subscription = $order->get_meta('mobbex_subscription', true);
+        $old_subscriber   = $order->get_meta('mobbex_subscriber', true);
 
         if ($old_subscription){
             $order->add_order_note("Old Subscription detected. Making migration");
@@ -477,7 +481,7 @@ class Mbbxs_Helper
             mbbxs_log('debug', "Migrating subscription. Before save. Order ID " . $order->get_id());
             $subscription->save();
 
-            update_post_meta($order->get_id(), 'mobbex_subscription', '');
+            $order->update_meta_data('mobbex_subscription', '');
             $order->add_order_note("Old Subscription detected. Migration done");
             $order->save();
         }
@@ -498,7 +502,7 @@ class Mbbxs_Helper
                 $order->get_billing_first_name(),
                 $order->get_billing_email(),
                 $order->get_billing_phone(),
-                get_post_meta($order->get_id(), !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni', true),
+                $order->get_meta((!empty($this->custom_dni) ? $this->custom_dni : '_billing_dni'), true),
                 $order->get_customer_id()
             );
 
@@ -510,7 +514,7 @@ class Mbbxs_Helper
             mbbxs_log('debug', "Migrating subscriber. Before save. Order ID " . $order->get_id());
             $subscriber->save(false);
 
-            update_post_meta($order->get_id(), 'mobbex_subscriber', '');
+            $order->update_meta_data('mobbex_subscriber', '');
             $order->add_order_note("Old Subscriber migration done");
             $order->save();
         }
