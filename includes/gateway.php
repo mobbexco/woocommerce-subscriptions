@@ -654,7 +654,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
     public function get_subscriber($order, $mbbx_subscription_uid)
     {
         $dni_key = !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni';
-        $dni     = get_post_meta($order->get_id(), $dni_key, true);
+        $dni     = $order->get_meta($dni_key, true);
         $user    = wp_get_current_user();
 
         $subscriber = new \MobbexSubscriber(
