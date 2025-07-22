@@ -132,29 +132,36 @@ class MobbexSubscriber extends \Mobbex\Model
     }
 
     /**
-     * Set address data.
+     * Get address data from woocommerce order or cart.
      * 
-     * @param Class $object Order class.
+     * @param WC_Order|WC_Cart $object Order class.
      * 
+     * @return array
      */
     public function get_addresses($object)
     {
-        foreach (['billing', 'shipping'] as $type) {
-
-            foreach (['address_1', 'address_2', 'city', 'state', 'postcode', 'country'] as $method)
-                ${$method} = "get_" . $type . "_" . $method;
-
-            $this->addresses[] = [
-                'type'         => $type,
-                'country'      => $this->convert_country_code($object->$country()),
-                'state'        => $object->$state(),
-                'city'         => $object->$city(),
-                'zipCode'      => $object->$postcode(),
-                'street'       => trim(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1()))),
-                'streetNumber' => str_replace(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->$address_1())), '', trim($object->$address_1())),
-                'streetNotes'  => $object->$address_2()
-            ];
-        }
+        return [
+            [
+                'type'         => 'shipping',
+                'country'      => $this->convert_country_code($object->get_shipping_country()),
+                'state'        => $object->get_shipping_state(),
+                'city'         => $object->get_shipping_city(),
+                'zipCode'      => $object->get_shipping_postcode(),
+                'street'       => trim(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->get_shipping_address_1()))),
+                'streetNumber' => str_replace(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->get_shipping_address_1())), '', trim($object->get_shipping_address_1())),
+                'streetNotes'  => $object->get_shipping_address_2()
+            ],
+            [
+                'type'         => 'billing',
+                'country'      => $this->convert_country_code($object->get_billing_country()),
+                'state'        => $object->get_billing_state(),
+                'city'         => $object->get_billing_city(),
+                'zipCode'      => $object->get_billing_postcode(),
+                'street'       => trim(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->get_billing_address_1()))),
+                'streetNumber' => str_replace(preg_replace('/(\D{0})+(\d*)+$/', '', trim($object->get_billing_address_1())), '', trim($object->get_billing_address_1())),
+                'streetNotes'  => $object->get_billing_address_2()
+            ]
+        ];
     }
 
     /**

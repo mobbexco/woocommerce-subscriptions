@@ -589,7 +589,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'type'     => $this->helper->is_wcs_active() ? 'manual' : 'dynamic',
             'interval' => '',
             'trial'    => '',
-            'interval' => '',
         ];
 
         // Get subscription product name
@@ -678,7 +677,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * @param integer $total
      * @param WC_Order $order
      * 
-     * @return bool Result of charge execution.
+     * @return ?bool Result of charge execution.
      */
     public function scheduled_subscription_payment($total, $order)
     {

@@ -7,9 +7,14 @@ abstract class Model
     /** @var wpdb */
     public $db;
 
+    /** @var Mbbxs_Logger */
+    public $logger;
+
     public $table;
     public $primary_key;
     public $array_columns = [];
+    public $fillable = [];
+    public $update = false;
 
     /**
      * Instance the model and try to fill properties.

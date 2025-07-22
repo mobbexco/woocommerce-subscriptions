@@ -3,6 +3,12 @@ require_once 'utils.php';
 
 class Mbbxs_Logger
 {
+    /** @var bool */
+    public $error;
+
+    /** @var Mbbxs_Helper */
+    public $helper;
+
     public function __construct()
     {
         $this->error  = false;
