@@ -1,0 +1,14 @@
+{
+    "require-dev": {
+        "phpstan/phpstan": "*",
+        "php-stubs/wordpress-stubs": "*",
+        "php-stubs/woocommerce-stubs": "*",
+        "squizlabs/php_codesniffer": "*",
+        "phpcompatibility/php-compatibility": "*"
+    },
+    "scripts": {
+        "analyse": [
+            "vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=4G"
+        ]
+    }
+}

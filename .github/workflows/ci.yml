@@ -1,0 +1,31 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: [7.0, 7.4, 8.0, 8.2]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup PHP with tools
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php }}
+        tools: composer
+    - name: Install dependencies
+      run: composer install --dev
+    - name: Intall PHPCS and code standard
+      run: composer global require "phpcompatibility/php-compatibility" "squizlabs/php_codesniffer=*"
+    - name: Configure standard
+      run: ~/.composer/vendor/bin/phpcs --config-set installed_paths ~/.composer/vendor/phpcompatibility/php-compatibility
+    - name: Log standards installed
+      run: ~/.composer/vendor/bin/phpcs -i
+    - name: Execute phpcs
+      run: ~/.composer/vendor/bin/phpcs -p . --standard=./.github/workflows/ruleset.xml
+    - name: Execute phpstan
+      run: composer run analyse
