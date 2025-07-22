@@ -1,0 +1,18 @@
+parameters:
+	level: 0
+	paths:
+		- .
+	excludePaths:
+		- vendor
+		- plugin-update-checker
+	bootstrapFiles:
+		- plugin-update-checker/plugin-update-checker.php
+		- vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+		- vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+	ignoreErrors:
+		- '#Function wcs_.* not found#'
+		- '#Call to an undefined method WC_.*#'
+		- '#Call to static method .* on an unknown class (WCS|WC_Subscriptions).*#'
+		- '#Instantiated class (WCS|WC_Subscriptions)_.* not found#'
+		- identifier: missingType.return
+		- identifier: missingType.parameter

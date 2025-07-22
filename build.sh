@@ -4,9 +4,9 @@ VER="3.3.5"
 
 # Copy files to temp dir
 if type robocopy > /dev/null; then
-    robocopy . woocommerce-mobbex-subs -MIR -XD .git .vscode woocommerce-mobbex-subs -XF .gitignore build.sh readme.md *.zip
+    robocopy . woocommerce-mobbex-subs -MIR -XD .git .vscode .github woocommerce-mobbex-subs vendor -XF .gitignore build.sh readme.md *.zip
 elif type rsync > /dev/null; then
-    rsync -r --exclude={'.git','.vscode','woocommerce-mobbex-subs','.gitignore','build.sh','readme.md','*.zip'} . ./woocommerce-mobbex-subs
+    rsync -r --exclude={'.git','.vscode','.github','woocommerce-mobbex-subs','vendor','.gitignore','build.sh','readme.md','*.zip'} . ./woocommerce-mobbex-subs
 fi
 
 # Compress
