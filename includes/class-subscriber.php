@@ -189,6 +189,7 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function saveExecution($webhookData, $order_id, $date)
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         $data = [
@@ -201,8 +202,13 @@ class MobbexSubscriber extends \Mobbex\Model
             'date'             => $date,
             'data'             => json_encode($webhookData)
         ];
-        
-        return $wpdb->insert($wpdb->prefix.'mobbex_execution', $data);
+
+        $res = $wpdb->replace($wpdb->prefix.'mobbex_execution', $data);
+
+        if ($wpdb->last_error)
+            throw new \Exception(__('Error saving execution data: ', 'mobbex-subs-for-woocommerce') . $wpdb->last_error);
+
+        return $res;
     }
 
     /**
