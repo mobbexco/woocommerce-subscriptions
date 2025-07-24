@@ -163,18 +163,18 @@ class Mbbx_Subs_Gateway
 
     private static function load_update_checker()
     {
-        require_once 'plugin-update-checker/plugin-update-checker.php';
+        require_once 'plugin-update-checker/plugin-update-checker.php';;
 
-        $githubApiInstance = new \YahnisElsts\PluginUpdateChecker\v5p6\Vcs\GitHubApi(
-            'https://github.com/mobbexco/woocommerce-subscriptions/'
-        );
-        $githubApiInstance->enableReleaseAssets();
-
-        \YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
-            $githubApiInstance,
+        $updater = \YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
+            'https://github.com/mobbexco/woocommerce-subscriptions/',
             __FILE__,
             'mobbex-subs-plugin-update-checker'
         );
+
+        // Do not remove this line, it is needed to help IDE and PHPSTAN to recognize the type
+        /** @var \YahnisElsts\PluginUpdateChecker\v5p6\Vcs\GitHubApi $githubApi */
+        $githubApi = $updater->getVcsApi();
+        $githubApi->enableReleaseAssets();
     }
 
     /**
@@ -292,24 +292,17 @@ class Mbbx_Subs_Gateway
     public static function check_upgrades()
     {
         try {
-            // Check current version updated
-            if (get_option('woocommerce-mobbex-subs-version') < MOBBEX_SUBS_VERSION)
+            if (version_compare(get_option('mobbex-subs-version'), MOBBEX_SUBS_VERSION, '>='))
                 return;
-            
-            // Apply upgrades
+
             install_mobbex_subs_tables();
-            
-            // Update db version
-            update_option('woocommerce-mobbex-subs-version', MOBBEX_SUBS_VERSION);
-            
         } catch (\Exception $e) {
             self::$errors[] = 'Mobbex DB Upgrade error';
         }
     }
 }
 
-function install_mobbex_subs_tables()
-{
+function install_mobbex_subs_tables() {
     global $wpdb;
     // Get install query from sql file
     $querys = explode('/', str_replace('PREFIX_', $wpdb->prefix, file_get_contents(WP_PLUGIN_DIR . '/woocommerce-mobbex-subs/setup/install.sql'))); 
@@ -317,6 +310,8 @@ function install_mobbex_subs_tables()
     foreach ($querys as $query) {
         $wpdb->get_results($query);
     }
+
+    update_option('mobbex-subs-version', MOBBEX_SUBS_VERSION);
 }
 
 $mbbx_subs_gateway = new Mbbx_Subs_Gateway;
