@@ -244,6 +244,8 @@ class Mbbxs_Helper
             return 'on-hold';
         } else if ($status == 4 || $status >= 200 && $status < 400) {
             return 'approved';
+        } else if ($status == 602) {
+            return 'refunded';
         } else {
             return 'failed';
         }

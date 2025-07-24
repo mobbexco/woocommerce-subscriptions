@@ -445,7 +445,8 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
                 $renewal_order->add_order_note("Created renewal order for external execution $reference");
             }
 
-            if ($this->helper->is_order_paid($renewal_order))
+            // Do not update order if it is already paid. Only if is 602 (refunded)
+            if ($this->helper->is_order_paid($renewal_order) && $status != 602)
                 throw new \Exception('Renewal order already paid');
 
             $renewal_order->set_transaction_id($reference);
