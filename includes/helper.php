@@ -244,7 +244,7 @@ class Mbbxs_Helper
             return 'on-hold';
         } else if ($status == 4 || $status >= 200 && $status < 400) {
             return 'approved';
-        } else if ($status == 602) {
+        } else if ($status == 601 || $status == 602) {
             return 'refunded';
         } else {
             return 'failed';
@@ -671,5 +671,36 @@ class Mbbxs_Helper
             return null;
 
         return reset($orders);
+    }
+
+    /**
+     * Get the latest Mobbex execution for a given order ID.
+     *
+     * @param int $order_id
+     *
+     * @return array|null
+     */
+    public function get_execution_by_order_id($order_id)
+    {
+        global $wpdb;
+
+        if (empty($order_id) || !is_numeric($order_id))
+            return;
+
+        $executions = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}mobbex_execution WHERE order_id = %d LIMIT 1",
+                $order_id
+            ),
+            ARRAY_A
+        );
+
+        if ($wpdb->last_error)
+            throw new \Exception('Database error: ' . $wpdb->last_error);
+
+        if (empty($executions) || !is_array($executions))
+            return;
+
+        return end($executions);
     }
 }
