@@ -18,6 +18,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public $supports = array(
         'products',
+        'refunds',
         'subscriptions',
         'subscription_cancellation',
         'subscription_suspension',
@@ -297,6 +298,44 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             'result'   => 'success',
             'redirect' => $this->helper->get_api_endpoint('mobbex_subs_source_change') . "&order_id={$order->get_id()}"
         ];
+    }
+
+    public function process_refund($order_id, $amount = null, $reason = '')
+    {
+        $api = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
+
+        if (!$api->ready)
+            throw new \Exception('Mobbex API is not ready. Cannot process refunds.');
+
+        if (!$this->helper->is_wcs_active())
+            throw new \Exception('WooCommerce Subscriptions is not active. Cannot process refunds.');
+
+        $order = wc_get_order($order_id);
+
+        if (!$order || !$order->get_id())
+            throw new \Exception('Invalid order data.');
+
+        $execution = $this->helper->get_execution_by_order_id($order_id);
+
+        if (!$execution || empty($execution['data']))
+            throw new \Exception('Execution not found for order ID ' . $order_id);
+
+        $webhook_data = json_decode($execution['data'], true);
+
+        if (!$webhook_data || empty($webhook_data['payment']['id']))
+            throw new \Exception('Invalid execution data for order ID ' . $order_id);
+
+        // This method throws exceptions on any error
+        $api->request([
+            'method' => 'POST',
+            'uri'    => "operations/{$webhook_data['payment']['id']}/refund",
+            'body'   => [
+                'total'     => (float) $amount ?: null,
+                'emitEvent' => false,
+            ]
+        ]);
+
+        return true;
     }
 
     public function mobbex_subs_webhook()
