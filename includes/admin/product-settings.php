@@ -10,21 +10,20 @@ class Mbbx_Subs_Product_Settings
         // Load helper
         self::$helper = new Mbbxs_Helper;
 
-        if(self::$helper->is_wcs_active()){
-            add_action('woocommerce_process_product_meta', [self::class, 'create_mobbex_sub_integration_wcs']);
+        if (self::$helper->is_wcs_active()) {
+            add_action('woocommerce_process_product_meta_subscription', [self::class, 'create_mobbex_sub_integration_wcs']);
+            add_action('woocommerce_process_product_meta_variable-subscription', [self::class, 'create_mobbex_sub_integration_wcs']);
+
             // Display custom fields in the "General" tab of the product edit page
             add_action('woocommerce_product_options_general_product_data', [self::class, 'add_mobbex_custom_product_fields']);
-            // Save custom fields when the product is saved
-            add_action('woocommerce_process_product_meta', [self::class, 'save_mobbex_custom_product_fields']);
-            return;
+        } else {
+            // Add/save subscription fields
+            add_action('woocommerce_product_options_general_product_data', [self::class, 'add_subscription_fields']);
+            add_action('woocommerce_process_product_meta', [self::class, 'save_subscription_fields']);
+
+            // Add some scripts
+            add_action('admin_enqueue_scripts', [self::class, 'load_scripts']);
         }
-
-        // Add/save subscription fields
-		add_action('woocommerce_product_options_general_product_data', [self::class, 'add_subscription_fields']);
-		add_action('woocommerce_process_product_meta', [self::class, 'save_subscription_fields']);
-
-        // Add some scripts
-        add_action('admin_enqueue_scripts', [self::class, 'load_scripts']);
     }
 
     /**
@@ -176,10 +175,6 @@ class Mbbx_Subs_Product_Settings
         // Get product
         $product = wc_get_product($post_id);
 
-        // Avoid if product isn´t subscription
-        if (self::$helper->is_wcs_active() && !WC_Subscriptions_Product::is_subscription($post_id))
-            return;
-
         if (isset($_POST["mbbxs_subscription_mode"]) != '1')
             return;
 
@@ -258,11 +253,16 @@ class Mbbx_Subs_Product_Settings
             $sub_options['interval'] = '1m';
         }
 
-        // Create/update subscription.
-        if(self::$helper->is_wcs_active() && WC_Subscriptions_Product::is_subscription( $post_id ));
-            $subscription = self::$helper->create_mobbex_subscription($sub_options);
-        if($subscription)
-            $subscription->save();
+        // Save test mode option
+        update_post_meta(
+            $post_id,
+            'mobbex_subscription_test_mode',
+            isset($_POST['mobbex_subscription_test_mode']) ? 'yes' : 'no'
+        );
+
+        // Create/update subscription.        
+        $subscription = self::$helper->create_mobbex_subscription($sub_options);
+        $subscription->save();
     }
 
     /**
@@ -298,15 +298,5 @@ class Mbbx_Subs_Product_Settings
         );
     
         echo '</div>';
-    }
-    
-    /**
-     * Save wcs subscription custom fields
-     */
-    public static function save_mobbex_custom_product_fields($product_id)
-    {
-        // Save Mobbex Subscription test mode
-        $checkbox_value = isset($_POST['mobbex_subscription_test_mode']) ? 'yes' : 'no';
-        update_post_meta($product_id, 'mobbex_subscription_test_mode', $checkbox_value);
     }
 }
