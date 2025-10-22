@@ -1,5 +1,4 @@
 <?php
-require_once 'utils.php';
 
 class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 {
