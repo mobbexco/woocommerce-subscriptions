@@ -9,17 +9,6 @@
  * Copyright: 2021 mobbex.com
  */
 
-/**
- * This file includes code from the "Plugin Update Checker" project.
- * https://github.com/YahnisElsts/plugin-update-checker
- * 
- * Licensed under the MIT License:
- * Copyright (c) 2010–2025 Janis Elsts
- * https://w-shadow.com/
- * 
- * This license notice is retained in accordance with the terms of the MIT License.
- */
-
 require_once 'vendor/autoload.php';
 
 class Mbbx_Subs_Gateway
