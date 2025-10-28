@@ -1,4 +1,7 @@
 {
+    "require": {
+        "yahnis-elsts/plugin-update-checker": "v5.6"
+    },
     "require-dev": {
         "phpstan/phpstan": "*",
         "php-stubs/wordpress-stubs": "*",
@@ -9,6 +12,24 @@
     "scripts": {
         "analyse": [
             "vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=4G"
+        ]
+    },
+    "autoload": {
+        "psr-4": {
+            "Mobbex\\WP\\Subscriptions\\": ""
+        },
+        "files": [
+            "includes/utils.php",
+            "includes/helper.php",
+            "includes/logger.php",
+            "includes/lib/class-api.php",
+            "includes/lib/model.php",
+            "includes/class-subscription.php",
+            "includes/class-subscriber.php",
+            "includes/cart.php",
+            "includes/subscription-product.php",
+            "includes/admin/product-settings.php",
+            "includes/admin/order-settings.php"
         ]
     }
 }

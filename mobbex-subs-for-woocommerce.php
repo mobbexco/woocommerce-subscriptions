@@ -20,13 +20,7 @@
  * This license notice is retained in accordance with the terms of the MIT License.
  */
 
-require_once 'includes/helper.php';
-require_once 'includes/utils.php';
-require_once 'includes/logger.php';
-require_once !class_exists('Mobbex\Model') ? 'includes/lib/class-api.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/class-api.php';
-require_once !class_exists('Mobbex\Model') ? 'includes/lib/model.php' : WP_PLUGIN_DIR . '/woocommerce-mobbex/includes/model.php';
-require_once 'includes/class-subscription.php';
-require_once 'includes/class-subscriber.php';
+require_once 'vendor/autoload.php';
 
 class Mbbx_Subs_Gateway
 {
@@ -61,14 +55,17 @@ class Mbbx_Subs_Gateway
     public function init()
     {
         try {
+            // Plugin base data
+            add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_action_links']);
+            add_filter('plugin_row_meta', [$this, 'plugin_row_meta'], 10, 2);
+            load_plugin_textdomain('mobbex-subs-for-woocommerce', false, dirname(plugin_basename(__FILE__)) . '/languages/');
+
             Mbbx_Subs_Gateway::check_dependencies();
-            Mbbx_Subs_Gateway::load_textdomain();
             Mbbx_Subs_Gateway::load_update_checker();
             Mbbx_Subs_Gateway::check_upgrades();
-            Mbbx_Subs_Gateway::load_helper();
-            Mbbx_Subs_Gateway::load_subscription_product();
-            Mbbx_Subs_Gateway::load_cart();
-            //Mbbx_Subs_Gateway::register_scheduled_event();
+
+            self::$helper = new Mbbxs_Helper;
+            Mbbxs_Cart::init();
         } catch (Exception $e) {
             Mbbx_Subs_Gateway::$errors[] = $e->getMessage();
         }
@@ -81,27 +78,9 @@ class Mbbx_Subs_Gateway
             return;
         }
 
-        Mbbx_Subs_Gateway::load_order_settings();
-
-        add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_action_links']);
-        add_filter('plugin_row_meta', [$this, 'plugin_row_meta'], 10, 2);
-
-        //Product Settings
-        require_once plugin_dir_path(__FILE__) . 'includes/admin/product-settings.php';
-        
-        Mbbx_Subs_Gateway::load_product_settings();
-
-        /*add_filter('cron_schedules', function ($schedules) {
-            $schedules['5seconds'] = array(
-                'interval' => 5,
-                'display' =>'5 segundos'
-            );
-            return $schedules;
-        });
-        add_action('mbbxs_cron_event', [$this, 'check_subscriptions_payments']);
-
-        // Desactivation hook
-        register_deactivation_hook(__FILE__, [$this, 'plugin_desactivation']);*/
+        // Order and product setting pages
+        Mbbx_Subs_Order_Settings::init();
+        Mbbx_Subs_Product_Settings::init();
     }
 
     /**
@@ -150,21 +129,8 @@ class Mbbx_Subs_Gateway
         }
     }
 
-    private static function load_textdomain()
-    {
-        load_plugin_textdomain('mobbex-subs-for-woocommerce', false, dirname(plugin_basename(__FILE__)) . '/languages/');
-    }
-
-    private static function load_helper()
-    {
-        require_once plugin_dir_path(__FILE__) . 'includes/helper.php';
-        self::$helper = new Mbbxs_Helper;
-    }
-
     private static function load_update_checker()
     {
-        require_once 'plugin-update-checker/plugin-update-checker.php';;
-
         $updater = \YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
             'https://github.com/mobbexco/woocommerce-subscriptions/',
             __FILE__,
@@ -175,23 +141,6 @@ class Mbbx_Subs_Gateway
         /** @var \YahnisElsts\PluginUpdateChecker\v5p6\Vcs\GitHubApi $githubApi */
         $githubApi = $updater->getVcsApi();
         $githubApi->enableReleaseAssets();
-    }
-
-    /**
-     * Utility functions for Subscription Product
-     */
-    private static function load_subscription_product()
-    {
-        require_once plugin_dir_path(__FILE__) . 'includes/subscription-product.php';
-    }
-
-    /**
-     * Utility functions and hooks for Cart
-     */
-    private static function load_cart()
-    {
-        require_once plugin_dir_path(__FILE__) . 'includes/cart.php';
-        Mbbxs_Cart::init();
     }
 
     public static function woocommerce_init()
@@ -207,23 +156,6 @@ class Mbbx_Subs_Gateway
         // Supports HPOS
         if (class_exists(\Automattic\WooCommerce\Utilities\FeaturesUtil::class))
             \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
-    }
-
-    /**
-     * Load admin product settings.
-     */
-    private static function load_product_settings()
-    {
-        Mbbx_Subs_Product_Settings::init();
-    }
-
-    /**
-     * Load admin order settings and panels.
-     */
-    private static function load_order_settings()
-    {
-        require_once plugin_dir_path(__FILE__) . 'includes/admin/order-settings.php';
-        Mbbx_Subs_Order_Settings::init();
     }
 
     public function add_action_links($links)
@@ -260,31 +192,6 @@ class Mbbx_Subs_Gateway
 
         return $links;
     }
-
-    /**
-     * Schedule a daily event for subscriptions payments in 'no integrations' mode.
-     */
-    /*public static function register_scheduled_event()
-    {
-        // If you are not registered yet
-        if(!wp_next_scheduled('mbbxs_cron_event')) {
-            wp_schedule_event(current_time('timestamp'), 'daily', 'mbbxs_cron_event');
-        }
-    }*/
-
-    /**
-     * Triggered on plugin deactivation or uninstallation.
-     */
-    /*public static function plugin_desactivation()
-    {
-        // Unregister event for subscriptions payments
-        wp_clear_scheduled_hook('mbbxs_cron_event');
-    }*/
-
-    /*public function check_subscriptions_payments()
-    {
-        $var = 'example';
-    }*/
 
     /**
      * Check pending database upgrades and upgrade if is needed.
