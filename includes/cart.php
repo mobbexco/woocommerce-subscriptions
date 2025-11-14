@@ -29,7 +29,7 @@ class Mbbxs_Cart
         add_filter('woocommerce_cart_item_price', [self::class, 'display_sign_up_fee_on_price'], 10, 2);
 
         // Maybe add sign-up to totals to mobbex subscription product
-        add_filter('woocommerce_cart_calculate_fees', [self::class, 'maybe_add_mobbex_subscription_fee'], 10, 2);
+        add_action('woocommerce_cart_calculate_fees', [self::class, 'maybe_add_mobbex_subscription_fee'], 10);
 
         // Disable the rest of payment gateways when there is a mobbex subscription
         add_filter('woocommerce_available_payment_gateways', [self::class, 'filter_checkout_payment_gateways']);

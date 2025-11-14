@@ -63,7 +63,9 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         }
 
         // Always Required
-        add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
+        add_action('woocommerce_update_options_payment_gateways_' . $this->id, function() {
+            $this->process_admin_options();
+        });
         add_action('woocommerce_scheduled_subscription_payment_' . $this->id, [$this, 'scheduled_subscription_payment'], 10, 2);
 
         // Update subscription status
@@ -200,12 +202,6 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             $this->form_fields['integration']['options']['wcs'] = __('WooCommerce Subscriptions', 'mobbex-subs-for-woocommerce');
         }
 
-    }
-
-    public function process_admin_options()
-    {
-        $saved = parent::process_admin_options();
-        return $saved;
     }
 
     public function process_payment($order_id)
@@ -716,7 +712,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * @param integer $total
      * @param WC_Order $order
      * 
-     * @return ?bool Result of charge execution.
+     * @return void
      */
     public function scheduled_subscription_payment($total, $order)
     {

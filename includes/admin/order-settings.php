@@ -20,8 +20,8 @@ class Mbbx_Subs_Order_Settings
         add_action('woocommerce_api_mbbxs_retry_execution', [self::class, 'retry_execution_endpoint']);
 
         // Add action to modify subscription total
-        add_action('woocommerce_order_actions', [self::class, 'add_subscription_actions']);
-        add_action('wcs_view_subscription_actions', [self::class, 'add_subscription_actions']);
+        add_filter('woocommerce_order_actions', [self::class, 'add_subscription_actions']);
+        add_filter('wcs_view_subscription_actions', [self::class, 'add_subscription_actions']);
 
         // Modify total endpoint for order action
         add_action('woocommerce_order_action_mbbxs_modify_total', [self::class, 'modify_total_endpoint']);
