@@ -3,8 +3,7 @@
         "yahnis-elsts/plugin-update-checker": "v5.6"
     },
     "require-dev": {
-        "phpstan/phpstan": "*",
-        "php-stubs/wordpress-stubs": "*",
+        "szepeviktor/phpstan-wordpress": "*",
         "php-stubs/woocommerce-stubs": "*",
         "squizlabs/php_codesniffer": "*",
         "phpcompatibility/php-compatibility": "*"
