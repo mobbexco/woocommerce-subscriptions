@@ -11,7 +11,7 @@ class Mbbxs_Cart
     public static function init()
     {
         // Load helper
-        self::$helper = new Mbbxs_Helper;
+        self::$helper = Mbbxs_Helper::get_instance();
 
         // Validate cart items
         add_filter('woocommerce_add_to_cart_validation', [self::class, 'validate_cart_items'], 10, 2);

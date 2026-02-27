@@ -2,6 +2,9 @@
 
 class Mbbxs_Helper
 {
+    /** @var self|null */
+    private static $instance = null;
+
     public $title;
     public $embed;
     public $enabled;
@@ -49,7 +52,15 @@ class Mbbxs_Helper
         ]
     ];
 
-    public function __construct()
+    public static function get_instance()
+    {
+        if (self::$instance === null)
+            self::$instance = new self();
+
+        return self::$instance;
+    }
+
+    private function __construct()
     {
         // Init settings (Full List in WC_Gateway_Mobbex_Subs::init_form_fields)
         $option_key = 'woocommerce_' . MOBBEX_SUBS_WC_GATEWAY_ID . '_settings';
@@ -503,7 +514,7 @@ class Mbbxs_Helper
                 $order->get_billing_first_name(),
                 $order->get_billing_email(),
                 $order->get_billing_phone(),
-                $order->get_meta((!empty($this->custom_dni) ? $this->custom_dni : '_billing_dni'), true),
+                $order->get_meta('_billing_dni', true),
                 $order->get_customer_id()
             );
 

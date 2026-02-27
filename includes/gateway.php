@@ -54,7 +54,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         $this->send_subscriber_email = ($this->get_option('send_subscriber_email') === 'yes');
 
-        $this->helper = new Mbbxs_Helper();
+        $this->helper = Mbbxs_Helper::get_instance();
         $this->error = false;
 
         if (!$this->helper->is_ready()) {
@@ -69,7 +69,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
         add_action('woocommerce_scheduled_subscription_payment_' . $this->id, [$this, 'scheduled_subscription_payment'], 10, 2);
 
         // Update subscription status
-        add_action('woocommerce_subscription_status_active', [$this, 'update_subscriber_state']);
+        add_action('woocommerce_subscription_status_cancelled_to_active', [$this, 'update_subscriber_state']);
         add_action('woocommerce_subscription_status_cancelled', [$this, 'update_subscriber_state']);
 
         // Only if the plugin is enabled
@@ -687,8 +687,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      */
     public function get_subscriber($order, $mbbx_subscription_uid)
     {
-        $dni_key = !empty($this->helper->custom_dni) ? $this->helper->custom_dni : '_billing_dni';
-        $dni     = $order->get_meta($dni_key, true);
+        $dni     = $order->get_meta('_billing_dni', true);
         $user    = wp_get_current_user();
 
         $subscriber = new \MobbexSubscriber(
@@ -831,41 +830,53 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
      * 
      * Called when the subscription status is changed.
      * 
-     * @param WC_Subscription $subscription
+     * @param WC_Subscription $wc_subscription
      */
-    public function update_subscriber_state($subscription)
+    public function update_subscriber_state($wc_subscription)
     {
-        mbbxs_log('debug', 'Hook > update_subscriber_state', ['subscripion' => $subscription->get_parent()->get_id()]);
-        
-        if(!$subscription || !$subscription->get_parent()){
-            mbbxs_log('error', 'Hook > update_subscriber_state. No subscription or parent.', ['subscription' => $subscription]);
-            return;
-        }
-
-        // Gets order
-        $order_id = $subscription->get_parent()->get_id();
-        $order    = wc_get_order($order_id);
-
-        mbbxs_log('debug', 'Hook > update_subscriber_state', ['orden_payment_method' => $order->get_payment_method()]);
-
-        // Returns if payment method is not Mobbex
-        if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()){
-            mbbxs_log('debug', "El método de pago no es Mobbex => update_subscriber_state is bypassed.", ['payment_method' => $order->get_payment_method()]);
-            return;
-        }
-
         try {
-            // Gets subscription status
-            $status   = $subscription->get_status();
+            if (!$wc_subscription)
+                throw new \Exception('No subscription provided');
 
-            // Get susbscriber
+            $wc_subscription_id = $wc_subscription->get_id();
+            $parent = $wc_subscription->get_parent();
+
+            if (!$parent)
+                throw new \Exception('No parent order found');
+
+            $order_id = $parent->get_id();
+            $order = wc_get_order($order_id);
+    
+            // Returns if is other payment method
+            if (MOBBEX_SUBS_WC_GATEWAY_ID != $order->get_payment_method()) return;
+
+            // Get susbscriber from db
             $subscriber = new \MobbexSubscriber($order_id);
 
             // Update subscriber state through the corresponding endpoint
-            $subscriber->update_status($status);
-            
+            $subscriber->update_status(
+                $wc_subscription->get_status()
+            );
+
+            $wc_subscription->add_order_note('Subscriber status updated to ' . $wc_subscription->get_status() . ' on Mobbex');
+
+            mbbxs_log(
+                'debug', 
+                'Subscriber status updated to ' . $wc_subscription->get_status(),
+                ['wc_subscription_id' => $wc_subscription_id, 'subscriber_uid' => $subscriber->uid]
+            );
         } catch (\Exception $e) {
-            $subscription->add_order_note(__('Error modifying subscriber status: ', 'mobbex-subs-for-woocommerce') . $e->getMessage());
+            mbbxs_log(
+                'error', 
+                'Error modifying subscriber status: ' . $e->getMessage(),
+                [
+                    'wc_subscription_id' => isset($wc_subscription_id) ? $wc_subscription_id : null,
+                    'subscriber_uid' => isset($subscriber) ? $subscriber->uid : null
+                ]
+            );
+
+            if (isset($wc_subscription)) 
+                $wc_subscription->add_order_note('Error modifying subscriber status: ' . $e->getMessage());
         }
     }
 }

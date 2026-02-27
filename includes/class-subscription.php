@@ -73,7 +73,7 @@ class MobbexSubscription extends \Mobbex\Model {
         $free_trial  = null,
         $limit       = null
     ) {
-        $this->helper = new \Mbbxs_Helper();
+        $this->helper = Mbbxs_Helper::get_instance();
         $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
         $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url');

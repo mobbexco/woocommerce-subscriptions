@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mobbex Subscriptions for WooCommerce
  * Description: Plugin that integrates Mobbex Subscriptions in WooCommerce.
- * Version: 3.4.1
+ * Version: 3.4.2
  * WC tested up to: 4.2.2
  * Author: mobbex.com
  * Author URI: https://mobbex.com/
@@ -13,12 +13,7 @@ require_once 'vendor/autoload.php';
 
 class Mbbx_Subs_Gateway
 {
-    public static $version = '3.4.1';
-
-    /**
-     * @var Mbbxs_Helper
-     */
-    public static $helper;
+    public static $version = '3.4.2';
 
     /**
      * Errors Array.
@@ -53,7 +48,6 @@ class Mbbx_Subs_Gateway
             Mbbx_Subs_Gateway::load_update_checker();
             Mbbx_Subs_Gateway::check_upgrades();
 
-            self::$helper = new Mbbxs_Helper;
             Mbbxs_Cart::init();
         } catch (Exception $e) {
             Mbbx_Subs_Gateway::$errors[] = $e->getMessage();
@@ -61,7 +55,7 @@ class Mbbx_Subs_Gateway
 
         if (count(Mbbx_Subs_Gateway::$errors)) {
             foreach (Mbbx_Subs_Gateway::$errors as $error) {
-                self::$helper::notice('error', $error);
+                Mbbxs_Helper::notice('error', $error);
             }
 
             return;
@@ -79,19 +73,11 @@ class Mbbx_Subs_Gateway
      */
     private static function check_dependencies()
     {
-        if (!class_exists('WooCommerce')) {
-            Mbbx_Subs_Gateway::$errors[] = __('WooCommerce needs to be installed and activated.', 'mobbex-subs-for-woocommerce');
-        }
-
-        if (!function_exists('WC')) {
-            Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires WooCommerce to be activated', 'mobbex-subs-for-woocommerce');
-        }
-
         if (!is_ssl()) {
             Mbbx_Subs_Gateway::$errors[] = __('Your site needs to be served via HTTPS to comunicate securely with Mobbex.', 'mobbex-subs-for-woocommerce');
         }
 
-        if (version_compare(WC_VERSION, '2.6', '<')) {
+        if (defined('WC_VERSION') && version_compare(WC_VERSION, '2.6', '<')) {
             Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires WooCommerce version 2.6 or greater', 'mobbex-subs-for-woocommerce');
         }
 
