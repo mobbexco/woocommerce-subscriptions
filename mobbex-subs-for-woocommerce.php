@@ -79,19 +79,11 @@ class Mbbx_Subs_Gateway
      */
     private static function check_dependencies()
     {
-        if (!class_exists('WooCommerce')) {
-            Mbbx_Subs_Gateway::$errors[] = __('WooCommerce needs to be installed and activated.', 'mobbex-subs-for-woocommerce');
-        }
-
-        if (!function_exists('WC')) {
-            Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires WooCommerce to be activated', 'mobbex-subs-for-woocommerce');
-        }
-
         if (!is_ssl()) {
             Mbbx_Subs_Gateway::$errors[] = __('Your site needs to be served via HTTPS to comunicate securely with Mobbex.', 'mobbex-subs-for-woocommerce');
         }
 
-        if (version_compare(WC_VERSION, '2.6', '<')) {
+        if (defined('WC_VERSION') && version_compare(WC_VERSION, '2.6', '<')) {
             Mbbx_Subs_Gateway::$errors[] = __('Mobbex requires WooCommerce version 2.6 or greater', 'mobbex-subs-for-woocommerce');
         }
 
