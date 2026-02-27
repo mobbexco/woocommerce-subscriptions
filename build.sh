@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VER="3.4.1"
+VER="3.4.2"
 
 # Remove installed packages
 rm -rf vendor composer.lock
