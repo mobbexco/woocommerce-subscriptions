@@ -503,7 +503,7 @@ class Mbbxs_Helper
                 $order->get_billing_first_name(),
                 $order->get_billing_email(),
                 $order->get_billing_phone(),
-                $order->get_meta((!empty($this->custom_dni) ? $this->custom_dni : '_billing_dni'), true),
+                $order->get_meta('_billing_dni', true),
                 $order->get_customer_id()
             );
 
