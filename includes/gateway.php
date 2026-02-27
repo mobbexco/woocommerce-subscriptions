@@ -54,7 +54,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
         $this->send_subscriber_email = ($this->get_option('send_subscriber_email') === 'yes');
 
-        $this->helper = new Mbbxs_Helper();
+        $this->helper = Mbbxs_Helper::get_instance();
         $this->error = false;
 
         if (!$this->helper->is_ready()) {

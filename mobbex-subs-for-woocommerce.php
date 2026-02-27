@@ -16,11 +16,6 @@ class Mbbx_Subs_Gateway
     public static $version = '3.4.1';
 
     /**
-     * @var Mbbxs_Helper
-     */
-    public static $helper;
-
-    /**
      * Errors Array.
      */
     public static $errors = [];
@@ -53,7 +48,6 @@ class Mbbx_Subs_Gateway
             Mbbx_Subs_Gateway::load_update_checker();
             Mbbx_Subs_Gateway::check_upgrades();
 
-            self::$helper = new Mbbxs_Helper;
             Mbbxs_Cart::init();
         } catch (Exception $e) {
             Mbbx_Subs_Gateway::$errors[] = $e->getMessage();
@@ -61,7 +55,7 @@ class Mbbx_Subs_Gateway
 
         if (count(Mbbx_Subs_Gateway::$errors)) {
             foreach (Mbbx_Subs_Gateway::$errors as $error) {
-                self::$helper::notice('error', $error);
+                Mbbxs_Helper::notice('error', $error);
             }
 
             return;

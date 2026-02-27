@@ -8,7 +8,7 @@ class Mbbx_Subs_Product_Settings
     public static function init()
     {
         // Load helper
-        self::$helper = new Mbbxs_Helper;
+        self::$helper = Mbbxs_Helper::get_instance();
 
         if (self::$helper->is_wcs_active()) {
             add_action('woocommerce_process_product_meta_subscription', [self::class, 'create_mobbex_sub_integration_wcs']);

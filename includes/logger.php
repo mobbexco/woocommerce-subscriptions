@@ -11,7 +11,7 @@ class Mbbxs_Logger
     public function __construct()
     {
         $this->error  = false;
-        $this->helper = new Mbbxs_Helper;
+        $this->helper = Mbbxs_Helper::get_instance();
 
         if (!$this->helper->api_key || !$this->helper->access_token)
             $this->error = self::notice('error', __('You need to specify an API Key and an Access Token.', 'mobbex-for-woocommerce'));

@@ -68,7 +68,7 @@ class MobbexSubscriber extends \Mobbex\Model
         $identification   = null,
         $customer_id      = null
     ) {
-        $this->helper = new \Mbbxs_Helper();
+        $this->helper = Mbbxs_Helper::get_instance();
         $this->logger = new \Mbbxs_Logger;
         $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
