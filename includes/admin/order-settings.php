@@ -203,8 +203,11 @@ class Mbbx_Subs_Order_Settings
             // If data look fine
             if (is_numeric($new_total)) {
                 $order_id         = $order->get_id();
-                $subscription     = $order->get_meta('mobbex_subscription', true);
-                $subscription_uid = !empty($subscription['uid']) ? $subscription['uid'] : $order->get_meta('mobbex_subscription_uid', true);
+                $subscriber       = new \MobbexSubscriber($order_id);
+                $subscription_uid = $subscriber->subscription_uid;
+
+                if (!$subscriber || !$subscription_uid)
+                    throw new \Exception(__('No se encontró la suscripción asociada a este pedido.', 'mobbex-subs-for-woocommerce'));
 
                 $result = self::$helper->modify_subscription($subscription_uid, ['total' => $new_total]);
 

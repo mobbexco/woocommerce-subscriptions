@@ -300,9 +300,10 @@ class Mbbxs_Helper
             throw new Exception(__('Invalid order object', 'mobbex-subs-for-woocommerce'));
 
         // Query params
+        $subscriber = new \MobbexSubscriber($order->get_id());
         $params = [
-            'id'  => $order->get_meta('mobbex_subscription_uid'),
-            'sid' => $order->get_meta('mobbex_subscriber_uid'),
+            'id'  => $subscriber->subscription_uid,
+            'sid' => $subscriber->uid,
             'eid' => $execution_id,
         ];
 
