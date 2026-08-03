@@ -2,9 +2,6 @@
 
 class MobbexSubscriber extends \Mobbex\Model
 {
-    /** @var \MobbexApi */
-    public $api;
-
     /** @var \Mbbxs_Helper */
     public $helper;
 
@@ -70,7 +67,6 @@ class MobbexSubscriber extends \Mobbex\Model
     ) {
         $this->helper = Mbbxs_Helper::get_instance();
         $this->logger = new \Mbbxs_Logger;
-        $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
         parent::__construct(...func_get_args());
     }
@@ -104,28 +100,42 @@ class MobbexSubscriber extends \Mobbex\Model
                 }
             }
 
-            return $this->api->request([
-                'uri'    => 'subscriptions/' . $this->subscription_uid . '/subscriber/' . $this->uid,
-                'method' => 'POST',
-                'body'   => [
-                    'reference' => (string) $this->reference,
-                    'test'      => ($this->helper->test_mode === 'yes'),
-                    'total'     => $this->get_subscription_total($order, $subscription),
-                    'addresses' => $this->get_addresses($order),
-                    'startDate' => [
-                        'day'   => date('d', strtotime($dates['current'])),
-                        'month' => date('m', strtotime($dates['current'])),
-                        'year'  => date('Y', strtotime($dates['current'])),
-                    ],
-                    'customer'  => [
+            // The SDK module uses a 2-digit year and switches to a "customerData" key when $uid is
+            // set. Restore the current production payload shape.
+            $filter = function ($body) use ($dates) {
+                $body['startDate']['year'] = date('Y', strtotime($dates['current']));
+
+                if (isset($body['customerData'])) {
+                    $body['customer'] = $body['customerData'];
+                    unset($body['customerData']);
+                }
+
+                return $body;
+            };
+
+            add_filter('mobbexSubscriberRequest', $filter, 10, 1);
+
+            try {
+                $subscriber = new \Mobbex\Modules\Subscriber(
+                    $this->reference,
+                    $this->uid,
+                    $this->subscription_uid,
+                    $dates['current'],
+                    [
                         'name'           => $this->name,
                         'email'          => $this->email,
                         'phone'          => $this->phone,
                         'identification' => $this->identification,
-                        'customer_id'    => $this->customer_id
-                    ]
-                ]
-            ]);
+                        'customer_id'    => $this->customer_id,
+                    ],
+                    $this->get_addresses($order),
+                    $this->get_subscription_total($order, $subscription)
+                );
+
+                return $subscriber->response;
+            } finally {
+                remove_filter('mobbexSubscriberRequest', $filter, 10);
+            }
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscriber Create/Update Error: ' . $e->getMessage(), [], true);
         }
@@ -271,7 +281,23 @@ class MobbexSubscriber extends \Mobbex\Model
             ]
         ];
 
-        return $this->api->request($data);
+        try {
+            return \Mobbex\Api::request($data);
+        } catch (\Mobbex\Exception $e) {
+            // \Mobbex\Api::request() checks 'result' before honoring 'raw', so it throws on any
+            // Mobbex error instead of returning the raw payload. Reconstruct a raw-like array from
+            // the (fixed-format) exception message so execute_scheduled_charge() can still read
+            // $res['code'] (eg. SUBSCRIPTIONS:EXECUTION_ALREADY_IN_PROGRESS) and retry correctly.
+            if (preg_match('/^Mobbex request error #(.+?): (.*)$/', $e->getMessage(), $m)) {
+                return [
+                    'result' => false,
+                    'code'   => $m[1],
+                    'error'  => $m[2],
+                ];
+            }
+
+            throw $e;
+        }
     }
 
     /**
@@ -283,7 +309,7 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function retry_charge($eid)
     {
-        return $this->api->request([
+        return \Mobbex\Api::request([
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/execution/$eid/action/retry",
             'method' => 'GET',
         ]);
@@ -344,7 +370,7 @@ class MobbexSubscriber extends \Mobbex\Model
             return;
 
         // Send endpoint to Mobbex api
-        return $this->api->request([
+        return \Mobbex\Api::request([
             "method" => "POST",
             'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid/action/{$actions[$status]}"
         ]);
@@ -370,7 +396,7 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function search_subscriber($search)
     {
-        $res = $this->api->request([
+        $res = \Mobbex\Api::request([
             'uri'    => "subscriptions/$this->subscription_uid/subscriber?page=0&search=$search",
             'method' => 'GET'
         ]);
@@ -387,8 +413,8 @@ class MobbexSubscriber extends \Mobbex\Model
      */
     public function search_execution($reference)
     {
-        $res = $this->api->request([
-            'url'    => "https://api.mobbex.com/p/subscriptions/$this->subscription_uid/subscriber/$this->uid",
+        $res = \Mobbex\Api::request([
+            'uri'    => "subscriptions/$this->subscription_uid/subscriber/$this->uid",
             'method' => 'GET'
         ]);
 
