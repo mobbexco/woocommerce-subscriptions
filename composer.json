@@ -1,6 +1,7 @@
 {
     "require": {
-        "yahnis-elsts/plugin-update-checker": "v5.6"
+        "yahnis-elsts/plugin-update-checker": "v5.6",
+        "mobbexco/php-plugins-sdk": "1.16.1"
     },
     "require-dev": {
         "szepeviktor/phpstan-wordpress": "*",
@@ -21,7 +22,6 @@
             "includes/utils.php",
             "includes/helper.php",
             "includes/logger.php",
-            "includes/lib/class-api.php",
             "includes/lib/model.php",
             "includes/class-subscription.php",
             "includes/class-subscriber.php",

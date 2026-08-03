@@ -2,9 +2,6 @@
 
 class MobbexSubscription extends \Mobbex\Model {
 
-    /** @var MobbexApi */
-    public $api;
-
     public $uid;
     public $name;
     public $type;
@@ -74,7 +71,6 @@ class MobbexSubscription extends \Mobbex\Model {
         $limit       = null
     ) {
         $this->helper = Mbbxs_Helper::get_instance();
-        $this->api    = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
 
         $this->return_url  = $this->helper->get_api_endpoint('mobbex_subs_return_url');
         $this->webhook_url = $this->helper->get_api_endpoint('mobbex_subs_webhook');
@@ -90,44 +86,54 @@ class MobbexSubscription extends \Mobbex\Model {
     public function create()
     {
         $features = [];
-        
+
         if(get_option('send_subscriber_email') === 'yes')
             array_push($features, 'no_email');
         if(!$this->free_trial)
             array_push($features, 'charge_on_first_source');
-        
+
         $currency = $this->helper->currency == 'store' ? get_woocommerce_currency() : $this->helper->currency;
 
-        $data = [
-            'uri'    => 'subscriptions/' . $this->uid,
-            'method' => 'POST',
-            'body'   => [
-                'reference'   => $this->reference,
-                'total'       => (float) $this->total,
-                'setupFee'    => $this->get_signup_fee(),
-                'currency'    => $currency,
-                'type'        => $this->type,
-                'name'        => $this->name,
-                'description' => $this->name,
-                'interval'    => $this->interval ?: '',
-                'trial'       => $this->free_trial ?: '',
-                'limit'       => $this->limit ?: 0,
-                'return_url'  => $this->return_url,
-                'webhook'     => $this->webhook_url,
-                'features'    => $features,
-                'test'        => $this->is_test_subscription(),
-                'options'     => [
-                    'platform' => $this->get_platform_data(),
-                    'embed'    => get_option('send_subscriber_email') === 'yes',
-                ],
-            ]
-        ];
+        // The SDK module hardcodes currency='ARS', overwrites 'reference' with its own format and builds
+        // a different 'options' shape (theme/domain/redirect). Restore the current production payload.
+        $filter = function ($body, $id = null) use ($currency) {
+            $body['reference'] = $this->reference;
+            $body['currency']  = $currency;
+            $body['options']   = [
+                'platform' => $this->get_platform_data(),
+                'embed'    => get_option('send_subscriber_email') === 'yes',
+            ];
+
+            return $body;
+        };
+
+        add_filter('mobbexSubscriptionRequest', $filter, 10, 2);
 
         try {
-            mbbxs_log('debug', 'MobbexSubscription > create()', ['data' => $data]);
-            return $this->api->request($data);
+            $subscription = new \Mobbex\Modules\Subscription(
+                $this->product_id,
+                $this->uid,
+                $this->type,
+                $this->return_url,
+                $this->webhook_url,
+                $this->total,
+                $this->name,
+                $this->name,
+                $this->interval ?: '',
+                $features,
+                $this->limit ?: 0,
+                $this->free_trial ?: '',
+                $this->is_test_subscription(),
+                $this->get_signup_fee()
+            );
+
+            mbbxs_log('debug', 'MobbexSubscription > create()', ['response' => $subscription->response]);
+
+            return $subscription->response;
         } catch (\Exception $e) {
             $this->logger->debug('Mobbex Subscription Create/Update Error: ' . $e->getMessage(), [], true);
+        } finally {
+            remove_filter('mobbexSubscriptionRequest', $filter, 10);
         }
     }
 
@@ -202,7 +208,7 @@ class MobbexSubscription extends \Mobbex\Model {
         //If integrated with woocommerces subs add plugin version to body
         if (isset($this->helper->integration) &&  $this->helper->integration === "wcs") {
             $wcs_data = get_plugin_data(WP_PLUGIN_DIR . '/woocommerce-subscriptions/woocommerce-subscriptions.php');
-            $body['options']['platform'][] = ['name' => 'Woocommerce Subscriptions', 'version' => $wcs_data['Version']];
+            $platform[] = ['name' => 'Woocommerce Subscriptions', 'version' => $wcs_data['Version']];
         }
 
         return $platform;
@@ -251,7 +257,7 @@ class MobbexSubscription extends \Mobbex\Model {
      */
     public function get_signup_fee()
     {
-        if ($this->signup_fee != 0)
+        if ((float) $this->signup_fee != 0)
             return $this->signup_fee;
 
         if ($this->type == 'manual')

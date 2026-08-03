@@ -69,6 +69,33 @@ class Mbbxs_Helper
             $key = str_replace('-', '_', $key);
             $this->$key = $value;
         }
+
+        \Mobbex\Platform::init(
+            'WooCommerceSubscriptions',
+            MOBBEX_SUBS_VERSION,
+            site_url(),
+            [
+                'WordPress'   => get_bloginfo('version'),
+                'WooCommerce' => defined('WC_VERSION') ? WC_VERSION : '',
+            ],
+            [
+                'api_key'      => $this->api_key,
+                'access_token' => $this->access_token,
+                'test'         => ($this->test_mode === 'yes'),
+                'embed'        => ($this->embed === 'yes'),
+            ],
+            function ($name, $filter, ...$args) {
+                if ($filter)
+                    return apply_filters($name, ...$args);
+
+                do_action($name, ...$args);
+            },
+            function ($mode, $message, $data = []) {
+                mbbxs_log($mode, $message, $data);
+            }
+        );
+
+        \Mobbex\Api::init($this->api_key, $this->access_token);
     }
 
     public static function notice($type, $msg)
@@ -299,33 +326,15 @@ class Mbbxs_Helper
         if (!$order || !method_exists($order, 'get_id'))
             throw new Exception(__('Invalid order object', 'mobbex-subs-for-woocommerce'));
 
-        // Query params
         $subscriber = new \MobbexSubscriber($order->get_id());
-        $params = [
-            'id'  => $subscriber->subscription_uid,
-            'sid' => $subscriber->uid,
-            'eid' => $execution_id,
-        ];
 
-        // Retry execution
-        $response = wp_remote_get(str_replace(['{id}', '{sid}', '{eid}'], $params, MOBBEX_RETRY_EXECUTION), [
-            'headers' => [
-                'cache-control' => 'no-cache',
-                'content-type' => 'application/json',
-                'x-api-key' => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
-        ]);
+        try {
+            $subscriber->retry_charge($execution_id);
 
-        if (!is_wp_error($response)) {
-            $response = json_decode($response['body'], true);
-
-            if (!empty($response['result'])) {
-                return true;
-            }
+            return true;
+        } catch (\Exception $e) {
+            throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
         }
-
-        throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
     }
 
     /**
@@ -346,27 +355,17 @@ class Mbbxs_Helper
             throw new Exception(__('Empty Subscription UID or params', 'mobbex-subs-for-woocommerce'));
         }
 
-        // Modify Subscription
-        $response = wp_remote_post(str_replace('{id}', $subscription_uid, MOBBEX_MODIFY_SUBSCRIPTION), [
-            'headers' => [
-                'cache-control'  => 'no-cache',
-                'content-type'   => 'application/json',
-                'x-api-key'      => $this->api_key,
-                'x-access-token' => $this->access_token,
-            ],
+        try {
+            \Mobbex\Api::request([
+                'method' => 'POST',
+                'uri'    => "subscriptions/$subscription_uid",
+                'body'   => $params,
+            ]);
 
-            'body'        => json_encode($params),
-            'data_format' => 'body',
-        ]);
-
-        if (!is_wp_error($response)) {
-            $response = json_decode($response['body'], true);
-
-            if (!empty($response['result']))
-                return true;
+            return true;
+        } catch (\Exception $e) {
+            throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
         }
-
-        throw new Exception(__('An error occurred in the execution', 'mobbex-subs-for-woocommerce'));
     }
 
     /**

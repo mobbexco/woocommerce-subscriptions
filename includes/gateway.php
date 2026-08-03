@@ -297,9 +297,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
-        $api = new \MobbexApi($this->helper->api_key, $this->helper->access_token);
-
-        if (!$api->ready)
+        if (!\Mobbex\Api::$ready)
             throw new \Exception('Mobbex API is not ready. Cannot process refunds.');
 
         if (!$this->helper->is_wcs_active())
@@ -321,7 +319,7 @@ class WC_Gateway_Mbbx_Subs extends WC_Payment_Gateway
             throw new \Exception('Invalid execution data for order ID ' . $order_id);
 
         // This method throws exceptions on any error
-        $api->request([
+        \Mobbex\Api::request([
             'method' => 'POST',
             'uri'    => "operations/{$webhook_data['payment']['id']}/refund",
             'body'   => [
