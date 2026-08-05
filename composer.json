@@ -1,7 +1,7 @@
 {
     "require": {
         "yahnis-elsts/plugin-update-checker": "v5.6",
-        "mobbexco/php-plugins-sdk": "1.16.1"
+        "mobbexco/php-plugins-sdk": "1.16.2"
     },
     "require-dev": {
         "szepeviktor/phpstan-wordpress": "*",

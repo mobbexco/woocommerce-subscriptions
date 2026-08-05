@@ -115,6 +115,15 @@ class MobbexSubscriber extends \Mobbex\Model
 
             add_filter('mobbexSubscriberRequest', $filter, 10, 1);
 
+            // Enable integrity attestation for susbcriber creation
+            \Mobbex\Integrity\Attestation::init('woocommerce-subscriptions', __DIR__, null, function () {
+                // Returning null instead lets the SDK fallback to the shop host
+                if (!function_exists('wc_get_checkout_url'))
+                    return null;
+
+                return wc_get_checkout_url();
+            });
+
             try {
                 $subscriber = new \Mobbex\Modules\Subscriber(
                     $this->reference,
