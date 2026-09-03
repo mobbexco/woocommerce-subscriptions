@@ -197,7 +197,7 @@ class MobbexSubscriber extends \Mobbex\Model
             'order_id'         => $order_id,
             'subscription_uid' => $this->subscription_uid,
             'subscriber_uid'   => $this->uid,
-            'status'           => $webhookData['payment']['status']['code'],
+            'status'           => isset($webhookData['payment']['status']['code']) ? $webhookData['payment']['status']['code'] : 500,
             'total'            => $webhookData['payment']['total'],
             'date'             => $date,
             'data'             => json_encode($webhookData)
