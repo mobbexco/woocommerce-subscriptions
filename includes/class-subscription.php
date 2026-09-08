@@ -89,14 +89,12 @@ class MobbexSubscription extends \Mobbex\Model {
      */
     public function create()
     {
-        $features = [];
-        
-        if(get_option('send_subscriber_email') === 'yes')
+        $features = ['charge_on_first_source'];
+
+        if (get_option('send_subscriber_email') === 'yes')
             array_push($features, 'no_email');
-        if(!$this->free_trial)
-            array_push($features, 'charge_on_first_source');
-        
-        $currency = $this->helper->currency == 'store' ? get_woocommerce_currency() : $this->helper->currency;
+
+        $currency = $this->helper->currency === 'store' ? get_woocommerce_currency() : $this->helper->currency;
 
         $data = [
             'uri'    => 'subscriptions/' . $this->uid,
@@ -104,7 +102,7 @@ class MobbexSubscription extends \Mobbex\Model {
             'body'   => [
                 'reference'   => $this->reference,
                 'total'       => (float) $this->total,
-                'setupFee'    => $this->get_signup_fee(),
+                'setupFee'    => $this->signup_fee ?: 0,
                 'currency'    => $currency,
                 'type'        => $this->type,
                 'name'        => $this->name,
@@ -127,7 +125,7 @@ class MobbexSubscription extends \Mobbex\Model {
             mbbxs_log('debug', 'MobbexSubscription > create()', ['data' => $data]);
             return $this->api->request($data);
         } catch (\Exception $e) {
-            $this->logger->debug('Mobbex Subscription Create/Update Error: ' . $e->getMessage(), [], true);
+            mbbxs_log('error', 'MobbexSubscription > create()', ['error' => $e->getMessage()]);
         }
     }
 
@@ -242,21 +240,5 @@ class MobbexSubscription extends \Mobbex\Model {
             return (get_post_meta($this->product_id, 'mobbex_subscription_test_mode', true) == 'yes');
         else
             return (get_post_meta($this->product_id, 'mbbxs_test_mode', true) == 'yes');
-    }
-
-    /**
-     * Get the corresponding subscription signup fee
-     * 
-     * @return int signup_fee value
-     */
-    public function get_signup_fee()
-    {
-        if ($this->signup_fee != 0)
-            return $this->signup_fee;
-
-        if ($this->type == 'manual')
-            return $this->total;
-
-        return 0;
     }
 }
