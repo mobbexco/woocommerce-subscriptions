@@ -79,8 +79,11 @@ abstract class Model
             "SELECT * FROM " . $this->db->prefix . $this->table . " WHERE $this->primary_key=$key LIMIT 1;",
             ARRAY_A
         );
-        $this->logger->debug('Abstract Model save error: ' . $this->db->last_error, [], true);
-        mbbxs_log('debug', 'Mobbex Model > save => save error: ' . $this->db->last_error, ['wpdb_error' => $this->db->last_error]);
+
+        if (!empty($this->db->last_error)) {
+            $this->logger->debug('Abstract Model save error: ' . $this->db->last_error, [], true);
+            mbbxs_log('debug', 'Mobbex Model > save => save error: ' . $this->db->last_error, ['wpdb_error' => $this->db->last_error]);
+        }
         return isset($result[0]) ? $result[0] : null;
     }
 
@@ -91,20 +94,23 @@ abstract class Model
         if($this->update){
             $wpdb->update($wpdb->prefix.$this->table, $data, [$this->primary_key => $data[$this->primary_key]]);
 
-            if (empty($wpdb->last_error))
-                return true;
-            $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
-            mbbxs_log('debug', 'Mobbex Model > save => save error: ' . $wpdb->last_error, ['wpdb_error' => $wpdb->last_error]);
-            return false;
+            if (!empty($wpdb->last_error)) {
+                $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
+                mbbxs_log('debug', 'Mobbex Model > save => save error: ' . $wpdb->last_error, ['wpdb_error' => $wpdb->last_error]);
+                return false;
+            }
+            return true;
+    
 
         } else {
             $wpdb->insert($wpdb->prefix.$this->table, $data);
 
-            if (empty($wpdb->last_error))
-                return true;
-            $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
-            mbbxs_log('debug', 'Mobbex Model > save => save error: ' . $wpdb->last_error, ['wpdb_error' => $wpdb->last_error]);
-            return false;
+            if (!empty($wpdb->last_error)) {
+                $this->logger->debug('Abstract Model save error: ' . $wpdb->last_error, [], true);
+                mbbxs_log('debug', 'Mobbex Model > save => save error: ' . $wpdb->last_error, ['wpdb_error' => $wpdb->last_error]);
+                return false;
+            }
+            return true;
         }
     }
 }
